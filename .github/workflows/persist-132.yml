@@ -1,0 +1,48 @@
+name: Persist Flight Deck EFB 1.3.2 Source
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.persist-1.3.2-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  persist:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Apply exact 1.3.2 release patch
+        run: node scripts/run-1.3.2-fixes.mjs
+      - name: Verify patched source
+        shell: pwsh
+        run: |
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/state-engine.mjs
+          node --check public/app.js
+          node --check public/i18n.js
+          if ((node -p "require('./package.json').version") -ne '1.3.2') { throw 'Version mismatch.' }
+      - name: Commit patched source to main
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src public THIRD_PARTY_NOTICES.md
+          if (git diff --cached --quiet) {
+            Write-Host 'Source already matches 1.3.2 release.'
+            exit 0
+          }
+          git commit -m 'Persist verified 1.3.2 runtime fixes'
+          git push origin HEAD:main
