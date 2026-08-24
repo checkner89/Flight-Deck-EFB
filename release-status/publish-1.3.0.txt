@@ -1,4 +1,0 @@
-status=success
-version=1.3.0
-tag=v1.3.0
-run_id=32747181738

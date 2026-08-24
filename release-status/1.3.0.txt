@@ -1,5 +1,0 @@
-status=success
-version=1.3.0
-tag=v1.3.0
-url=https://github.com/checkner89/Flight-Deck-EFB/releases/tag/v1.3.0
-run_id=32747516995
