@@ -1,4 +1,4 @@
-name: Test 1.4.0 Windows Build
+name: Test 1.4.1 Windows Build
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Apply 1.4.0 migration
+      - name: Apply 1.4.1 migration
         shell: pwsh
         run: |
           node scripts/apply-140-a.mjs
@@ -37,6 +37,7 @@ jobs:
           node scripts/apply-140-c2.mjs
           node scripts/apply-140-rc2.mjs
           node scripts/apply-140-rc2b.mjs
+          node scripts/apply-141-version.mjs
 
       - name: Verify source and UX contract
         shell: pwsh
@@ -49,7 +50,7 @@ jobs:
           node --check public/app.js
           node --check public/i18n.js
           $version = node -p "require('./package.json').version"
-          if ($version -ne '1.4.0') { throw "Expected 1.4.0, got $version" }
+          if ($version -ne '1.4.1') { throw "Expected 1.4.1, got $version" }
           if (Test-Path 'src/navigraph-client.mjs') { throw 'Navigraph backend must remain disabled.' }
           $html = Get-Content public/index.html -Raw
           $app = Get-Content public/app.js -Raw
@@ -82,8 +83,8 @@ jobs:
       - name: Smoke test local EFB host
         shell: pwsh
         run: |
-          $stdout = Join-Path $env:RUNNER_TEMP 'efb140-host.out.log'
-          $stderr = Join-Path $env:RUNNER_TEMP 'efb140-host.err.log'
+          $stdout = Join-Path $env:RUNNER_TEMP 'efb141-host.out.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'efb141-host.err.log'
           $process = Start-Process -FilePath node -ArgumentList @('src/server.mjs', '--demo', '--port', '8745') -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           try {
             $deadline = (Get-Date).AddSeconds(30)
@@ -124,17 +125,17 @@ jobs:
       - name: Verify updater assets
         shell: pwsh
         run: |
-          foreach ($file in @('dist/Flight-Deck-EFB-Setup-1.4.0.exe','dist/Flight-Deck-EFB-Setup-1.4.0.exe.blockmap','dist/latest.yml')) {
+          foreach ($file in @('dist/Flight-Deck-EFB-Setup-1.4.1.exe','dist/Flight-Deck-EFB-Setup-1.4.1.exe.blockmap','dist/latest.yml')) {
             if (!(Test-Path $file)) { throw "Missing updater asset: $file" }
           }
           $latest = Get-Content dist/latest.yml -Raw
-          if ($latest -notmatch 'version:\s*1\.4\.0') { throw 'latest.yml does not advertise 1.4.0.' }
+          if ($latest -notmatch 'version:\s*1\.4\.1') { throw 'latest.yml does not advertise 1.4.1.' }
 
       - name: Upload test artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Flight-Deck-EFB-1.4.0-RC2-Test
+          name: Flight-Deck-EFB-1.4.1-RC-Test
           path: |
-            dist/Flight-Deck-EFB-Setup-1.4.0.exe
-            dist/Flight-Deck-EFB-Setup-1.4.0.exe.blockmap
+            dist/Flight-Deck-EFB-Setup-1.4.1.exe
+            dist/Flight-Deck-EFB-Setup-1.4.1.exe.blockmap
             dist/latest.yml
