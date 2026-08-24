@@ -2,7 +2,6 @@ import { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } from 'elec
 import { autoUpdater } from 'electron-updater';
 import { createTaxiServer } from './server.mjs';
 import fs from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,37 +45,6 @@ function createUpdateService() {
       return { ...value };
     },
   };
-}
-
-function handleSquirrelLifecycle() {
-  if (process.platform !== 'win32' || process.argv.length < 2) return false;
-  const event = process.argv[1];
-  const lifecycleEvents = new Set([
-    '--squirrel-install',
-    '--squirrel-updated',
-    '--squirrel-uninstall',
-    '--squirrel-obsolete',
-  ]);
-  if (!lifecycleEvents.has(event)) return false;
-
-  const updateExecutable = path.resolve(path.dirname(process.execPath), '..', 'Update.exe');
-  const executableName = path.basename(process.execPath);
-  const runUpdate = (args) => {
-    try {
-      const child = spawn(updateExecutable, args, { detached: true, stdio: 'ignore' });
-      child.unref();
-    } catch {
-      // Squirrel can still complete installation; shortcuts may be repaired later.
-    }
-  };
-
-  if (event === '--squirrel-install' || event === '--squirrel-updated') {
-    runUpdate(['--createShortcut', executableName]);
-  } else if (event === '--squirrel-uninstall') {
-    runUpdate(['--removeShortcut', executableName]);
-  }
-  setTimeout(() => app.quit(), event === '--squirrel-obsolete' ? 0 : 1000);
-  return true;
 }
 
 function showMainWindow() {
@@ -179,39 +147,37 @@ async function createWindow() {
   setTimeout(() => updateService.check().catch(() => {}), 15_000);
 }
 
-if (!handleSquirrelLifecycle()) {
-  app.setAppUserModelId('de.christoph.flightdeckefb');
-  const hasSingleInstanceLock = app.requestSingleInstanceLock();
-  if (!hasSingleInstanceLock) app.quit();
+app.setAppUserModelId('de.checkner.flightdeckefb');
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) app.quit();
 
-  app.on('second-instance', () => {
-    showMainWindow();
-  });
+app.on('second-instance', () => {
+  showMainWindow();
+});
 
-  app.whenReady().then(createWindow).catch((error) => {
-    dialog.showErrorBox('Flight Deck EFB', `Die Anwendung konnte nicht gestartet werden.\n\n${error.message}`);
+app.whenReady().then(createWindow).catch((error) => {
+  dialog.showErrorBox('Flight Deck EFB', `Die Anwendung konnte nicht gestartet werden.\n\n${error.message}`);
+  app.quit();
+});
+
+app.on('window-all-closed', () => {
+  // The local server stays active for iPad, Android and second-monitor access.
+});
+
+app.on('activate', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+  else showMainWindow();
+});
+
+app.on('before-quit', (event) => {
+  isQuitting = true;
+  if (!taxiServer || shutdownStarted) return;
+  event.preventDefault();
+  shutdownStarted = true;
+  taxiServer.close().finally(() => {
+    taxiServer = null;
+    tray?.destroy();
+    tray = null;
     app.quit();
   });
-
-  app.on('window-all-closed', () => {
-    // The local server stays active for iPad, Android and second-monitor access.
-  });
-
-  app.on('activate', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) createWindow();
-    else showMainWindow();
-  });
-
-  app.on('before-quit', (event) => {
-    isQuitting = true;
-    if (!taxiServer || shutdownStarted) return;
-    event.preventDefault();
-    shutdownStarted = true;
-    taxiServer.close().finally(() => {
-      taxiServer = null;
-      tray?.destroy();
-      tray = null;
-      app.quit();
-    });
-  });
-}
+});
