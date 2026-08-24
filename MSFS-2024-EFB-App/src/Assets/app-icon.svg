@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Flight Deck EFB">
+  <rect width="128" height="128" rx="28" fill="#07121c"/>
+  <path d="M64 17 99 105 64 84 29 105Z" fill="#2db8ff"/>
+  <path d="M64 34 78 86 64 75 50 86Z" fill="#07121c"/>
+  <circle cx="64" cy="94" r="6" fill="#16e3d4"/>
+</svg>
