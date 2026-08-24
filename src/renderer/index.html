@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flight Deck EFB</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">FLIGHT DECK EFB</div>
+        <h1>Systemstatus</h1>
+        <p class="intro">Diagnose für Simulator-Verbindung und Updates.</p>
+      </div>
+      <div class="version-card">
+        <span>Version</span>
+        <strong id="appVersion">–</strong>
+      </div>
+    </header>
+
+    <section class="status-card" aria-labelledby="simconnectTitle">
+      <div class="status-card__header">
+        <div class="status-card__title-group">
+          <div class="status-icon" aria-hidden="true">✈</div>
+          <div>
+            <div class="section-label">SIMULATOR</div>
+            <h2 id="simconnectTitle">Microsoft Flight Simulator / SimConnect</h2>
+          </div>
+        </div>
+        <span id="simconnectBadge" class="badge badge--neutral">GETRENNT</span>
+      </div>
+
+      <div class="status-card__body">
+        <p id="simconnectDetail" class="status-detail">Status wird geladen …</p>
+        <p id="simconnectTechnical" class="technical-detail" hidden></p>
+        <div id="simconnectMeta" class="meta-row" hidden>
+          <span>Erkannt:</span>
+          <strong id="simconnectApplication">–</strong>
+        </div>
+      </div>
+
+      <div class="status-card__actions">
+        <button id="retrySimConnect" class="button button--primary" type="button">Erneut verbinden</button>
+        <span id="retryHint" class="action-hint"></span>
+      </div>
+    </section>
+
+    <section class="status-card" aria-labelledby="updateTitle">
+      <div class="status-card__header">
+        <div class="status-card__title-group">
+          <div class="status-icon" aria-hidden="true">↻</div>
+          <div>
+            <div class="section-label">APP</div>
+            <h2 id="updateTitle">GitHub Updates</h2>
+          </div>
+        </div>
+        <span id="updateBadge" class="badge badge--neutral">BEREIT</span>
+      </div>
+
+      <div class="status-card__body">
+        <p id="updateDetail" class="status-detail">Updateprüfung noch nicht gestartet.</p>
+        <div id="updateProgressWrap" class="progress-wrap" hidden>
+          <div class="progress-track"><div id="updateProgress" class="progress-bar"></div></div>
+          <span id="updatePercent">0 %</span>
+        </div>
+      </div>
+
+      <div class="status-card__actions">
+        <button id="checkUpdates" class="button" type="button">Nach Updates suchen</button>
+        <button id="installUpdate" class="button button--primary" type="button" hidden>Jetzt installieren</button>
+      </div>
+    </section>
+
+    <section class="info-card">
+      <h3>Was diese Testversion prüft</h3>
+      <p>Dieser Branch dient zunächst dazu, SimConnect und den GitHub-Updater unabhängig vom restlichen EFB zuverlässig zu testen. Danach wird derselbe Unterbau in die vollständige Oberfläche übernommen.</p>
+    </section>
+  </main>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>
