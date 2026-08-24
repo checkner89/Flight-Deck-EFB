@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/1.3.2-simconnect-ui
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
