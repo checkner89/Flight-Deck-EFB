@@ -1,0 +1,68 @@
+{
+  "name": "flight-deck-efb",
+  "version": "1.2.0",
+  "description": "Desktop EFB companion for Microsoft Flight Simulator.",
+  "author": "checkner89",
+  "license": "MIT",
+  "private": false,
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "release": "electron-builder --win --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9",
+    "node-simconnect": "^4.2.0"
+  },
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.7"
+  },
+  "build": {
+    "appId": "de.checkner.flightdeckefb",
+    "productName": "Flight Deck EFB",
+    "artifactName": "Flight-Deck-EFB-Setup-${version}.${ext}",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-simconnect/**"
+    ],
+    "files": [
+      "src/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Flight Deck EFB",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "checkner89",
+        "repo": "Flight-Deck-EFB",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
