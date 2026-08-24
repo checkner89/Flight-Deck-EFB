@@ -45,7 +45,7 @@ jobs:
           node --check src/simconnect-client.mjs
           node --check public/app.js
           node --check public/i18n.js
-          node --input-type=module -e "import updaterPackage from 'electron-updater'; const { autoUpdater } = updaterPackage; if (!autoUpdater) throw new Error('electron-updater autoUpdater unavailable'); console.log('electron-updater CommonJS import OK');"
+          node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
           if (Test-Path 'src/navigraph-client.mjs') {
             throw 'Navigraph backend must remain disabled until explicitly re-enabled.'
           }
@@ -114,6 +114,23 @@ jobs:
 
       - name: Build Windows installer
         run: npm run dist
+
+      - name: Smoke test packaged Windows app
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-unpacked/Flight Deck EFB.exe'
+          if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo') -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+            if ($process.HasExited) {
+              throw "Packaged Flight Deck EFB exited during startup smoke test with code $($process.ExitCode)."
+            }
+            Write-Host 'Packaged Flight Deck EFB startup smoke test passed.'
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
 
       - name: Verify updater assets
         shell: pwsh
