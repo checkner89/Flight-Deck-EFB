@@ -18,7 +18,7 @@ async function fetchProduct(product, airports, fetchImpl) {
   url.searchParams.set('ids', airports.join(','));
   url.searchParams.set('format', 'json');
   const response = await fetchImpl(url, {
-    headers: { 'User-Agent': 'Flight-Deck-EFB/1.3.0 flight-simulation-companion' },
+    headers: { 'User-Agent': 'Flight-Deck-EFB/1.3.2 flight-simulation-companion' },
     signal: AbortSignal.timeout(8_000),
   });
   if (response.status === 204) return [];

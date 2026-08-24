@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } from 'electron';
+import { app, BrowserWindow, dialog, Menu, nativeImage, screen, shell, Tray } from 'electron';
 import updaterPackage from 'electron-updater';
 import { createTaxiServer } from './server.mjs';
 import fs from 'node:fs/promises';
@@ -102,11 +102,15 @@ async function createWindow() {
     accessStorageDirectory: path.join(app.getPath('userData'), 'access'),
     updateService,
   });
+  const { workAreaSize } = screen.getPrimaryDisplay();
+  const initialWidth = Math.min(workAreaSize.width, Math.max(1320, Math.round(workAreaSize.width * 0.96)));
+  const initialHeight = Math.min(workAreaSize.height, Math.max(820, Math.round(workAreaSize.height * 0.94)));
   mainWindow = new BrowserWindow({
-    width: 1380,
-    height: 860,
-    minWidth: 960,
-    minHeight: 640,
+    width: initialWidth,
+    height: initialHeight,
+    minWidth: 1180,
+    minHeight: 720,
+    show: false,
     backgroundColor: '#07121c',
     icon: fileURLToPath(new URL('../public/assets/app-icon-512.png', import.meta.url)),
     title: 'Flight Deck EFB',
@@ -145,6 +149,9 @@ async function createWindow() {
     // Versioned app assets still prevent mixed releases if storage cleanup is unavailable.
   }
   await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);
+  mainWindow.maximize();
+  mainWindow.show();
+  mainWindow.focus();
   createTray();
   setTimeout(() => updateService.check().catch(() => {}), 15_000);
 }

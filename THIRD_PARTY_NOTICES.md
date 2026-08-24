@@ -1,4 +1,4 @@
-# Third-party notices — Flight Deck EFB 1.3.0
+# Third-party notices — Flight Deck EFB 1.3.2
 
 Flight Deck EFB is an independent community project. It is not affiliated
 with or endorsed by SayIntentions.AI, Microsoft, Asobo Studio, TaxiNow,
@@ -36,7 +36,7 @@ The application includes or uses:
   optional compatibility interfaces. Access and returned content remain
   subject to each provider's account, API, and product terms. No provider API
   key is distributed with Flight Deck EFB. Navigraph connectivity is disabled
-  in Flight Deck EFB 1.3.0.
+  in Flight Deck EFB 1.3.2.
 
 Product names including Microsoft Flight Simulator, SayIntentions.AI,
 BeyondATC, Navigraph, SimBrief, Fenix, GSX, VATSIM, and IVAO are trademarks or

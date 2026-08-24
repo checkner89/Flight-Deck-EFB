@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.3.0';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.3.2';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.3.0';
+} from './flight-phases.js?v=1.3.2';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -577,19 +577,19 @@ window.addEventListener('flightdeckthemechange', () => {
   }
   map.invalidateSize();
 });
-const DEFAULT_APP_ORDER = ['taxi', 'planner', 'flight', 'tracking', 'briefing', 'com', 'flightboard', 'charts', 'atc', 'ground', 'fenix', 'automations', 'settings'];
+const DEFAULT_APP_ORDER = ['taxi', 'flight', 'tracking', 'briefing', 'com', 'flightboard', 'charts', 'atc', 'ground', 'fenix', 'automations', 'settings'];
 const ESSENTIAL_APPS = new Set(['flight', 'settings']);
 const PILOT_PROFILES = {
   airliner: {
-    order: ['flight', 'briefing', 'com', 'flightboard', 'charts', 'taxi', 'planner', 'ground', 'atc', 'tracking', 'fenix', 'automations', 'settings'],
+    order: ['flight', 'briefing', 'com', 'flightboard', 'charts', 'taxi', 'ground', 'atc', 'tracking', 'fenix', 'automations', 'settings'],
     hidden: [], alertMode: 'normal', arrivalTriggerNm: 150, fuelBufferPounds: 1_000,
   },
   ga: {
-    order: ['flight', 'briefing', 'com', 'flightboard', 'charts', 'tracking', 'taxi', 'planner', 'atc', 'automations', 'settings', 'ground', 'fenix'],
+    order: ['flight', 'briefing', 'com', 'flightboard', 'charts', 'tracking', 'taxi', 'atc', 'automations', 'settings', 'ground', 'fenix'],
     hidden: ['ground', 'fenix', 'automations'], alertMode: 'visual', arrivalTriggerNm: 50, fuelBufferPounds: 0,
   },
   online: {
-    order: ['flight', 'briefing', 'com', 'flightboard', 'atc', 'charts', 'tracking', 'taxi', 'planner', 'ground', 'fenix', 'automations', 'settings'],
+    order: ['flight', 'briefing', 'com', 'flightboard', 'atc', 'charts', 'tracking', 'taxi', 'ground', 'fenix', 'automations', 'settings'],
     hidden: [], alertMode: 'visual', arrivalTriggerNm: 100, fuelBufferPounds: 500,
   },
 };
@@ -905,6 +905,8 @@ function airportTargetIcao(state) {
     || state?.flight?.currentAirport
     || state?.flight?.origin
     || state?.flight?.destination
+    || state?.integrations?.simbrief?.flight?.origin
+    || state?.integrations?.simbrief?.flight?.destination
     || '')
     .trim()
     .toUpperCase();
@@ -1630,7 +1632,7 @@ function renderFlightData(state) {
   elements.simbriefPax.textContent = Number.isFinite(flight.passengers) ? String(flight.passengers) : '—';
   elements.simbriefEet.textContent = Number.isFinite(flight.enrouteSeconds)
     ? `${Math.floor(flight.enrouteSeconds / 3_600)}:${String(Math.floor(flight.enrouteSeconds / 60) % 60).padStart(2, '0')}` : '—';
-  elements.simbriefRoute.textContent = flight.route || 'No OFP imported.';
+  elements.simbriefRoute.textContent = flight.route || state.flight?.flightPlanRoute || 'Warte auf automatisch erkannten Flugplan …';
 
   const simOnline = ['connected', 'demo'].includes(state.connections?.simConnect?.status);
   elements.liveAircraftStatus.textContent = simOnline ? 'ONLINE' : 'OFFLINE';
@@ -2690,6 +2692,36 @@ function trafficMatchesView(entry, airport) {
     || /landing|approach|rollout|taxi in/.test(state);
 }
 
+const AIRLINE_IATA_BY_ICAO = {
+  BTI: 'BT', DLH: 'LH', BAW: 'BA', RYR: 'FR', EZY: 'U2', KLM: 'KL', AFR: 'AF', TAP: 'TP', IBE: 'IB',
+  UAE: 'EK', QTR: 'QR', THY: 'TK', SWR: 'LX', AUA: 'OS', BEL: 'SN', SAS: 'SK', FIN: 'AY',
+  EIN: 'EI', WZZ: 'W6', VLG: 'VY', CFG: 'DE', EWG: 'EW', TUI: 'X3', AEE: 'A3', LOT: 'LO',
+  DAL: 'DL', UAL: 'UA', AAL: 'AA', ACA: 'AC', JBU: 'B6', VIR: 'VS', SIA: 'SQ', CPA: 'CX',
+  ANA: 'NH', JAL: 'JL', KAL: 'KE', ETD: 'EY', QFA: 'QF', ANZ: 'NZ', ICE: 'FI', NSZ: 'D8',
+};
+const AIRLINE_IATA_BY_NAME = [
+  [/air\s*baltic/i, 'BT'], [/lufthansa/i, 'LH'], [/speedbird|british airways/i, 'BA'], [/ryanair/i, 'FR'], [/easyjet/i, 'U2'],
+  [/klm/i, 'KL'], [/air france/i, 'AF'], [/\btap\b/i, 'TP'], [/iberia/i, 'IB'], [/emirates/i, 'EK'],
+  [/qatar/i, 'QR'], [/turkish/i, 'TK'], [/swiss/i, 'LX'], [/austrian/i, 'OS'], [/brussels/i, 'SN'],
+  [/sas|scandinavian/i, 'SK'], [/finnair/i, 'AY'], [/aer lingus/i, 'EI'], [/wizz/i, 'W6'],
+  [/vueling/i, 'VY'], [/condor/i, 'DE'], [/eurowings/i, 'EW'], [/tuifly|tui/i, 'X3'],
+];
+
+function trafficAirlineIata(entry = {}) {
+  const callsign = String(entry.callsign || entry.atcId || '').trim().toUpperCase();
+  const icao = callsign.match(/^([A-Z]{3})/)?.[1];
+  if (icao && AIRLINE_IATA_BY_ICAO[icao]) return AIRLINE_IATA_BY_ICAO[icao];
+  const text = [entry.airline, entry.title, entry.callsign].filter(Boolean).join(' ');
+  return AIRLINE_IATA_BY_NAME.find(([pattern]) => pattern.test(text))?.[1] || null;
+}
+
+function trafficAirlineLogo(entry = {}) {
+  const iata = trafficAirlineIata(entry);
+  const fallback = iata || String(entry.airline || entry.callsign || 'AI').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'AI';
+  const image = iata ? `<img src="https://images.kiwi.com/airlines/64/${encodeURIComponent(iata)}.png" alt="" loading="lazy">` : '';
+  return `<span class="traffic-airline-logo"><b>${escapeHtml(fallback)}</b>${image}</span>`;
+}
+
 function renderFlightboard(state) {
   const integration = state.integrations?.simTraffic || {};
   const simulatorOnline = ['connected', 'demo'].includes(state.connections?.simConnect?.status);
@@ -2721,7 +2753,8 @@ function renderFlightboard(state) {
     const schedule = trafficBoardView === 'arrivals' ? entry.etaSeconds
       : trafficBoardView === 'departures' ? entry.etdSeconds
         : /landing|approach|rollout|taxi in/.test(normalizedTrafficState(entry.state)) ? entry.etaSeconds : entry.etdSeconds;
-    row.innerHTML = `<time>${escapeHtml(trafficScheduleTime(schedule))}</time><span><strong>${escapeHtml(entry.callsign || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(entry.airline || entry.title || 'MSFS TRAFFIC')}</small></span><b>${escapeHtml(entry.origin || '—')}</b><b>${escapeHtml(entry.destination || '—')}</b><span><strong>${escapeHtml(entry.runway || '—')}</strong><small>${escapeHtml(entry.parking || (entry.onGround ? `${Math.round(Number(entry.groundSpeed) || 0)} kt` : `${Math.round(Number(entry.altitudeFeet) || 0)} ft`))}</small></span><em class="traffic-status ${escapeHtml(status.className)}">${escapeHtml(status.label)}</em>`;
+    row.innerHTML = `<time>${escapeHtml(trafficScheduleTime(schedule))}</time><span class="flightboard-flight">${trafficAirlineLogo(entry)}<span><strong>${escapeHtml(entry.callsign || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(entry.airline || entry.title || 'MSFS TRAFFIC')}</small></span></span><b>${escapeHtml(entry.origin || '—')}</b><b>${escapeHtml(entry.destination || '—')}</b><span><strong>${escapeHtml(entry.runway || '—')}</strong><small>${escapeHtml(entry.parking || (entry.onGround ? `${Math.round(Number(entry.groundSpeed) || 0)} kt` : `${Math.round(Number(entry.altitudeFeet) || 0)} ft`))}</small></span><em class="traffic-status ${escapeHtml(status.className)}">${escapeHtml(status.label)}</em>`;
+    row.querySelector('.traffic-airline-logo img')?.addEventListener('error', (event) => event.currentTarget.remove(), { once: true });
     elements.flightboardList.append(row);
   }
   if (!sorted.length) {
@@ -2736,9 +2769,8 @@ function renderHomeNextStep(state) {
   const simulatorOnline = ['connected', 'demo'].includes(state.connections?.simConnect?.status);
   let next = null;
   if (!onboardingComplete) next = { title: t('nextSetupTitle'), detail: t('nextSetupDetail'), action: 'setup', label: t('continue') };
-  else if (!preferences.simbriefIdentifier && !state.flight?.origin && !state.flight?.destination) next = { title: t('nextSimbriefTitle'), detail: t('nextSimbriefDetail'), action: 'settings', label: t('openSettings') };
-  else if (!simbriefReady && preferences.simbriefIdentifier) next = { title: t('nextImportTitle'), detail: t('nextImportDetail'), action: 'import', label: t('import') };
   else if (!simulatorOnline) next = { title: t('nextSimulatorTitle'), detail: t('nextSimulatorDetail'), action: 'diagnostics', label: t('runChecks') };
+  else if (!state.flight?.origin && !state.flight?.destination && !simbriefReady) next = { title: 'Flug wird automatisch erkannt', detail: 'Lade einen Flug in MSFS oder starte deine SayIntentions-Flugsitzung.', action: 'diagnostics', label: t('runChecks') };
   elements.homeNextStep.hidden = !next;
   if (!next) return;
   elements.homeNextStepTitle.textContent = next.title;
@@ -3060,9 +3092,10 @@ function renderEfb(state) {
   elements.homeClock.textContent = `${new Date().toLocaleTimeString(localeFor(currentLanguage), {
     hour: '2-digit', minute: '2-digit', hour12: preferences.clockFormat === '12',
   })} LT`;
-  elements.homeCallsign.textContent = flight.callsign || 'NO FLIGHT';
-  elements.homeOrigin.textContent = flight.origin || '—';
-  elements.homeDestination.textContent = flight.destination || state.planning?.selectedAirport?.icao || '—';
+  const planFlight = state.integrations?.simbrief?.flight || {};
+  elements.homeCallsign.textContent = flight.callsign || planFlight.callsign || 'NO FLIGHT';
+  elements.homeOrigin.textContent = flight.origin || planFlight.origin || '—';
+  elements.homeDestination.textContent = flight.destination || planFlight.destination || state.planning?.selectedAirport?.icao || '—';
   elements.homeAirport.textContent = currentAirport;
   elements.homeRunway.textContent = runway === '—' ? runway : `RWY ${runway}`;
   elements.homeGate.textContent = gate;
@@ -3505,7 +3538,7 @@ async function afterAuthentication() {
 
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.3.0';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.3.2';
   elements.updateVersion.textContent = `v${currentVersion}`;
   const states = {
     manual: t('updateReadyManual'), idle: t('updateReady'), checking: t('checkingUpdates'),
@@ -3533,14 +3566,14 @@ async function refreshUpdateStatus() {
 
 async function checkForUpdate() {
   elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: '1.3.0' });
+  renderUpdateStatus({ state: 'checking', currentVersion: '1.3.2' });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: '1.3.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: '1.3.2', detail: error.message });
   } finally {
     elements.checkUpdate.disabled = false;
   }
@@ -3554,7 +3587,7 @@ async function installDownloadedUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: '1.3.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: '1.3.2', detail: error.message });
     elements.installUpdate.disabled = false;
   }
 }
@@ -4085,9 +4118,10 @@ function renderState(state) {
     followAircraft = false;
     syncFollowButton();
   }
-  elements.callsign.textContent = flight.callsign || '—';
-  elements.origin.textContent = flight.origin || '—';
-  elements.destination.textContent = plannedAirport?.icao || flight.destination || '—';
+  const planFlight = state.integrations?.simbrief?.flight || {};
+  elements.callsign.textContent = flight.callsign || planFlight.callsign || '—';
+  elements.origin.textContent = flight.origin || planFlight.origin || '—';
+  elements.destination.textContent = plannedAirport?.icao || flight.destination || planFlight.destination || '—';
   const runway = state.taxi?.pathMetadata?.runway || flight.departureRunway || flight.arrivalRunway;
   elements.runway.textContent = `RWY ${runway || '—'}`;
   const selectedProvider = state.atc?.selectedProvider || 'auto';
@@ -4151,7 +4185,7 @@ async function start() {
   }
 
   if ('serviceWorker' in navigator && !/Electron\//i.test(navigator.userAgent)) {
-    navigator.serviceWorker.register('/service-worker.js?v=1.3.0', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/service-worker.js?v=1.3.2', { updateViaCache: 'none' })
       .then((registration) => registration.update())
       .catch(() => {});
   }
@@ -4263,7 +4297,7 @@ for (const button of document.querySelectorAll('[data-open-module]')) {
   button.addEventListener('click', () => switchModule(button.dataset.openModule));
 }
 elements.appHomeButton.addEventListener('click', () => switchModule('home'));
-elements.homePlannerApp.addEventListener('click', () => {
+elements.homePlannerApp?.addEventListener('click', () => {
   switchModule('taxi');
   setTimeout(openPlanner, 80);
 });

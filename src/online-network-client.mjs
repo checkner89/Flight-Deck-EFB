@@ -97,7 +97,7 @@ export class OnlineNetworkClient {
       detail: `${selected.toUpperCase()} wird aktualisiert …`,
     });
     const response = await this.fetchImpl(ENDPOINTS[selected], {
-      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB/1.3.0' },
+      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB/1.3.2' },
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) throw new Error(`${selected.toUpperCase()} antwortet mit HTTP ${response.status}.`);

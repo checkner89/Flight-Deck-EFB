@@ -392,7 +392,7 @@ export class AirportMapService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'User-Agent': 'Flight-Deck-EFB/1.3.0 (flight simulation companion)',
+          'User-Agent': 'Flight-Deck-EFB/1.3.2 (flight simulation companion)',
           },
           body: new URLSearchParams({ data: query }),
           signal: AbortSignal.timeout(this.timeoutMs),

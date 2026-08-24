@@ -33,7 +33,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.2';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -630,7 +630,7 @@ export async function createTaxiServer({
       if (pathname === '/api/flight/reset' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         const savedFlight = await recorder.finalize('manual-new-flight');
-        engine.resetFlight({ reason: 'manual-new-flight', preserveAircraft: true, suppressCurrent: true });
+        engine.resetFlight({ reason: 'manual-new-flight', preserveAircraft: true, suppressCurrent: false });
         return json(response, 200, { reset: true, savedFlight, state: engine.publicState() });
       }
 

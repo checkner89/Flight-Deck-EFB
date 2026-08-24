@@ -308,6 +308,14 @@ function pathFingerprint(path) {
   return path.map((point) => `${point.lat.toFixed(6)},${point.lon.toFixed(6)}`).join('|');
 }
 
+function airportFromRouteEnd(route) {
+  const text = textOrEmpty(route).toUpperCase();
+  if (!text) return null;
+  const tokens = text.replace(/[.\\/,-]+/g, ' ').split(/\s+/).filter(Boolean);
+  const candidate = [...tokens].reverse().find((token) => /^[A-Z][A-Z0-9]{3}$/.test(token));
+  return candidate || null;
+}
+
 function flightIdentity({ flightId, callsign, origin, destination } = {}) {
   const parts = [flightId, callsign, origin, destination].map((value) => textOrEmpty(value).toUpperCase());
   return parts.some(Boolean) ? parts.join('|') : null;
@@ -368,7 +376,7 @@ export class StateEngine extends EventEmitter {
           imported: false,
           user: null,
           generatedAt: null,
-          detail: 'SimBrief Pilot ID oder Benutzername hinterlegen',
+          detail: 'Flugplan wird automatisch aus SayIntentions/MSFS erkannt',
           flight: null,
         },
         onlineNetworks: {
@@ -573,7 +581,7 @@ export class StateEngine extends EventEmitter {
       imported: false,
       user: null,
       generatedAt: null,
-      detail: 'SimBrief Pilot ID oder Benutzername hinterlegen',
+      detail: 'Flugplan wird automatisch aus SayIntentions/MSFS erkannt',
       flight: null,
     };
     this.state.integrations.onlineNetworks = {
@@ -669,9 +677,22 @@ export class StateEngine extends EventEmitter {
       imported: Boolean(flight),
       user: summary.user ? String(summary.user).slice(0, 100) : null,
       generatedAt: summary.generatedAt || null,
-      detail: flight ? `${flight.origin || '—'} → ${flight.destination || '—'} importiert` : 'Kein gültiger OFP gefunden',
+      detail: flight ? `${flight.origin || '—'} → ${flight.destination || '—'} automatisch ergänzt` : 'Kein gültiger OFP gefunden',
       flight,
     };
+    if (flight) {
+      this.state.flight = {
+        ...this.state.flight,
+        callsign: this.state.flight.callsign || flight.callsign || null,
+        origin: this.state.flight.origin || flight.origin || null,
+        destination: this.state.flight.destination || flight.destination || null,
+        originPosition: this.state.flight.originPosition || flight.originPosition || null,
+        destinationPosition: this.state.flight.destinationPosition || flight.destinationPosition || null,
+        departureRunway: this.state.flight.departureRunway || flight.departureRunway || null,
+        arrivalRunway: this.state.flight.arrivalRunway || flight.arrivalRunway || null,
+        flightPlanRoute: this.state.flight.flightPlanRoute || flight.route || null,
+      };
+    }
     this.#touch();
   }
 
@@ -742,8 +763,22 @@ export class StateEngine extends EventEmitter {
     const current = details.current_flight ?? details.currentFlight ?? {};
     const nextFlightId = firstDefined(details.flight_id, details.flightId, null);
     const nextCallsign = textOrEmpty(details.callsign_icao, details.callsign) || null;
-    const nextOrigin = textOrEmpty(current.flight_origin, current.origin).toUpperCase() || null;
-    const nextDestination = textOrEmpty(current.flight_destination, current.destination).toUpperCase() || null;
+    const nextOrigin = textOrEmpty(
+      current.flight_origin,
+      current.flight_plan_origin,
+      current.origin,
+      details.flight_origin,
+    ).toUpperCase() || null;
+    const routeText = textOrEmpty(current.flight_plan_route, current.route, details.flight_plan_route);
+    const nextDestination = textOrEmpty(
+      current.flight_destination,
+      current.flight_plan_destination,
+      current.flight_plan_destination_icao,
+      current.destination,
+      current.destination_icao,
+      details.flight_destination,
+      details.destination,
+    ).toUpperCase() || airportFromRouteEnd(routeText) || null;
     const prior = this.state.flight;
     const nextIdentity = flightIdentity({
       flightId: nextFlightId,
@@ -813,7 +848,7 @@ export class StateEngine extends EventEmitter {
       arrivalRunway: firstDefined(current.flight_plan_arriving_runway, null),
       availableArrivalRunways: textOrEmpty(current.destination_arriving_runways)
         .split(',').map((value) => value.trim().toUpperCase()).filter(Boolean),
-      flightPlanRoute: textOrEmpty(current.flight_plan_route) || null,
+      flightPlanRoute: routeText || null,
       sid: textOrEmpty(current.flight_plan_sid) || null,
       star: textOrEmpty(current.flight_plan_star) || null,
       flightPhase: numberOrNull(firstDefined(details.flight_phase, current.flight_phase)),

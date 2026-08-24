@@ -134,7 +134,7 @@ export class SimBriefClient {
     url.searchParams.set(/^\d+$/.test(value) ? 'userid' : 'username', value);
     url.searchParams.set('json', '1');
     const response = await this.fetchImpl(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB/1.3.0' },
+      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB/1.3.2' },
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) throw new Error(`SimBrief antwortet mit HTTP ${response.status}.`);

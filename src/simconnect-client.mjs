@@ -144,7 +144,7 @@ export class SimConnectClient {
   }
 
   async #openCompatibleProtocol() {
-    const attempts = [Protocol.SunRise, Protocol.KittyHawk, Protocol.FSX_SP2];
+    const attempts = [Protocol.KittyHawk, Protocol.SunRise, Protocol.FSX_SP2];
     let lastError;
     for (const protocol of attempts) {
       try {
@@ -157,8 +157,8 @@ export class SimConnectClient {
   }
 
   #protocolLabel(protocol) {
-    if (protocol === Protocol.SunRise) return 'MSFS 2024';
-    if (protocol === Protocol.KittyHawk) return 'MSFS 2020/2024';
+    if (protocol === Protocol.KittyHawk) return 'MSFS 2024';
+    if (protocol === Protocol.SunRise) return 'MSFS 2024 (Legacy)';
     return 'Legacy SimConnect';
   }
 
@@ -191,11 +191,14 @@ export class SimConnectClient {
       || [SimConnectException.NAME_UNRECOGNIZED, SimConnectException.DATA_ERROR,
         SimConnectException.DEFINITION_ERROR, SimConnectException.OPERATION_INVALID_FOR_OBJECT_TYPE]
         .includes(received.exception);
-    if (recoverable && this.lastCoreDataAt) {
-      this.engine.setConnection('simConnect', 'connected', `MSFS verbunden · ${this.#protocolLabel(this.protocol)} · optionale Daten eingeschränkt`);
+    // A SimConnect exception is a data-operation error, not a transport disconnect.
+    // Keep the transport usable until a real close/quit event occurs.
+    if (this.handle) {
+      const suffix = recoverable ? 'optionale Daten eingeschränkt' : `Datenhinweis: ${detail}`;
+      this.engine.setConnection('simConnect', 'connected', `MSFS verbunden · ${this.#protocolLabel(this.protocol)} · ${suffix}`);
       return;
     }
-    this.engine.setConnection('simConnect', 'attention', `SimConnect: ${detail}`);
+    this.engine.setConnection('simConnect', 'disconnected', 'MSFS-Verbindung getrennt');
   }
 
   configureVariables(variables = []) {
