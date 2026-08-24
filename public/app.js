@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.3.2';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.4.1';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.3.2';
+} from './flight-phases.js?v=1.4.1';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -75,6 +75,8 @@ const elements = {
   changeAirport: $('#change-airport'),
   plannerMode: $('#planner-mode'),
   runwayField: $('#runway-field'),
+  holdingPointField: $('#holding-point-field'),
+  plannerHoldingPoint: $('#planner-holding-point'),
   plannerRunway: $('#planner-runway'),
   startField: $('#start-field'),
   plannerStart: $('#planner-start'),
@@ -92,6 +94,8 @@ const elements = {
   startGuidance: $('#start-guidance'),
   clearPlan: $('#clear-plan'),
   homeClock: $('#home-clock'),
+  homeGreeting: $('#home-greeting'),
+  homeSimbriefImport: $('#home-simbrief-import'),
   homeNextStep: $('#home-next-step'),
   homeNextStepTitle: $('#home-next-step-title'),
   homeNextStepDetail: $('#home-next-step-detail'),
@@ -258,6 +262,11 @@ const elements = {
   com2FrequencyInput: $('#com2-frequency-input'),
   comFrequencyPresets: $('#com-frequency-presets'),
   comMessage: $('#com-message'),
+  comNextStationCard: $('#com-next-station-card'),
+  comNextStation: $('#com-next-station'),
+  comNextFrequency: $('#com-next-frequency'),
+  comNextReason: $('#com-next-reason'),
+  comNextTune: $('#com-next-tune'),
   comActionButtons: [...document.querySelectorAll('[data-com-action]')],
   flightboardStatusPill: $('#flightboard-status-pill'),
   flightboardAirport: $('#flightboard-airport'),
@@ -373,6 +382,14 @@ const elements = {
   updateProgress: $('#update-progress'),
   updateProgressLabel: $('#update-progress-label'),
   checkUpdate: $('#check-update'),
+  updateDialog: $('#update-dialog'),
+  updateDialogTitle: $('#update-dialog-title'),
+  updateDialogDetail: $('#update-dialog-detail'),
+  updateDialogProgress: $('#update-dialog-progress'),
+  updateDialogProgressLabel: $('#update-dialog-progress-label'),
+  updateDialogDownload: $('#update-dialog-download'),
+  updateDialogInstall: $('#update-dialog-install'),
+  updateDialogLater: $('#update-dialog-later'),
   installUpdate: $('#install-update'),
   openLegal: $('#open-legal'),
   legalDialog: $('#legal-dialog'),
@@ -380,7 +397,8 @@ const elements = {
   onboardingLanguage: $('#onboarding-language'),
   onboardingTheme: $('#onboarding-theme'),
   onboardingTextSize: $('#onboarding-text-size'),
-  onboardingProfile: $('#onboarding-profile'),
+  onboardingDisplayName: $('#onboarding-display-name'),
+  onboardingHelpTexts: $('#onboarding-help-texts'),
   onboardingSimbriefIdentifier: $('#onboarding-simbrief-identifier'),
   onboardingSimbriefAuto: $('#onboarding-simbrief-auto'),
   onboardingSteps: [...document.querySelectorAll('[data-onboarding-step]')],
@@ -390,6 +408,15 @@ const elements = {
   onboardingBack: $('#onboarding-back'),
   onboardingNext: $('#onboarding-next'),
   onboardingFinish: $('#onboarding-finish'),
+  displayName: $('#display-name'),
+  showHelpTexts: $('#show-help-texts'),
+  simbriefQuickDialog: $('#simbrief-quick-dialog'),
+  simbriefQuickIdentifier: $('#simbrief-quick-identifier'),
+  simbriefQuickStart: $('#simbrief-quick-start'),
+  simbriefQuickMessage: $('#simbrief-quick-message'),
+  flightHubNavButtons: [...document.querySelectorAll('[data-flight-hub-tab]')],
+  settingsTabButtons: [...document.querySelectorAll('[data-settings-tab]')],
+  atcTabButtons: [...document.querySelectorAll('[data-atc-tab]')],
 };
 
 const preferences = {
@@ -401,8 +428,8 @@ const preferences = {
   pressureUnit: localStorage.getItem('flight-deck-pressure-unit') === 'inhg' ? 'inhg' : 'hpa',
   temperatureUnit: localStorage.getItem('flight-deck-temperature-unit') === 'f' ? 'f' : 'c',
   clockFormat: localStorage.getItem('flight-deck-clock-format') === '12' ? '12' : '24',
-  pilotProfile: ['custom', 'airliner', 'ga', 'online'].includes(localStorage.getItem('flight-deck-pilot-profile'))
-    ? localStorage.getItem('flight-deck-pilot-profile') : 'custom',
+  displayName: (localStorage.getItem('flight-deck-display-name') || '').slice(0, 40),
+  showHelpTexts: localStorage.getItem('flight-deck-show-help-texts') !== 'false',
   alertMode: ['normal', 'visual', 'off'].includes(localStorage.getItem('flight-deck-alert-mode'))
     ? localStorage.getItem('flight-deck-alert-mode') : 'normal',
   arrivalTriggerNm: [50, 100, 150, 200].includes(Number(localStorage.getItem('flight-deck-arrival-trigger')))
@@ -423,6 +450,19 @@ function resolvedTheme() {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
+function updateGreeting() {
+  if (!elements.homeGreeting) return;
+  const hour = new Date().getHours();
+  const name = preferences.displayName || 'Captain';
+  if (currentLanguage === 'de') {
+    const salutation = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+    elements.homeGreeting.textContent = `${salutation}, ${name}`;
+    return;
+  }
+  const salutation = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  elements.homeGreeting.textContent = `${salutation}, ${name}`;
+}
+
 function applyPreferences() {
   const previousTheme = document.documentElement.dataset.theme;
   const nextTheme = resolvedTheme();
@@ -440,12 +480,17 @@ function applyPreferences() {
     elements.quickThemeToggle.title = light ? t('switchDark') : t('switchLight');
   }
   if (elements.textSizeSelect) elements.textSizeSelect.value = preferences.textSize;
+  document.documentElement.dataset.helpText = preferences.showHelpTexts ? 'on' : 'off';
+  if (elements.displayName && elements.displayName.value !== preferences.displayName) elements.displayName.value = preferences.displayName;
+  if (elements.showHelpTexts) elements.showHelpTexts.checked = preferences.showHelpTexts;
+  if (elements.onboardingDisplayName && elements.onboardingDisplayName.value !== preferences.displayName) elements.onboardingDisplayName.value = preferences.displayName;
+  if (elements.onboardingHelpTexts) elements.onboardingHelpTexts.checked = preferences.showHelpTexts;
+  updateGreeting();
   if (elements.weightUnitSelect) elements.weightUnitSelect.value = preferences.weightUnit;
   if (elements.distanceUnitSelect) elements.distanceUnitSelect.value = preferences.distanceUnit;
   if (elements.pressureUnitSelect) elements.pressureUnitSelect.value = preferences.pressureUnit;
   if (elements.temperatureUnitSelect) elements.temperatureUnitSelect.value = preferences.temperatureUnit;
   if (elements.clockFormatSelect) elements.clockFormatSelect.value = preferences.clockFormat;
-  if (elements.pilotProfileSelect) elements.pilotProfileSelect.value = preferences.pilotProfile;
   if (elements.alertModeSelect) elements.alertModeSelect.value = preferences.alertMode;
   if (elements.arrivalTriggerSelect) elements.arrivalTriggerSelect.value = String(preferences.arrivalTriggerNm);
   if (elements.fuelBufferSelect) elements.fuelBufferSelect.value = String(preferences.fuelBufferPounds);
@@ -531,8 +576,11 @@ const trackingLayers = {
   actual: null,
   waypoints: null,
   airports: null,
+  traffic: null,
   aircraft: null,
 };
+const trafficTrails = new Map();
+let selectedTrafficTrailId = null;
 
 let token = null;
 let eventSource = null;
@@ -557,6 +605,11 @@ let autoImportAttempted = false;
 let plannerSearchTimer = null;
 let plannerSearchSerial = 0;
 let activeModule = 'home';
+let flightHubTab = 'operations';
+let settingsTab = 'system';
+let atcTab = 'clearance';
+let inferredHomeGate = null;
+let forcingAutomaticAtc = false;
 let renderedGsxServicesFingerprint = '';
 let lastJourneyRecordRefreshAt = 0;
 let journeyRecordRequestRunning = false;
@@ -577,7 +630,7 @@ window.addEventListener('flightdeckthemechange', () => {
   }
   map.invalidateSize();
 });
-const DEFAULT_APP_ORDER = ['taxi', 'flight', 'tracking', 'briefing', 'com', 'flightboard', 'charts', 'atc', 'ground', 'fenix', 'automations', 'settings'];
+const DEFAULT_APP_ORDER = ['taxi', 'flight', 'briefing', 'com', 'flightboard', 'charts', 'atc', 'ground', 'fenix', 'automations', 'settings'];
 const ESSENTIAL_APPS = new Set(['flight', 'settings']);
 const PILOT_PROFILES = {
   airliner: {
@@ -693,14 +746,16 @@ function activeAtcConnection(state) {
   return si || batc || { status: 'waiting', detail: 'ATC-Quelle wird gesucht' };
 }
 
-function switchModule(moduleName) {
+function switchModule(moduleName, preserveFlightHubTab = false) {
   if (moduleName === 'online') moduleName = 'atc';
+  if (moduleName === 'tracking') { flightHubTab = 'tracking'; moduleName = 'flight'; preserveFlightHubTab = true; }
+  if (moduleName === 'flight' && !preserveFlightHubTab) flightHubTab = 'operations';
   if (moduleName === 'charts') return;
-  const allowed = new Set(['home', 'taxi', 'flight', 'tracking', 'briefing', 'com', 'flightboard', 'ground', 'atc', 'fenix', 'automations', 'settings']);
+  const allowed = new Set(['home', 'taxi', 'flight', 'briefing', 'com', 'flightboard', 'ground', 'atc', 'fenix', 'automations', 'settings']);
   const moduleMeta = {
     taxi: { icon: 'T', title: 'Taxi Navigation', context: 'GROUND NAVIGATION' },
-    flight: { icon: 'F', title: 'Flight', context: 'SIMBRIEF / MSFS' },
-    tracking: { icon: 'R', title: 'Flight Tracking', context: 'LIVE OPERATIONS' },
+    flight: { icon: 'F', title: 'Flug & Tracking', context: 'FLIGHT HUB' },
+    tracking: { icon: 'F', title: 'Flug & Tracking', context: 'FLIGHT HUB' },
     briefing: { icon: 'B', title: 'Briefing', context: 'SAYINTENTIONS' },
     com: { icon: 'C', title: 'COM', context: 'COMMUNICATIONS' },
     flightboard: { icon: 'F', title: 'Flightboard', context: 'SIMULATOR TRAFFIC' },
@@ -711,13 +766,25 @@ function switchModule(moduleName) {
     settings: { icon: 'S', title: 'Settings', context: 'SYSTEM' },
   };
   activeModule = allowed.has(moduleName) ? moduleName : 'home';
+  for (const button of elements.flightHubNavButtons || []) {
+    button.classList.toggle('active', activeModule === 'flight' && button.dataset.flightHubTab === flightHubTab);
+  }
   const homeActive = activeModule === 'home';
   const taxiActive = activeModule === 'taxi';
   elements.app.classList.toggle('home-mode', homeActive);
   elements.appToolbar.hidden = homeActive;
   elements.mapStage.hidden = !taxiActive;
   elements.efbPages.hidden = taxiActive;
-  for (const page of elements.efbPageSections) page.hidden = page.dataset.page !== activeModule;
+  const visiblePage = activeModule === 'flight' && flightHubTab !== 'operations' ? 'tracking' : activeModule;
+  for (const page of elements.efbPageSections) page.hidden = page.dataset.page !== visiblePage;
+  if (visiblePage === 'tracking') {
+    const trackingPage = document.querySelector('[data-page="tracking"]');
+    const archiveOnly = flightHubTab === 'archive';
+    trackingPage?.querySelector('.tracking-map-card')?.toggleAttribute('hidden', archiveOnly);
+    trackingPage?.querySelector('.tracking-recorder-card')?.toggleAttribute('hidden', archiveOnly);
+    trackingPage?.querySelector('.tracking-detail-layout')?.toggleAttribute('hidden', archiveOnly);
+    trackingPage?.querySelector('.tracking-archive-card')?.removeAttribute('hidden');
+  }
   if (!homeActive) {
     const meta = moduleMeta[activeModule];
     elements.appToolbarIcon.textContent = meta.icon;
@@ -731,7 +798,7 @@ function switchModule(moduleName) {
       fitRoute();
     }, 60);
   }
-  if (activeModule === 'tracking') {
+  if (visiblePage === 'tracking') {
     ensureTrackingMap();
     setTimeout(() => {
       trackingMap?.invalidateSize();
@@ -746,7 +813,31 @@ function switchModule(moduleName) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app: activeModule }),
     }).catch(() => {});
   }
+  if (activeModule === 'settings') setSettingsTab(settingsTab);
+  if (activeModule === 'atc') setAtcTab(atcTab);
   if (activeModule === 'automations') refreshAutomationConfiguration().catch(() => {});
+}
+
+function applyPanelTab(buttons, selector, attribute, value) {
+  for (const button of buttons || []) button.classList.toggle('active', button.dataset[attribute] === value);
+  for (const panel of document.querySelectorAll(selector)) panel.hidden = panel.dataset[attribute.replace('Tab', 'Panel')] !== value;
+}
+
+function setSettingsTab(tab) {
+  settingsTab = ['system', 'appearance', 'flight', 'devices', 'updates'].includes(tab) ? tab : 'system';
+  for (const button of elements.settingsTabButtons || []) button.classList.toggle('active', button.dataset.settingsTab === settingsTab);
+  for (const panel of document.querySelectorAll('[data-settings-panel]')) panel.hidden = panel.dataset.settingsPanel !== settingsTab;
+}
+
+function setAtcTab(tab) {
+  atcTab = ['clearance', 'messages', 'networks'].includes(tab) ? tab : 'clearance';
+  for (const button of elements.atcTabButtons || []) button.classList.toggle('active', button.dataset.atcTab === atcTab);
+  for (const panel of document.querySelectorAll('[data-atc-panel]')) panel.hidden = panel.dataset.atcPanel !== atcTab;
+}
+
+function setFlightHubTab(tab) {
+  flightHubTab = ['operations', 'tracking', 'archive'].includes(tab) ? tab : 'operations';
+  switchModule('flight', true);
 }
 
 function appLabel(id) {
@@ -1979,6 +2070,7 @@ function ensureTrackingMap() {
   trackingMap.createPane('trackingPlanned').style.zIndex = '410';
   trackingMap.createPane('trackingActual').style.zIndex = '430';
   trackingMap.createPane('trackingMarkers').style.zIndex = '450';
+  trackingMap.createPane('trackingTraffic').style.zIndex = '445';
   trackingMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     subdomains: 'abc',
@@ -2000,6 +2092,7 @@ function ensureTrackingMap() {
   trackingLayers.actual = L.layerGroup().addTo(trackingMap);
   trackingLayers.waypoints = L.layerGroup().addTo(trackingMap);
   trackingLayers.airports = L.layerGroup().addTo(trackingMap);
+  trackingLayers.traffic = L.layerGroup().addTo(trackingMap);
   trackingMap.on('dragstart', () => {
     trackingFollowAircraft = false;
     elements.trackingFollow.classList.remove('active');
@@ -2160,6 +2253,76 @@ function fitTrackingFlight() {
   if (bounds?.isValid()) trackingMap.fitBounds(bounds, { padding: [38, 38], maxZoom: 12, animate: true });
 }
 
+function trafficTrailKey(entry = {}) {
+  return String(entry.objectId ?? entry.id ?? entry.callsign ?? entry.atcId ?? '').trim();
+}
+
+function updateTrafficTrails(entries = []) {
+  const now = Date.now();
+  for (const entry of entries.slice(0, 80)) {
+    const lat = Number(entry.lat ?? entry.latitude);
+    const lon = Number(entry.lon ?? entry.longitude);
+    const key = trafficTrailKey(entry);
+    if (!key || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const trail = trafficTrails.get(key) || { key, callsign: entry.callsign || entry.atcId || `AI-${key}`, points: [], lastSeen: now, entry: {} };
+    trail.callsign = entry.callsign || entry.atcId || trail.callsign;
+    trail.entry = { ...trail.entry, ...entry };
+    trail.lastSeen = now;
+    const point = { lat, lon, time: now, altitudeFeet: Number(entry.altitudeFeet), groundSpeed: Number(entry.groundSpeed) };
+    const previous = trail.points.at(-1);
+    if (!previous || approximateDistanceMeters(previous, point) >= 35 || now - previous.time >= 12_000) {
+      trail.points.push(point);
+      if (trail.points.length > 600) trail.points.splice(0, trail.points.length - 600);
+    }
+    trafficTrails.set(key, trail);
+  }
+  for (const [key, trail] of trafficTrails) {
+    if (now - trail.lastSeen > 180_000) {
+      trafficTrails.delete(key);
+      if (selectedTrafficTrailId === key) selectedTrafficTrailId = null;
+    }
+  }
+}
+
+function renderTrackingTraffic(state) {
+  if (!trackingLayers.traffic || trackingSelectedId) {
+    trackingLayers.traffic?.clearLayers();
+    return;
+  }
+  const entries = Array.isArray(state?.integrations?.simTraffic?.aircraft) ? state.integrations.simTraffic.aircraft : [];
+  updateTrafficTrails(entries);
+  trackingLayers.traffic.clearLayers();
+  const selected = selectedTrafficTrailId ? trafficTrails.get(selectedTrafficTrailId) : null;
+  if (selected?.points?.length > 1) {
+    L.polyline(selected.points.map((point) => [point.lat, point.lon]), {
+      pane: 'trackingTraffic', color: '#f1b94d', opacity: 0.92, weight: 3, dashArray: '7 5', lineCap: 'round', interactive: false,
+    }).addTo(trackingLayers.traffic);
+  }
+  for (const entry of entries.slice(0, 80)) {
+    const lat = Number(entry.lat ?? entry.latitude);
+    const lon = Number(entry.lon ?? entry.longitude);
+    const key = trafficTrailKey(entry);
+    if (!key || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const callsign = entry.callsign || entry.atcId || `AI-${key}`;
+    const isSelected = key === selectedTrafficTrailId;
+    const marker = L.marker([lat, lon], {
+      pane: 'trackingTraffic',
+      zIndexOffset: isSelected ? 900 : 200,
+      icon: L.divIcon({
+        className: `tracking-traffic-icon${isSelected ? ' selected' : ''}`,
+        html: `<span>${escapeHtml(callsign)}</span>`,
+        iconSize: [1, 1], iconAnchor: [0, 0],
+      }),
+    }).addTo(trackingLayers.traffic);
+    const trail = trafficTrails.get(key);
+    marker.bindPopup(`<strong>${escapeHtml(callsign)}</strong><br>${escapeHtml([entry.origin, entry.destination].filter(Boolean).join(' → ') || entry.airline || entry.title || 'Simulator Traffic')}<br>${Number.isFinite(Number(entry.altitudeFeet)) ? `${Math.round(Number(entry.altitudeFeet)).toLocaleString(localeFor(currentLanguage))} ft` : ''}${Number.isFinite(Number(entry.groundSpeed)) ? ` · ${Math.round(Number(entry.groundSpeed))} kt` : ''}<br><small>Route: ${trail?.points?.length > 1 ? 'seit Start dieser EFB-Sitzung beobachtet' : 'noch keine ausreichende Historie'}</small>`);
+    marker.on('click', () => {
+      selectedTrafficTrailId = selectedTrafficTrailId === key ? null : key;
+      renderTrackingMap(trackingViewedFlight || trackingFallbackRecord(latestState || {}));
+    });
+  }
+}
+
 function renderTrackingMap(record) {
   ensureTrackingMap();
   trackingLayers.actual.clearLayers();
@@ -2177,6 +2340,7 @@ function renderTrackingMap(record) {
     }).addTo(trackingLayers.actual);
   }
 
+  renderTrackingTraffic(latestState || {});
   const weather = weatherByAirport(record);
   const staticRenderKey = JSON.stringify([
     trackingSelectedId || record?.id || 'pending',
@@ -2554,6 +2718,38 @@ function formatRadioFrequency(value) {
   return Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 }
 
+function nextComSuggestion(entries, state) {
+  const phase = resolveFlightPhase(state);
+  const preference = {
+    preflight: ['atis', 'delivery', 'clearance', 'ground'],
+    'taxi-out': ['ground', 'tower'],
+    takeoff: ['tower', 'departure'],
+    climb: ['departure', 'center'],
+    cruise: ['center'],
+    descent: ['atis', 'center', 'approach'],
+    approach: ['approach', 'tower'],
+    landing: ['tower', 'ground'],
+    'taxi-in': ['ground'],
+    postflight: ['ground'],
+  }[phase] || ['atis', 'ground', 'tower', 'departure', 'center', 'approach'];
+  const active = new Set([
+    Number(state?.integrations?.com?.com1Active ?? state?.aircraft?.com1Active),
+    Number(state?.integrations?.com?.com2Active ?? state?.aircraft?.com2Active),
+  ].filter(Number.isFinite).map((value) => value.toFixed(3)));
+  const destination = String(state?.flight?.destination || state?.integrations?.simbrief?.flight?.destination || '').toUpperCase();
+  const origin = String(state?.flight?.origin || state?.integrations?.simbrief?.flight?.origin || '').toUpperCase();
+  return entries.map((entry) => {
+    const text = `${entry.label || ''} ${entry.callsign || ''} ${entry.type || ''}`.toLowerCase();
+    let score = 0;
+    const roleIndex = preference.findIndex((role) => text.includes(role));
+    if (roleIndex >= 0) score += 100 - roleIndex * 14;
+    if (destination && text.toUpperCase().includes(destination) && ['descent', 'approach', 'landing', 'taxi-in'].includes(phase)) score += 35;
+    if (origin && text.toUpperCase().includes(origin) && ['preflight', 'taxi-out', 'takeoff', 'climb'].includes(phase)) score += 35;
+    if (active.has(Number(entry.frequency).toFixed(3))) score -= 80;
+    return { ...entry, score, phase };
+  }).sort((a, b) => b.score - a.score)[0] || null;
+}
+
 function renderCom(state) {
   const integration = state.integrations?.com || {};
   const aircraft = state.aircraft || {};
@@ -2586,6 +2782,7 @@ function renderCom(state) {
       label: [entry.airport, entry.type].filter(Boolean).join(' · '),
       callsign: entry.callsign || '',
       source: 'SayIntentions',
+      type: entry.type || entry.stationType || '',
     });
   }
   const online = state.integrations?.onlineNetworks || {};
@@ -2595,12 +2792,23 @@ function renderCom(state) {
       label: entry.callsign || entry.name || online.selected?.toUpperCase(),
       callsign: entry.name || '',
       source: String(online.selected || '').toUpperCase(),
+      type: entry.type || entry.callsign || '',
     });
   }
   const unique = [...new Map(presets
     .filter((entry) => Number.isFinite(Number(entry.frequency)))
     .map((entry) => [`${Number(entry.frequency).toFixed(3)}|${entry.label}`, entry])).values()]
     .slice(0, 24);
+  const nextStation = nextComSuggestion(unique, state);
+  if (elements.comNextStation) {
+    elements.comNextStation.textContent = nextStation?.label || 'Keine passende Station verfügbar';
+    elements.comNextFrequency.textContent = nextStation ? formatRadioFrequency(nextStation.frequency) : '—';
+    elements.comNextReason.textContent = nextStation
+      ? `Empfehlung für ${String(nextStation.phase || 'aktuelle Flugphase').toUpperCase()} · ${nextStation.source || 'ATC'} · expliziter Klick erforderlich`
+      : 'Sobald ATC- oder Netzwerkfrequenzen verfügbar sind, erscheint hier die nächste sinnvolle Station.';
+    elements.comNextTune.disabled = !simulatorOnline || !nextStation;
+    elements.comNextTune.onclick = nextStation ? () => setComFromPreset(nextStation.frequency, 1, elements.comNextTune) : null;
+  }
   elements.comFrequencyPresets.replaceChildren();
   for (const entry of unique) {
     const row = document.createElement('div');
@@ -2648,7 +2856,7 @@ function trafficStateInfo(value) {
     [/push/, 'trafficPushback', 'ground'],
     [/taxi out/, 'trafficTaxiOut', 'ground'],
     [/takeoff|depart/, 'trafficDeparting', 'airborne'],
-    [/enroute|cruise|climb|pattern/, 'trafficEnroute', 'airborne'],
+    [/simple\s*flight|flt plan|waypoint|enroute|cruise|climb|pattern/, 'trafficEnroute', 'airborne'],
     [/landing|approach/, 'trafficLanding', 'airborne'],
     [/rollout/, 'trafficRollout', 'ground'],
     [/taxi in/, 'trafficTaxiIn', 'ground'],
@@ -2722,19 +2930,28 @@ function trafficAirlineLogo(entry = {}) {
   return `<span class="traffic-airline-logo"><b>${escapeHtml(fallback)}</b>${image}</span>`;
 }
 
+function trafficRouteFields(entry = {}) {
+  const state = normalizedTrafficState(entry.state);
+  const current = String(entry.currentAirport || '').toUpperCase();
+  let origin = String(entry.origin || '').toUpperCase();
+  let destination = String(entry.destination || '').toUpperCase();
+  if (!origin && current && /startup|preflight|clearance|push|taxi out|takeoff|depart/.test(state)) origin = current;
+  if (!destination && current && /landing|approach|rollout|taxi in/.test(state)) destination = current;
+  return { origin: origin || '—', destination: destination || '—' };
+}
+
 function renderFlightboard(state) {
   const integration = state.integrations?.simTraffic || {};
   const simulatorOnline = ['connected', 'demo'].includes(state.connections?.simConnect?.status);
   const airport = currentFlightboardAirport(state);
   const all = Array.isArray(integration.aircraft) ? integration.aircraft : [];
   const airportTraffic = airport ? all.filter((entry) => trafficMatchesAirport(entry, airport)) : all;
-  const useAirportFilter = Boolean(airport && airportTraffic.length);
-  const candidates = useAirportFilter ? airportTraffic : all;
+  const candidates = trafficBoardView === 'all' || !airport ? all : airportTraffic;
   const visible = candidates.filter((entry) => trafficMatchesView(entry, airport));
 
   elements.flightboardStatusPill.className = `module-status ${simulatorOnline ? 'connected' : 'waiting'}`;
   elements.flightboardStatusPill.textContent = simulatorOnline ? `${all.length} LIVE` : 'SIM OFFLINE';
-  elements.flightboardAirport.textContent = useAirportFilter ? airport : airport ? `${airport} · NEARBY` : 'ALL NEARBY';
+  elements.flightboardAirport.textContent = trafficBoardView === 'all' ? `ALL NEARBY · ${all.length}` : (airport || 'ALL NEARBY');
   elements.flightboardUpdated.textContent = integration.updatedAt ? `${t('updated')} ${formatTime(integration.updatedAt)}` : '—';
   elements.flightboardRefresh.disabled = !simulatorOnline;
   for (const button of elements.flightboardTabs) button.classList.toggle('active', button.dataset.trafficView === trafficBoardView);
@@ -2747,13 +2964,14 @@ function renderFlightboard(state) {
   elements.flightboardList.replaceChildren();
   for (const entry of sorted) {
     const status = trafficStateInfo(entry.state);
+    const route = trafficRouteFields(entry);
     const row = document.createElement('div');
     row.className = 'flightboard-row';
     row.setAttribute('role', 'row');
     const schedule = trafficBoardView === 'arrivals' ? entry.etaSeconds
       : trafficBoardView === 'departures' ? entry.etdSeconds
         : /landing|approach|rollout|taxi in/.test(normalizedTrafficState(entry.state)) ? entry.etaSeconds : entry.etdSeconds;
-    row.innerHTML = `<time>${escapeHtml(trafficScheduleTime(schedule))}</time><span class="flightboard-flight">${trafficAirlineLogo(entry)}<span><strong>${escapeHtml(entry.callsign || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(entry.airline || entry.title || 'MSFS TRAFFIC')}</small></span></span><b>${escapeHtml(entry.origin || '—')}</b><b>${escapeHtml(entry.destination || '—')}</b><span><strong>${escapeHtml(entry.runway || '—')}</strong><small>${escapeHtml(entry.parking || (entry.onGround ? `${Math.round(Number(entry.groundSpeed) || 0)} kt` : `${Math.round(Number(entry.altitudeFeet) || 0)} ft`))}</small></span><em class="traffic-status ${escapeHtml(status.className)}">${escapeHtml(status.label)}</em>`;
+    row.innerHTML = `<time>${escapeHtml(trafficScheduleTime(schedule))}</time><span class="flightboard-flight">${trafficAirlineLogo(entry)}<span><strong>${escapeHtml(entry.callsign || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(entry.airline || entry.title || 'MSFS TRAFFIC')}</small></span></span><b>${escapeHtml(route.origin)}</b><b>${escapeHtml(route.destination)}</b><span><strong>${escapeHtml(entry.runway || '—')}</strong><small>${escapeHtml(entry.parking || (entry.onGround ? `${Math.round(Number(entry.groundSpeed) || 0)} kt` : `${Math.round(Number(entry.altitudeFeet) || 0)} ft`))}</small></span><em class="traffic-status ${escapeHtml(status.className)}">${escapeHtml(status.label)}</em>`;
     row.querySelector('.traffic-airline-logo img')?.addEventListener('error', (event) => event.currentTarget.remove(), { once: true });
     elements.flightboardList.append(row);
   }
@@ -3075,6 +3293,27 @@ function renderAutomation(state) {
   populateAutomationTargets();
 }
 
+function homeGateLabel(state) {
+  const explicit = state?.gate?.name;
+  if (explicit) { inferredHomeGate = explicit; return explicit; }
+  const aircraft = state?.aircraft;
+  if (!aircraft?.onGround) return inferredHomeGate || '—';
+  const speed = Number(aircraft.groundSpeed) || 0;
+  if (speed > 8 || !loadedAirportMapData?.features?.length) return inferredHomeGate || '—';
+  let best = null;
+  for (const feature of loadedAirportMapData.features) {
+    if (feature.kind !== 'parking_position') continue;
+    const raw = Array.isArray(feature.coordinates) ? feature.coordinates.at(-1) : null;
+    const lat = Number(raw?.lat ?? raw?.[0]);
+    const lon = Number(raw?.lon ?? raw?.lng ?? raw?.[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const distance = approximateDistanceMeters(aircraft, { lat, lon });
+    if (distance <= 90 && (!best || distance < best.distance)) best = { distance, label: feature.ref || feature.name || 'Stand' };
+  }
+  if (best) inferredHomeGate = String(best.label).trim();
+  return inferredHomeGate || '—';
+}
+
 function renderEfb(state) {
   const flight = state.flight ?? {};
   const taxi = state.taxi ?? {};
@@ -3087,7 +3326,7 @@ function renderEfb(state) {
   const simConnection = state.connections?.simConnect ?? {};
   const currentAirport = airportTargetIcao(state) || '—';
   const runway = taxi.pathMetadata?.runway || flight.departureRunway || flight.arrivalRunway || '—';
-  const gate = state.gate?.name || taxi.pathMetadata?.destination?.name || '—';
+  const gate = homeGateLabel(state);
 
   elements.homeClock.textContent = `${new Date().toLocaleTimeString(localeFor(currentLanguage), {
     hour: '2-digit', minute: '2-digit', hour12: preferences.clockFormat === '12',
@@ -3135,7 +3374,9 @@ function renderEfb(state) {
   renderAutomation(state);
 
   elements.atcActivePill.className = `module-status ${atcConnection?.status || 'waiting'}`;
-  elements.atcActivePill.textContent = atcProviderLabel(selectedProvider).toUpperCase();
+  elements.atcActivePill.textContent = effectiveProvider === 'auto' ? 'AUTO' : `AUTO · ${atcProviderLabel(effectiveProvider).toUpperCase()}`;
+  document.getElementById('atc-auto-source-label')?.replaceChildren(document.createTextNode(effectiveProvider === 'auto' ? 'Wird erkannt …' : atcProviderLabel(effectiveProvider)));
+  ensureAutomaticAtcProvider(state);
   for (const button of elements.providerButtons) {
     const active = button.dataset.provider === selectedProvider;
     button.classList.toggle('active', active);
@@ -3155,7 +3396,7 @@ function renderEfb(state) {
   setStatusDot(elements.settingsNavDot, navStatus);
   setStatusDot(elements.settingsGsxDot, state.connections?.gsx?.status || gsxStatus);
   elements.settingsMsfs.textContent = simConnection.detail || 'Wird gesucht';
-  elements.settingsAtc.textContent = `${atcProviderLabel(selectedProvider)} · ${atcConnection?.detail || 'wartet'}`;
+  elements.settingsAtc.textContent = `${effectiveProvider === 'auto' ? 'AUTO' : atcProviderLabel(effectiveProvider)} · ${atcConnection?.detail || 'wartet'}`;
   elements.settingsNav.textContent = navigraph.detail || 'Setup erforderlich';
   elements.settingsGsx.textContent = gsx.detail || 'Wird gesucht';
   renderFlightData(state);
@@ -3166,6 +3407,14 @@ function renderEfb(state) {
   renderFlightboard(state);
   renderOnlineNetworks(state);
   renderFenix(state);
+}
+
+function ensureAutomaticAtcProvider(state) {
+  if (forcingAutomaticAtc || state?.atc?.selectedProvider === 'auto' || !token) return;
+  forcingAutomaticAtc = true;
+  fetch(authenticatedUrl('/api/atc/provider'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'auto' }),
+  }).then((response) => response.json()).then((data) => { if (data?.state) renderState(data.state); }).catch(() => {}).finally(() => { forcingAutomaticAtc = false; });
 }
 
 async function selectAtcProvider(provider) {
@@ -3288,6 +3537,39 @@ async function importSimBrief({ silent = false } = {}) {
   }
 }
 
+async function importSimBriefFromHome() {
+  if (preferences.simbriefIdentifier) {
+    elements.simbriefIdentifier.value = preferences.simbriefIdentifier;
+    const prior = elements.homeSimbriefImport.textContent;
+    elements.homeSimbriefImport.disabled = true;
+    elements.homeSimbriefImport.textContent = 'IMPORT …';
+    try { await importSimBrief(); }
+    finally { elements.homeSimbriefImport.disabled = false; elements.homeSimbriefImport.textContent = prior; }
+    return;
+  }
+  elements.simbriefQuickIdentifier.value = '';
+  elements.simbriefQuickMessage.textContent = '';
+  if (typeof elements.simbriefQuickDialog.showModal === 'function' && !elements.simbriefQuickDialog.open) elements.simbriefQuickDialog.showModal();
+}
+
+async function importSimBriefQuick() {
+  const identifier = saveSimbriefIdentifier(elements.simbriefQuickIdentifier.value, { announce: true });
+  if (!identifier) {
+    elements.simbriefQuickMessage.textContent = 'Bitte Pilot-ID oder Benutzername eingeben.';
+    return;
+  }
+  elements.simbriefIdentifier.value = identifier;
+  elements.simbriefQuickStart.disabled = true;
+  try {
+    await importSimBrief();
+    elements.simbriefQuickDialog.close?.();
+  } catch (error) {
+    elements.simbriefQuickMessage.textContent = error.message;
+  } finally {
+    elements.simbriefQuickStart.disabled = false;
+  }
+}
+
 function filenameFromResponse(response, fallback) {
   const header = response.headers.get('Content-Disposition') || '';
   const match = header.match(/filename="?([^";]+)"?/i);
@@ -3388,12 +3670,12 @@ function restorePreferences(value = {}) {
   const selections = {
     language: ['system', 'de', 'en', 'fr', 'es', 'it', 'nl'], theme: ['system', 'dark', 'light'], textSize: ['compact', 'standard', 'large'],
     weightUnit: ['kg', 'lb'], distanceUnit: ['nm', 'km'], pressureUnit: ['hpa', 'inhg'], temperatureUnit: ['c', 'f'], clockFormat: ['12', '24'],
-    pilotProfile: ['custom', 'airliner', 'ga', 'online'], alertMode: ['normal', 'visual', 'off'],
+    alertMode: ['normal', 'visual', 'off'],
   };
   const storageKeys = {
     language: 'flight-deck-language', theme: 'flight-deck-theme', textSize: 'flight-deck-text-size', weightUnit: 'flight-deck-weight-unit',
     distanceUnit: 'flight-deck-distance-unit', pressureUnit: 'flight-deck-pressure-unit', temperatureUnit: 'flight-deck-temperature-unit',
-    clockFormat: 'flight-deck-clock-format', pilotProfile: 'flight-deck-pilot-profile', alertMode: 'flight-deck-alert-mode',
+    clockFormat: 'flight-deck-clock-format', alertMode: 'flight-deck-alert-mode',
   };
   for (const [key, allowed] of Object.entries(selections)) {
     if (!allowed.includes(value[key])) continue;
@@ -3409,13 +3691,14 @@ function restorePreferences(value = {}) {
     localStorage.setItem(storageKey, String(value[key]));
   }
   for (const [key, storageKey] of [
-    ['focusMode', 'flight-deck-focus-mode'], ['showPhaseHome', 'flight-deck-show-phase-home'],
+    ['focusMode', 'flight-deck-focus-mode'], ['showPhaseHome', 'flight-deck-show-phase-home'], ['showHelpTexts', 'flight-deck-show-help-texts'],
     ['simbriefAutoImport', 'flight-deck-simbrief-auto-import'], ['destinationPrefetch', 'flight-deck-destination-prefetch'],
   ]) {
     if (typeof value[key] !== 'boolean') continue;
     preferences[key] = value[key];
     localStorage.setItem(storageKey, String(value[key]));
   }
+  if (typeof value.displayName === 'string') { preferences.displayName = value.displayName.slice(0, 40); localStorage.setItem('flight-deck-display-name', preferences.displayName); }
   if (value.appLayout && Array.isArray(value.appLayout.order)) {
     localStorage.setItem('flight-deck-app-layout', JSON.stringify(value.appLayout));
     appLayout = loadAppLayout();
@@ -3495,8 +3778,10 @@ function saveOnboardingDisplay() {
   localStorage.setItem('flight-deck-language', preferences.language);
   localStorage.setItem('flight-deck-theme', preferences.theme);
   localStorage.setItem('flight-deck-text-size', preferences.textSize);
-  elements.pilotProfileSelect.value = elements.onboardingProfile.value;
-  applySelectedPilotProfile();
+  preferences.displayName = String(elements.onboardingDisplayName?.value || '').trim().slice(0, 40);
+  preferences.showHelpTexts = elements.onboardingHelpTexts?.checked !== false;
+  localStorage.setItem('flight-deck-display-name', preferences.displayName);
+  localStorage.setItem('flight-deck-show-help-texts', String(preferences.showHelpTexts));
   applyPreferences();
 }
 
@@ -3512,7 +3797,8 @@ function openOnboarding({ force = false } = {}) {
   elements.onboardingLanguage.value = preferences.language;
   elements.onboardingTheme.value = preferences.theme;
   elements.onboardingTextSize.value = preferences.textSize;
-  elements.onboardingProfile.value = preferences.pilotProfile === 'custom' ? 'airliner' : preferences.pilotProfile;
+  if (elements.onboardingDisplayName) elements.onboardingDisplayName.value = preferences.displayName;
+  if (elements.onboardingHelpTexts) elements.onboardingHelpTexts.checked = preferences.showHelpTexts;
   elements.onboardingSimbriefIdentifier.value = preferences.simbriefIdentifier;
   elements.onboardingSimbriefAuto.checked = preferences.simbriefAutoImport;
   showOnboardingStep(1);
@@ -3526,7 +3812,7 @@ async function maybeShowOnboarding() {
 
 async function afterAuthentication() {
   refreshDevices().catch(() => {});
-  refreshUpdateStatus().catch(() => {});
+  checkForUpdate({ startup: true }).catch(() => refreshUpdateStatus().catch(() => {}));
   maybeShowOnboarding().catch(() => {});
   const identifier = elements.simbriefIdentifier.value.trim();
   if (!autoImportAttempted && preferences.simbriefAutoImport && identifier && !sessionStorage.getItem('flight-deck-simbrief-imported')) {
@@ -3538,57 +3824,100 @@ async function afterAuthentication() {
 
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.3.2';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.4.1';
   elements.updateVersion.textContent = `v${currentVersion}`;
   const states = {
     manual: t('updateReadyManual'), idle: t('updateReady'), checking: t('checkingUpdates'),
     available: t('updateAvailable'), downloading: t('downloadingUpdate'), downloaded: t('updateDownloaded'),
     current: t('upToDate'), error: t('updateFailed'), unsupported: t('updateUnsupported'),
   };
-  elements.updateDetail.textContent = status.detail || states[status.state] || t('updateReadyManual');
+  const detail = status.detail || states[status.state] || t('updateReadyManual');
+  elements.updateDetail.textContent = detail;
   const progress = Math.max(0, Math.min(100, Number(status.percent) || 0));
   elements.updateProgress.hidden = status.state !== 'downloading';
   elements.updateProgress.style.setProperty('--update-progress', `${progress}%`);
   elements.updateProgressLabel.textContent = `${Math.round(progress)}%`;
   elements.checkUpdate.disabled = status.canManage === false || ['checking', 'downloading'].includes(status.state);
   elements.installUpdate.hidden = status.state !== 'downloaded';
+
+  if (elements.updateDialog) {
+    elements.updateDialogDetail.textContent = detail;
+    elements.updateDialogTitle.textContent = status.state === 'downloaded'
+      ? `Version ${status.releaseName || ''} ist bereit`
+      : status.state === 'downloading' ? 'Update wird heruntergeladen'
+        : `Update ${status.releaseName || ''} verfügbar`.replace(/\s+/g, ' ').trim();
+    elements.updateDialogProgress.hidden = status.state !== 'downloading';
+    elements.updateDialogProgress.style.setProperty('--update-progress', `${progress}%`);
+    elements.updateDialogProgressLabel.textContent = `${Math.round(progress)}%`;
+    elements.updateDialogDownload.hidden = status.state !== 'available';
+    elements.updateDialogInstall.hidden = status.state !== 'downloaded';
+    elements.updateDialogLater.hidden = status.state === 'downloading';
+    if (status.canManage !== false && ['available', 'downloading', 'downloaded'].includes(status.state)
+        && typeof elements.updateDialog.showModal === 'function' && !elements.updateDialog.open) {
+      elements.updateDialog.showModal();
+    }
+  }
   clearTimeout(updateStatusTimer);
-  if (['checking', 'available', 'downloading'].includes(status.state)) {
-    updateStatusTimer = setTimeout(() => refreshUpdateStatus().catch(() => {}), 1_500);
+  if (['checking', 'downloading'].includes(status.state)) {
+    updateStatusTimer = setTimeout(() => refreshUpdateStatus().catch(() => {}), 1200);
   }
 }
 
 async function refreshUpdateStatus() {
   const response = await fetch(authenticatedUrl('/api/update/status'), { cache: 'no-store' });
-  if (!response.ok) return;
-  renderUpdateStatus(await response.json());
+  if (!response.ok) return null;
+  const data = await response.json();
+  renderUpdateStatus(data);
+  return data;
 }
 
-async function checkForUpdate() {
-  elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: '1.3.2' });
+async function checkForUpdate({ startup = false } = {}) {
+  const existing = await refreshUpdateStatus().catch(() => null);
+  if (existing?.canManage === false) return existing;
+  if (elements.checkUpdate) elements.checkUpdate.disabled = true;
+  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', canManage: existing?.canManage });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
+    return data;
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: '1.3.2', detail: error.message });
+    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message, canManage: existing?.canManage };
+    renderUpdateStatus(failed);
+    if (!startup) throw error;
+    return failed;
   } finally {
-    elements.checkUpdate.disabled = false;
+    if (elements.checkUpdate) elements.checkUpdate.disabled = false;
+  }
+}
+
+async function downloadAvailableUpdate() {
+  elements.updateDialogDownload.disabled = true;
+  try {
+    const response = await fetch(authenticatedUrl('/api/update/download'), { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || t('updateFailed'));
+    renderUpdateStatus(data);
+  } catch (error) {
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message });
+  } finally {
+    elements.updateDialogDownload.disabled = false;
   }
 }
 
 async function installDownloadedUpdate() {
-  elements.installUpdate.disabled = true;
+  if (elements.installUpdate) elements.installUpdate.disabled = true;
+  if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = true;
   try {
     const response = await fetch(authenticatedUrl('/api/update/install'), { method: 'POST' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: '1.3.2', detail: error.message });
-    elements.installUpdate.disabled = false;
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message });
+    if (elements.installUpdate) elements.installUpdate.disabled = false;
+    if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = false;
   }
 }
 
@@ -3820,6 +4149,13 @@ function updatePlannerControls() {
       : runways[0].value;
   }
 
+  const holdingPoints = planning.holdingPoints?.[elements.plannerRunway.value] || [];
+  replaceSelectOptions(elements.plannerHoldingPoint, 'Holding Point automatisch', holdingPoints.map((point, index) => ({
+    value: point.id,
+    label: `${index === 0 ? 'Äußerster · ' : ''}${point.label}${Number.isFinite(point.runwayDistanceMeters) ? ` · ${Math.round(point.runwayDistanceMeters)} m zur Runway` : ''}`,
+  })));
+  if (holdingPoints.length && !elements.plannerHoldingPoint.value) elements.plannerHoldingPoint.value = holdingPoints[0].id;
+
   const startValues = [];
   if (Number.isFinite(latestState?.aircraft?.lat) && latestState?.aircraft?.onGround) {
     startValues.push({ value: 'aircraft', label: 'Aktuelle Flugzeugposition' });
@@ -3835,6 +4171,7 @@ function updatePlannerControls() {
 
   const mode = elements.plannerMode.value;
   elements.runwayField.hidden = mode === 'custom';
+  elements.holdingPointField.hidden = mode !== 'departure';
   elements.startField.hidden = mode !== 'departure';
   elements.destinationField.hidden = mode !== 'arrival';
   elements.customFields.hidden = mode !== 'custom';
@@ -4003,7 +4340,8 @@ function planningRequest() {
   if (mode === 'departure') {
     const value = elements.plannerStart.value;
     if (!value) throw new Error('Wähle eine Startposition.');
-    return { mode, runway, start: value === 'aircraft' ? { type: 'aircraft' } : { type: 'feature', id: value } };
+    const holdingPoint = elements.plannerHoldingPoint.value || null;
+    return { mode, runway, holdingPoint, start: value === 'aircraft' ? { type: 'aircraft' } : { type: 'feature', id: value } };
   }
   const destination = elements.plannerDestination.value;
   if (!destination) throw new Error('Wähle ein Gate oder einen Stand.');
@@ -4185,7 +4523,7 @@ async function start() {
   }
 
   if ('serviceWorker' in navigator && !/Electron\//i.test(navigator.userAgent)) {
-    navigator.serviceWorker.register('/service-worker.js?v=1.3.2', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/service-worker.js?v=1.4.1', { updateViaCache: 'none' })
       .then((registration) => registration.update())
       .catch(() => {});
   }
@@ -4287,6 +4625,13 @@ elements.plannerMode.addEventListener('change', () => {
 elements.plannerStart.addEventListener('change', () => {
   plannerState.startTouched = true;
 });
+elements.plannerRunway.addEventListener('change', () => {
+  plannerState.routes = [];
+  plannerState.selectedRouteId = null;
+  renderRouteOptions();
+  renderPlanningOverlay();
+  updatePlannerControls();
+});
 elements.findRoutes.addEventListener('click', findTaxiRoutes);
 elements.startGuidance.addEventListener('click', startPlannedGuidance);
 elements.clearPlan.addEventListener('click', clearPlannedGuidance);
@@ -4302,6 +4647,12 @@ elements.homePlannerApp?.addEventListener('click', () => {
   setTimeout(openPlanner, 80);
 });
 elements.homeOpenFlightHub.addEventListener('click', () => switchModule('flight'));
+elements.homeSimbriefImport?.addEventListener('click', importSimBriefFromHome);
+elements.simbriefQuickStart?.addEventListener('click', importSimBriefQuick);
+elements.simbriefQuickIdentifier?.addEventListener('keydown', (event) => { if (event.key === 'Enter') importSimBriefQuick(); });
+for (const button of elements.flightHubNavButtons || []) button.addEventListener('click', () => setFlightHubTab(button.dataset.flightHubTab));
+for (const button of elements.settingsTabButtons || []) button.addEventListener('click', () => setSettingsTab(button.dataset.settingsTab));
+for (const button of elements.atcTabButtons || []) button.addEventListener('click', () => setAtcTab(button.dataset.atcTab));
 elements.homeNextStepAction.addEventListener('click', () => {
   const action = elements.homeNextStepAction.dataset.nextAction;
   if (action === 'setup') openOnboarding({ force: true });
@@ -4489,7 +4840,9 @@ elements.openLegal.addEventListener('click', () => {
   if (typeof elements.legalDialog.showModal === 'function') elements.legalDialog.showModal();
   else elements.legalDialog.setAttribute('open', '');
 });
-elements.checkUpdate.addEventListener('click', checkForUpdate);
+elements.checkUpdate.addEventListener('click', () => checkForUpdate());
+elements.updateDialogDownload?.addEventListener('click', downloadAvailableUpdate);
+elements.updateDialogInstall?.addEventListener('click', installDownloadedUpdate);
 elements.installUpdate.addEventListener('click', installDownloadedUpdate);
 for (const button of elements.networkButtons) {
   button.addEventListener('click', () => refreshOnlineNetwork(button.dataset.network));
@@ -4510,7 +4863,7 @@ elements.trackingFit.addEventListener('click', () => {
   elements.trackingFollow.classList.remove('active');
   fitTrackingFlight();
 });
-elements.trackingStart.addEventListener('click', startFlightRecording);
+elements.trackingStart?.addEventListener('click', startFlightRecording);
 elements.trackingSave.addEventListener('click', saveCurrentFlight);
 elements.trackingLive.addEventListener('click', showLiveTracking);
 elements.trackingDelete.addEventListener('click', deleteTrackedFlight);
@@ -4617,6 +4970,16 @@ elements.quickThemeToggle.addEventListener('click', () => {
   localStorage.setItem('flight-deck-theme', preferences.theme);
   applyPreferences();
 });
+elements.displayName?.addEventListener('change', () => {
+  preferences.displayName = String(elements.displayName.value || '').trim().slice(0, 40);
+  localStorage.setItem('flight-deck-display-name', preferences.displayName);
+  applyPreferences();
+});
+elements.showHelpTexts?.addEventListener('change', () => {
+  preferences.showHelpTexts = elements.showHelpTexts.checked;
+  localStorage.setItem('flight-deck-show-help-texts', String(preferences.showHelpTexts));
+  applyPreferences();
+});
 elements.textSizeSelect.addEventListener('change', () => {
   preferences.textSize = elements.textSizeSelect.value;
   localStorage.setItem('flight-deck-text-size', preferences.textSize);
@@ -4650,7 +5013,7 @@ elements.clockFormatSelect.addEventListener('change', () => {
   if (latestState) renderEfb(latestState);
   if (trackingViewedFlight) renderTrackingRecord(trackingViewedFlight);
 });
-elements.applyPilotProfile.addEventListener('click', applySelectedPilotProfile);
+elements.applyPilotProfile?.addEventListener('click', applySelectedPilotProfile);
 elements.alertModeSelect.addEventListener('change', () => {
   preferences.alertMode = ['normal', 'visual', 'off'].includes(elements.alertModeSelect.value)
     ? elements.alertModeSelect.value : 'normal';

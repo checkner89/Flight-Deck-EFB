@@ -390,6 +390,11 @@ function routeOptions(graph, starts, goals, options = {}) {
   return routes;
 }
 
+function departureHoldingPoints(mapData, graph, runway) {
+  return runwayAnchorNodes(mapData, graph, runway)
+    .sort((left, right) => right.runwayDistance - left.runwayDistance);
+}
+
 export function airportPlanningOptions(mapData) {
   const runwaySet = new Set();
   const stands = [];
@@ -408,9 +413,22 @@ export function airportPlanningOptions(mapData) {
       stands.push({ id: feature.id, ref, name: feature.name || null });
     }
   }
+  const runways = [...runwaySet].sort(naturalCompare);
+  const graph = buildTaxiGraph(mapData);
+  const holdingPoints = {};
+  for (const runway of runways) {
+    holdingPoints[runway] = departureHoldingPoints(mapData, graph, runway).map((entry, index) => ({
+      id: entry.node.key,
+      label: `Holding Point ${index + 1}`,
+      lat: entry.node.lat,
+      lon: entry.node.lon,
+      runwayDistanceMeters: Math.round(entry.runwayDistance),
+    }));
+  }
   return {
-    runways: [...runwaySet].sort(naturalCompare),
+    runways,
     stands: stands.sort((left, right) => naturalCompare(left.ref, right.ref)),
+    holdingPoints,
   };
 }
 
@@ -427,7 +445,9 @@ export function planTaxiRoutes(mapData, request, context = {}) {
   if (mode === 'departure') {
     startPoint = request.start?.type === 'aircraft' ? finitePoint(context.aircraft) : featureAnchor(mapData, request.start);
     starts = nearestNodes(graph, startPoint, { limit: 2, maxDistanceMeters: 650 });
-    goals = runwayAnchorNodes(mapData, graph, runway);
+    goals = departureHoldingPoints(mapData, graph, runway);
+    if (request.holdingPoint) goals = goals.filter((entry) => entry.node.key === request.holdingPoint);
+    else if (goals.length > 0) goals = [goals[0]];
   } else if (mode === 'arrival') {
     starts = runwayAnchorNodes(mapData, graph, runway);
     endPoint = featureAnchor(mapData, request.destination);
