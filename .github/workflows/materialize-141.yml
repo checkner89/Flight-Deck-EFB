@@ -6,18 +6,26 @@ on:
       - main
     paths:
       - '.release-141-trigger'
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   materialize:
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.ref == 'release/1.4.1-materialized' }}
     runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.ref || 'main' }}
     steps:
-      - name: Checkout main
+      - name: Checkout target branch
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -51,7 +59,7 @@ jobs:
           grep -q "## 1.4.1 — 24 August 2026" CHANGELOG.md
           test ! -f src/navigraph-client.mjs
 
-      - name: Commit materialized source to main
+      - name: Commit materialized source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -60,5 +68,5 @@ jobs:
             echo "No materialized source changes to commit."
           else
             git commit -m "Materialize Flight Deck EFB 1.4.1 source"
-            git push origin HEAD:main
+            git push origin HEAD:${TARGET_BRANCH}
           fi
