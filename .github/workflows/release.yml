@@ -45,6 +45,7 @@ jobs:
           node --check src/simconnect-client.mjs
           node --check public/app.js
           node --check public/i18n.js
+          node --input-type=module -e "import updaterPackage from 'electron-updater'; const { autoUpdater } = updaterPackage; if (!autoUpdater) throw new Error('electron-updater autoUpdater unavailable'); console.log('electron-updater CommonJS import OK');"
           if (Test-Path 'src/navigraph-client.mjs') {
             throw 'Navigraph backend must remain disabled until explicitly re-enabled.'
           }
