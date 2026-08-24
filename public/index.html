@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="de" data-app-version="1.3.0" data-theme="dark" data-text-size="standard">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#07121c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Flight Deck EFB">
+    <meta name="description" content="Flight Deck EFB für Microsoft Flight Simulator">
+    <title>Flight Deck EFB</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/assets/app-icon-192.png">
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="/styles.css?v=1.3.0">
+  </head>
+  <body>
+    <div id="app" class="app-shell home-mode">
+      <header class="topbar">
+        <div class="brand" aria-label="Flight Deck EFB">
+          <span class="brand-mark"><span></span></span>
+          <span class="brand-copy"><strong>FLIGHT DECK EFB</strong><small>MSFS COMPANION</small></span>
+        </div>
+
+        <div class="flight-summary" aria-live="polite">
+          <strong id="callsign">—</strong>
+          <span class="route"><span id="origin">—</span><i></i><span id="destination">—</span></span>
+          <span id="runway" class="runway-pill">RWY —</span>
+        </div>
+
+        <div class="connection-summary">
+          <span id="si-status" class="connection-chip waiting"><i></i><span>ATC AUTO</span></span>
+          <span id="sim-status" class="connection-chip waiting"><i></i><span>MSFS</span></span>
+          <button id="quick-theme-toggle" class="icon-button theme-toggle" type="button" aria-label="Darstellung wechseln" title="Hell/Dunkel wechseln" aria-pressed="false">
+            <svg class="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <svg class="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 15.2A8 8 0 0 1 8.8 4.5 8.2 8.2 0 1 0 19.5 15.2Z"/></svg>
+          </button>
+          <button id="new-flight-button" class="new-flight-button" type="button" data-i18n="newFlight">NEW FLIGHT</button>
+          <button id="share-button" class="icon-button" type="button" aria-label="Auf Mobilgerät öffnen" title="Auf Mobilgerät öffnen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 11.1 15 7.4m-6.4 5.5L15 16.6M18 9.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 5.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <header id="app-toolbar" class="app-toolbar" hidden>
+        <button id="app-home-button" class="app-home-button" type="button" aria-label="Zur App-Übersicht">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+          <span data-i18n="apps">APPS</span>
+        </button>
+        <div class="app-toolbar-identity">
+          <span id="app-toolbar-icon" class="app-toolbar-icon">T</span>
+          <div><small>EFB APPLICATION</small><strong id="app-toolbar-title">Taxi Navigation</strong></div>
+        </div>
+        <div class="app-toolbar-actions">
+          <button id="plan-button" class="plan-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V6.8C5 5.8 5.8 5 6.8 5H19m-8 14V9.8c0-1 .8-1.8 1.8-1.8H19m-3-6 3 3-3 3"/></svg>
+            <span>PLAN TAXI</span>
+          </button>
+          <span id="app-toolbar-context" class="app-toolbar-context">GROUND NAVIGATION</span>
+        </div>
+      </header>
+
+      <main class="map-stage" hidden>
+        <div id="map" aria-label="Airport Moving Map"></div>
+
+        <section id="clearance-card" class="clearance-card no-clearance" aria-live="polite">
+          <div class="eyebrow"><span class="pulse-dot"></span><span id="clearance-station">CURRENT CLEARANCE</span><span id="route-source" class="route-source" hidden></span></div>
+          <p id="clearance-text">Warte auf Taxifreigabe …</p>
+          <time id="clearance-time"></time>
+        </section>
+
+        <section id="guidance-card" class="guidance-card unavailable">
+          <div class="guidance-state">
+            <span id="guidance-icon" class="guidance-icon">•</span>
+            <div><small>ROUTE STATUS</small><strong id="guidance-label">WARTE AUF ROUTE</strong></div>
+          </div>
+          <div class="metric"><small>ABWEICHUNG</small><strong id="deviation">—</strong></div>
+          <div class="metric"><small>VERBLEIBEND</small><strong id="remaining">—</strong></div>
+          <div class="metric"><small>GROUND SPEED</small><strong id="ground-speed">—</strong></div>
+          <div class="metric gate-metric"><small>GATE</small><strong id="gate-name">—</strong></div>
+        </section>
+
+        <aside class="map-controls" aria-label="Kartensteuerung">
+          <button id="follow-button" class="map-button active" type="button" title="Flugzeug folgen" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 7.5 17-7.5-3.2L4.5 20 12 3Z"/></svg><span>FOLLOW</span>
+          </button>
+          <button id="fit-button" class="map-button" type="button" title="Gesamten Taxiweg zeigen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4H4v4m12-4h4v4M8 20H4v-4m12 4h4v-4"/></svg><span>ROUTE</span>
+          </button>
+          <button id="fullscreen-button" class="map-button" type="button" title="Vollbild">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg><span>FULL</span>
+          </button>
+          <button id="refresh-map-button" class="map-button" type="button" title="Airport-Karte neu laden">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m9.1-3A7 7 0 0 0 6.5 6.5L4 9m2 6.9a7 7 0 0 0 11.5 1.6L20 15"/></svg><span>MAP</span>
+          </button>
+        </aside>
+
+        <div id="demo-badge" class="demo-badge" hidden>DEMO MODE</div>
+
+        <div id="map-status" class="map-status waiting" role="status" aria-live="polite">
+          <i></i>
+          <div><strong id="map-airport">AIRPORT MAP</strong><span id="map-status-text">Warte auf Flughafendaten</span></div>
+        </div>
+
+        <section id="empty-state" class="empty-state">
+          <span class="empty-radar"><i></i></span>
+          <h1>Warte auf Taxifreigabe</h1>
+          <p>Starte SayIntentions oder BeyondATC – oder plane den Taxiweg selbst.</p>
+          <button id="open-plan-empty" class="empty-plan-button" type="button">TAXIWEG PLANEN</button>
+          <div class="empty-connections">
+            <span id="empty-si">ATC-Quelle wird gesucht</span>
+            <span id="empty-sim">MSFS wird gesucht</span>
+          </div>
+        </section>
+
+        <div id="warning-banner" class="warning-banner" role="alert" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Zm0 6v5m0 3h.01"/></svg>
+          <div><strong>TAXIWEG VERLASSEN</strong><span id="warning-detail">Mehr als 35 m von der Freigabe entfernt</span></div>
+          <button id="warning-new-flight" type="button" hidden>NEW FLIGHT</button>
+        </div>
+
+        <div class="map-attribution">Nur für Flugsimulation · Offline-Vektorkarte · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap-Mitwirkende</a></div>
+      </main>
+
+      <main id="efb-pages" class="efb-pages" hidden>
+        <section class="efb-page home-launcher" data-page="home" hidden>
+          <header class="home-launcher-heading">
+            <div><small>ELECTRONIC FLIGHT BAG</small><h1 data-i18n="welcome">Good evening, Captain</h1><p data-i18n="selectApp">Select an application to continue.</p></div>
+            <div class="home-heading-actions"><button id="home-new-flight" class="secondary-card-action" type="button" data-i18n="newFlight">NEW FLIGHT</button><div class="home-time"><strong id="home-clock">—</strong><span>LOCAL TIME</span></div></div>
+          </header>
+
+          <article id="home-next-step" class="home-next-step" hidden>
+            <span class="home-next-step-number">1</span>
+            <div><small data-i18n="startHere">START HERE</small><strong id="home-next-step-title">Flight Deck EFB einrichten</strong><p id="home-next-step-detail">Wir führen dich in wenigen Schritten durch die Einrichtung.</p></div>
+            <button id="home-next-step-action" class="primary-card-action" type="button" data-i18n="continue">CONTINUE</button>
+          </article>
+
+          <article class="home-flight-strip">
+            <div class="home-flight-ident"><small>ACTIVE FLIGHT</small><strong id="home-callsign">—</strong><span id="home-atc-source">ATC AUTO</span></div>
+            <div class="home-route-line"><span><small>FROM</small><b id="home-origin">—</b></span><i><em></em></i><span><small>TO</small><b id="home-destination">—</b></span></div>
+            <div class="home-flight-facts"><span><small>AIRPORT</small><b id="home-airport">—</b></span><span><small>RUNWAY</small><b id="home-runway">—</b></span><span><small>GATE</small><b id="home-gate">—</b></span></div>
+          </article>
+
+          <article id="home-phase-card" class="home-phase-card">
+            <header class="home-phase-header">
+              <div><small data-i18n="flightJourney">FLIGHT JOURNEY</small><strong id="home-phase-title">Preflight</strong><span id="home-phase-source">AUTO · MSFS / SI</span></div>
+              <button id="home-open-flight-hub" class="secondary-card-action" type="button" data-i18n="openFlightHub">OPEN FLIGHT HUB</button>
+            </header>
+            <div id="home-phase-rail" class="flight-phase-rail compact" aria-label="Flight phases"></div>
+            <div class="home-phase-bottom">
+              <dl class="home-phase-metrics">
+                <div><dt data-i18n="nextWaypoint">NEXT WAYPOINT</dt><dd id="home-next-waypoint">—</dd></div>
+                <div><dt data-i18n="remaining">REMAINING</dt><dd id="home-flight-remaining">—</dd></div>
+                <div><dt>ETA</dt><dd id="home-flight-eta">—</dd></div>
+                <div><dt data-i18n="fuelRemaining">FUEL REMAINING</dt><dd id="home-flight-fuel">—</dd></div>
+              </dl>
+              <div id="home-phase-actions" class="home-phase-actions"></div>
+            </div>
+          </article>
+
+          <div class="launcher-section-heading"><div><small>FLIGHT BAG</small><h2 data-i18n="applications">Applications</h2></div><span><i></i><b id="home-atc-detail">Waiting for data source</b></span></div>
+          <div class="app-launcher-grid">
+            <button class="efb-app-tile taxi-app" type="button" data-open-module="taxi" data-app-id="taxi">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 37V12h12l7 8h13v17M5 37h38M15 12V6m20 14v-8"/><circle cx="15" cy="37" r="4"/><circle cx="36" cy="37" r="4"/></svg></span>
+              <span class="app-tile-copy"><small>GROUND NAVIGATION</small><strong>Taxi</strong><span id="home-taxi-summary" data-i18n="taxiSummary">Moving map and route guidance</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button id="home-planner-app" class="efb-app-tile planning-app" type="button" data-app-id="planner">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 39V10h28v29H10Zm7-20h14M17 26h14M17 33h8M33 7v7M15 7v7"/></svg></span>
+              <span class="app-tile-copy"><small>PRE-FLIGHT</small><strong data-i18n="taxiPlanning">Taxi Planning</strong><span data-i18n="taxiPlanningSummary">Plan departure or arrival routes</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile flight-app" type="button" data-open-module="flight" data-app-id="flight">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 38h32M12 34V10h24v24M18 17h12M18 24h12M18 31h8"/></svg></span>
+              <span class="app-tile-copy"><small>FLIGHT OPS</small><strong data-i18n="flight">Flight</strong><span data-i18n="flightSummary">SimBrief plan and live MSFS data</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile tracking-app" type="button" data-open-module="tracking" data-app-id="tracking">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 35c7-15 14-6 20-18 4-8 8-7 14-3M8 40h32M13 27l4 4-4 4M31 12l4 4-4 4"/><circle cx="8" cy="35" r="3"/><circle cx="41" cy="14" r="3"/></svg></span>
+              <span class="app-tile-copy"><small>LIVE OPERATIONS</small><strong data-i18n="tracking">Flight Tracking</strong><span data-i18n="trackingSummary">Live map, actual track and saved flights</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile briefing-app" type="button" data-open-module="briefing" data-app-id="briefing">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 12h32v24H8zM14 19h20M14 25h20M14 31h12"/></svg></span>
+              <span class="app-tile-copy"><small>SAYINTENTIONS</small><strong data-i18n="briefing">Briefing</strong><span data-i18n="briefingSummary">ATIS, weather, frequencies and ATC history</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile com-app" type="button" data-open-module="com" data-app-id="com">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 17h30v21H9zM15 17l5-8h8l5 8M15 25h18M15 31h10"/><circle cx="34" cy="31" r="3"/></svg></span>
+              <span class="app-tile-copy"><small>COMMUNICATIONS</small><strong>COM</strong><span data-i18n="comSummary">Active, standby, receive and transmit controls</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile flightboard-app" type="button" data-open-module="flightboard" data-app-id="flightboard">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 10h34v28H7zM7 19h34M7 28h34M17 10v28M31 10v28"/><path d="m10 14 4 2-4 2"/></svg></span>
+              <span class="app-tile-copy"><small>SIMULATOR TRAFFIC</small><strong data-i18n="flightboard">Flightboard</strong><span data-i18n="flightboardSummary">Nearby AI traffic and operational status</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile charts-app unavailable-app" type="button" data-app-id="charts" disabled aria-disabled="true">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m8 13 10-4 12 4 10-4v27l-10 4-12-4-10 4V13Zm10-4v27m12-23v27"/></svg></span>
+              <span class="app-tile-copy"><small>NAV DATA · <b data-i18n="comingLater">COMING LATER</b></small><strong data-i18n="charts">Charts</strong><span id="home-navigraph-summary" data-i18n="chartsPaused">Temporarily unavailable</span></span><i class="app-lock">—</i>
+            </button>
+            <button class="efb-app-tile atc-app" type="button" data-open-module="atc" data-app-id="atc">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 35a13 13 0 0 1 26 0m-20 0v5m14-5v5M18 21a6 6 0 1 1 12 0v7H18v-7Z"/></svg></span>
+              <span class="app-tile-copy"><small>ATC &amp; LIVE NETWORKS</small><strong>ATC</strong><span data-i18n="atcCombinedSummary">SI, BeyondATC, VATSIM &amp; IVAO</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile ground-app" type="button" data-open-module="ground" data-app-id="ground">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 31h25V16H20l-5 7H6v8Zm25-10h7l5 7v3H31M14 38a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm23 0a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"/></svg></span>
+              <span class="app-tile-copy"><small>TURNAROUND</small><strong data-i18n="groundServices">Ground Services</strong><span id="home-gsx-summary">GSX local connector</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile fenix-app" type="button" data-open-module="fenix" data-app-id="fenix">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 9h32v25H8zM17 40h14M24 34v6M16 17h16M16 24h10"/></svg></span>
+              <span class="app-tile-copy"><small>A32X</small><strong>Fenix Remote EFB</strong><span id="home-fenix-summary" data-i18n="fenixSummary">Connect the official local Fenix EFB</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile automations-app" type="button" data-open-module="automations" data-app-id="automations">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 13h20M8 24h32M20 35h20M33 8v10M15 19v10M28 30v10"/><circle cx="33" cy="13" r="4"/><circle cx="15" cy="24" r="4"/><circle cx="28" cy="35" r="4"/></svg></span>
+              <span class="app-tile-copy"><small>AIRCRAFT LOGIC</small><strong data-i18n="automations">Automations</strong><span data-i18n="automationsSummary">Phase and app triggered simulator actions</span></span><i class="app-open-arrow">›</i>
+            </button>
+            <button class="efb-app-tile settings-app" type="button" data-open-module="settings" data-app-id="settings">
+              <span class="app-tile-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 17a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm15 7 4 3-4 7-5-1a17 17 0 0 1-3 2l-1 5H18l-1-5a17 17 0 0 1-3-2l-5 1-4-7 4-3a17 17 0 0 1 0-4l-4-3 4-7 5 1a17 17 0 0 1 3-2l1-5h12l1 5a17 17 0 0 1 3 2l5-1 4 7-4 3a17 17 0 0 1 0 4Z"/></svg></span>
+              <span class="app-tile-copy"><small>SYSTEM</small><strong data-i18n="settingsShort">Settings</strong><span data-i18n="settingsSummary">Connections, display and mobile devices</span></span><i class="app-open-arrow">›</i>
+            </button>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="flight" hidden>
+          <header class="page-heading"><div><small>FLIGHT OPERATIONS</small><h1 data-i18n="flight">Flight</h1><p data-i18n="flightPageIntro">Import the latest SimBrief OFP and compare it with live simulator data.</p></div><span id="flight-status-pill" class="module-status waiting">NO OFP</span></header>
+          <section class="flight-journey-hub">
+            <header class="flight-journey-toolbar">
+              <div><small data-i18n="currentPhase">CURRENT PHASE</small><h2 id="flight-phase-title">Preflight</h2><p id="flight-phase-description">Prepare the aircraft, route, weather and departure briefing.</p></div>
+              <div class="flight-journey-controls"><label for="flight-phase-select"><span data-i18n="phaseControl">PHASE CONTROL</span><select id="flight-phase-select"><option value="auto" data-i18n="automatic">Automatic</option><option value="preflight" data-i18n="phasePreflight">Preflight</option><option value="taxi-out" data-i18n="phaseTaxiOut">Taxi out</option><option value="takeoff" data-i18n="phaseTakeoff">Takeoff</option><option value="climb" data-i18n="phaseClimb">Climb</option><option value="cruise" data-i18n="phaseCruise">Cruise</option><option value="descent" data-i18n="phaseDescent">Descent</option><option value="approach" data-i18n="phaseApproach">Approach</option><option value="landing" data-i18n="phaseLanding">Landing</option><option value="taxi-in" data-i18n="phaseTaxiIn">Taxi in</option><option value="postflight" data-i18n="phasePostflight">Postflight</option></select><small id="flight-phase-source">AUTO · SAYINTENTIONS / MSFS</small></label><button id="focus-mode-button" class="focus-mode-button" type="button"><span>◎</span><b data-i18n="focusMode">FOCUS MODE</b></button></div>
+            </header>
+            <div id="flight-phase-rail" class="flight-phase-rail" aria-label="Flight phases"></div>
+            <section id="journey-readiness" class="journey-readiness">
+              <span id="journey-readiness-icon" class="journey-readiness-icon">!</span>
+              <div><small data-i18n="operationalReadiness">OPERATIONAL READINESS</small><strong id="journey-readiness-title">—</strong><p id="journey-readiness-detail">—</p></div>
+              <div id="journey-alert-list" class="journey-alert-list"></div>
+              <button id="review-open-items" class="secondary-card-action" type="button" data-i18n="reviewOpenItems">REVIEW OPEN ITEMS</button>
+            </section>
+            <div class="flight-journey-grid">
+              <article class="journey-progress-card">
+                <div class="section-title"><div><small data-i18n="flightProgress">FLIGHT PROGRESS</small><h3 id="journey-route-ident">— → —</h3></div><span id="journey-progress-value">—</span></div>
+                <div class="journey-progress-track"><i id="journey-progress-bar"></i></div>
+                <dl class="journey-metrics">
+                  <div><dt data-i18n="nextWaypoint">NEXT WAYPOINT</dt><dd id="journey-next-waypoint">—</dd><small id="journey-next-distance">—</small></div>
+                  <div><dt data-i18n="remaining">REMAINING</dt><dd id="journey-remaining">—</dd><small id="journey-eta">ETA —</small></div>
+                  <div><dt data-i18n="fuelRemaining">FUEL REMAINING</dt><dd id="journey-fuel">—</dd><small id="journey-fuel-delta">—</small></div>
+                  <div><dt data-i18n="liveConditions">LIVE CONDITIONS</dt><dd id="journey-wind">—</dd><small id="journey-temperature">—</small></div>
+                </dl>
+                <div id="phase-action-list" class="phase-action-list"></div>
+              </article>
+              <article id="journey-checklist-card" class="journey-checklist-card">
+                <div class="section-title"><div><small data-i18n="phaseChecklist">PHASE CHECKLIST</small><h3 data-i18n="readiness">Readiness</h3></div><span id="phase-checklist-progress">0 / 0</span></div>
+                <div id="phase-checklist-list" class="phase-checklist-list"></div>
+                <p class="journey-advisory" data-i18n="checklistAdvisory">Automatic items come from connected data. Manual checks are reminders and do not replace the aircraft checklist.</p>
+              </article>
+              <article class="journey-notes-card">
+                <div class="section-title"><div><small data-i18n="flightNotes">FLIGHT NOTES</small><h3 data-i18n="scratchpad">Scratchpad</h3></div><span id="flight-notes-status" data-i18n="saved">SAVED</span></div>
+                <textarea id="flight-notes" maxlength="4000" data-i18n-placeholder="flightNotesPlaceholder" placeholder="Clearance, stand, reminders or postflight notes …"></textarea>
+                <small data-i18n="notesSync">Notes and checklist state are stored with the active flight on the Windows host.</small>
+              </article>
+              <article class="journey-timeline-card">
+                <div class="section-title"><div><small data-i18n="operationalTimeline">OPERATIONAL TIMELINE</small><h3 data-i18n="plannedActual">Planned / actual</h3></div><span id="timeline-status">SIMBRIEF</span></div>
+                <div id="flight-timeline" class="flight-timeline"></div>
+              </article>
+            </div>
+          </section>
+          <div class="flight-page-layout">
+            <article class="efb-card simbrief-card">
+              <div class="section-title"><div><small>SIMBRIEF</small><h2 data-i18n="importFlightPlan">Import flight plan</h2></div><span id="simbrief-generated">—</span></div>
+              <p data-i18n="simbriefHelp">Enter your SimBrief Pilot ID or username. No SimBrief password is needed.</p>
+              <div class="inline-form"><input id="simbrief-identifier" autocomplete="username" maxlength="80" placeholder="Pilot ID / username"><button id="simbrief-import" class="primary-card-action" type="button" data-i18n="import">IMPORT</button></div>
+              <p id="simbrief-message" class="form-message" role="status"></p>
+              <div class="flight-plan-route"><span><small>FROM</small><b id="simbrief-origin">—</b></span><i></i><span><small>TO</small><b id="simbrief-destination">—</b></span></div>
+              <dl class="flight-data-grid"><div><dt>CALLSIGN</dt><dd id="simbrief-callsign">—</dd></div><div><dt>AIRCRAFT</dt><dd id="simbrief-aircraft">—</dd></div><div><dt>RUNWAYS</dt><dd id="simbrief-runways">—</dd></div><div><dt>BLOCK FUEL</dt><dd id="simbrief-fuel">—</dd></div><div><dt>PAX</dt><dd id="simbrief-pax">—</dd></div><div><dt>EET</dt><dd id="simbrief-eet">—</dd></div></dl>
+              <div class="route-box"><small>ROUTE</small><p id="simbrief-route">No OFP imported.</p></div>
+            </article>
+            <article class="efb-card live-aircraft-card">
+              <div class="section-title"><div><small>SIMCONNECT</small><h2 data-i18n="liveAircraft">Live aircraft</h2></div><span id="live-aircraft-status">OFFLINE</span></div>
+              <dl class="live-data-grid"><div><dt>TYPE / REG</dt><dd id="live-aircraft-type">—</dd></div><div><dt>ALTITUDE / AGL</dt><dd id="live-altitude">—</dd></div><div><dt>IAS / GS</dt><dd id="live-speeds">—</dd></div><div><dt>VERTICAL SPEED</dt><dd id="live-vs">—</dd></div><div><dt>FUEL / WEIGHT</dt><dd id="live-weights">—</dd></div><div><dt>WIND / OAT</dt><dd id="live-weather">—</dd></div><div><dt>QNH / VIS</dt><dd id="live-atmosphere">—</dd></div><div><dt>GEAR / FLAPS / AP</dt><dd id="live-configuration">—</dd></div><div><dt>PARK BRAKE</dt><dd id="live-parking-brake">—</dd></div><div><dt>ENGINES</dt><dd id="live-engines">—</dd></div><div><dt>XPDR</dt><dd id="live-xpdr">—</dd></div></dl>
+              <div class="radio-strip"><span><small>COM 1</small><b id="live-com1">—</b></span><span><small>COM 2</small><b id="live-com2">—</b></span></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="efb-page tracking-page" data-page="tracking" hidden>
+          <header class="page-heading tracking-heading"><div><small>LIVE FLIGHT OPERATIONS</small><h1 data-i18n="tracking">Flight Tracking</h1><p data-i18n="trackingIntro">Follow the current flight and reopen every recorded flight with route, weather and simulator data.</p></div><span id="tracking-status-pill" class="module-status waiting">WAITING</span></header>
+          <div class="tracking-layout">
+            <article class="efb-card tracking-map-card">
+              <header class="tracking-map-toolbar">
+                <div><small id="tracking-view-state" data-i18n="liveMap">Live map</small><strong id="tracking-route-ident">— → —</strong></div>
+                <div class="tracking-map-actions">
+                  <div class="tracking-basemap-selector" role="group" aria-label="Map style"><button type="button" class="active" data-tracking-basemap="map" data-i18n="mapView">MAP</button><button type="button" data-tracking-basemap="satellite" data-i18n="satelliteView">SATELLITE</button></div>
+                  <button id="tracking-follow" class="tracking-control active" type="button" data-i18n="follow">FOLLOW</button>
+                  <button id="tracking-fit" class="tracking-control" type="button" data-i18n="fitFlight">FIT FLIGHT</button>
+                </div>
+              </header>
+              <div id="tracking-map" aria-label="Flight tracking map"></div>
+              <div class="tracking-legend"><span><i class="planned"></i><b data-i18n="plannedRoute">Planned route</b></span><span><i class="actual"></i><b data-i18n="actualTrack">Actual track</b></span><span><i class="waypoint"></i><b data-i18n="allWaypoints">All waypoints</b></span></div>
+              <dl class="tracking-live-strip"><div><dt>ALTITUDE</dt><dd id="tracking-altitude">—</dd></div><div><dt>GS / IAS</dt><dd id="tracking-speed">—</dd></div><div><dt>HEADING</dt><dd id="tracking-heading">—</dd></div><div><dt>DISTANCE</dt><dd id="tracking-distance">—</dd></div><div><dt>FLIGHT TIME</dt><dd id="tracking-duration">—</dd></div><div><dt>FUEL USED</dt><dd id="tracking-fuel">—</dd></div></dl>
+            </article>
+
+            <aside class="tracking-sidebar">
+              <article class="efb-card tracking-recorder-card">
+                <div class="section-title"><div><small>FLIGHT RECORDER</small><h2 id="tracking-recorder-title" data-i18n="automaticRecording">Automatic recording</h2></div><span id="tracking-point-count">0 PTS</span></div>
+                <p id="tracking-record-message" data-i18n="recordingWait">Recording starts automatically when a flight plan and MSFS position are available.</p>
+                <div class="tracking-recorder-actions"><button id="tracking-start" class="primary-card-action" type="button" data-i18n="startRecording">START RECORDING</button><button id="tracking-save" class="secondary-card-action" type="button" data-i18n="saveFlight">SAVE FLIGHT</button><button id="tracking-live" class="secondary-card-action" type="button" hidden data-i18n="backLive">BACK TO LIVE</button></div>
+              </article>
+              <article class="efb-card tracking-archive-card">
+                <div class="section-title"><h2 data-i18n="archive">Flight archive</h2><span id="tracking-archive-count">0</span></div>
+                <div id="flight-archive-list" class="flight-archive-list"><p class="empty-list" data-i18n="noFlights">No flights saved yet.</p></div>
+              </article>
+            </aside>
+
+            <section class="tracking-detail-layout">
+              <article class="efb-card tracking-route-card"><div class="section-title"><h2 data-i18n="routeDetails">Route details</h2><span id="tracking-waypoint-count">0 WPT</span></div><div id="tracking-route-summary" class="tracking-route-summary">—</div><div id="tracking-waypoint-list" class="tracking-waypoint-list"><p class="empty-list">No waypoints available.</p></div></article>
+              <article class="efb-card tracking-weather-card"><div class="section-title"><h2 data-i18n="weatherData">Weather & data</h2><span id="tracking-weather-time">—</span></div><div id="tracking-weather-list" class="tracking-weather-list"><p class="empty-list">No weather snapshots available.</p></div></article>
+              <article class="efb-card tracking-data-card"><div class="section-title"><h2 data-i18n="flightData">Flight data</h2><span id="tracking-flight-date">—</span></div><dl id="tracking-detail-grid" class="tracking-detail-grid"></dl><div id="tracking-flight-notes-panel" class="tracking-flight-notes-panel" hidden><div><small data-i18n="flightNotes">FLIGHT NOTES</small><span id="tracking-flight-checklist-summary">—</span></div><p id="tracking-flight-notes-text"></p></div><div id="tracking-archive-actions" class="tracking-archive-actions" hidden><a id="tracking-export-gpx" class="secondary-card-action external-action" href="#" download data-i18n="exportGpx">EXPORT GPX</a><a id="tracking-export-json" class="secondary-card-action external-action" href="#" download data-i18n="exportJson">EXPORT JSON</a><button id="tracking-delete" class="danger-card-action" type="button" data-i18n="deleteFlight">DELETE FLIGHT</button></div></article>
+            </section>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="briefing" hidden>
+          <header class="page-heading"><div><small>SAYINTENTIONS LIVE DATA</small><h1 data-i18n="briefing">Briefing</h1><p data-i18n="briefingIntro">ATIS, METAR, TAF, radio frequencies and recent ATC communication.</p></div><span id="briefing-status-pill" class="module-status waiting">WAITING</span></header>
+          <div class="briefing-layout">
+            <article class="efb-card briefing-weather"><div class="section-title"><h2 data-i18n="weatherAtis">Weather & ATIS</h2><span id="briefing-weather-time">—</span></div><div id="briefing-airports" class="briefing-airports"><p class="empty-list">No SI weather data received yet.</p></div></article>
+            <article class="efb-card briefing-frequencies"><div class="section-title"><h2 data-i18n="frequencies">Frequencies</h2><span>STANDBY TUNE</span></div><div id="briefing-frequency-list" class="frequency-list"><p class="empty-list">No frequencies available.</p></div><p class="safety-note" data-i18n="frequencySafety">A frequency is only tuned after an explicit click and defaults to COM1 standby.</p></article>
+            <article class="efb-card briefing-comms"><div class="section-title"><h2 data-i18n="atcHistory">ATC history</h2><span id="briefing-phase">PHASE —</span></div><div id="briefing-comms-list" class="comms-list"><p class="empty-list">No communication received.</p></div></article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="com" hidden>
+          <header class="page-heading"><div><small>COMMUNICATIONS</small><h1>COM</h1><p data-i18n="comIntro">Control active and standby frequencies with explicit, guarded actions.</p></div><span id="com-status-pill" class="module-status waiting">SIM OFFLINE</span></header>
+          <div class="com-layout">
+            <article class="efb-card com-radio-card" data-com-radio="1">
+              <header><div><small>RADIO</small><h2>COM 1</h2></div><div class="com-live-flags"><span id="com1-rx">RX OFF</span><span id="com1-tx">TX OFF</span></div></header>
+              <div class="com-frequency-display"><div><small>ACTIVE</small><strong id="com1-active">—</strong><span id="com1-active-ident">—</span></div><button type="button" data-com-action="swap" data-com="1" aria-label="COM 1 active and standby swap">⇅</button><div><small>STANDBY</small><strong id="com1-standby">—</strong><span id="com1-standby-ident">—</span></div></div>
+              <label class="com-entry"><span data-i18n="frequencyMhz">Frequency MHz</span><input id="com1-frequency-input" inputmode="decimal" maxlength="7" placeholder="121.605"></label>
+              <div class="com-actions"><button class="primary-card-action" type="button" data-com-action="set" data-com="1" data-mode="standby" data-i18n="setStandby">SET STANDBY</button><button class="secondary-card-action" type="button" data-com-action="set" data-com="1" data-mode="active" data-i18n="setActive">SET ACTIVE</button><button class="secondary-card-action" type="button" data-com-action="receive" data-com="1" data-i18n="toggleReceive">TOGGLE RECEIVE</button><button class="secondary-card-action" type="button" data-com-action="transmit" data-com="1" data-i18n="selectTransmit">SELECT TX</button></div>
+            </article>
+            <article class="efb-card com-radio-card" data-com-radio="2">
+              <header><div><small>RADIO</small><h2>COM 2</h2></div><div class="com-live-flags"><span id="com2-rx">RX OFF</span><span id="com2-tx">TX OFF</span></div></header>
+              <div class="com-frequency-display"><div><small>ACTIVE</small><strong id="com2-active">—</strong><span id="com2-active-ident">—</span></div><button type="button" data-com-action="swap" data-com="2" aria-label="COM 2 active and standby swap">⇅</button><div><small>STANDBY</small><strong id="com2-standby">—</strong><span id="com2-standby-ident">—</span></div></div>
+              <label class="com-entry"><span data-i18n="frequencyMhz">Frequency MHz</span><input id="com2-frequency-input" inputmode="decimal" maxlength="7" placeholder="118.305"></label>
+              <div class="com-actions"><button class="primary-card-action" type="button" data-com-action="set" data-com="2" data-mode="standby" data-i18n="setStandby">SET STANDBY</button><button class="secondary-card-action" type="button" data-com-action="set" data-com="2" data-mode="active" data-i18n="setActive">SET ACTIVE</button><button class="secondary-card-action" type="button" data-com-action="receive" data-com="2" data-i18n="toggleReceive">TOGGLE RECEIVE</button><button class="secondary-card-action" type="button" data-com-action="transmit" data-com="2" data-i18n="selectTransmit">SELECT TX</button></div>
+            </article>
+            <article class="efb-card com-presets-card"><div class="section-title"><div><small>ATC / AIRPORT</small><h2 data-i18n="availableFrequencies">Available frequencies</h2></div><span>CLICK TO STANDBY</span></div><div id="com-frequency-presets" class="frequency-list"><p class="empty-list">No frequencies available.</p></div><p id="com-message" class="form-message" role="status"></p><p class="safety-note" data-i18n="comSafety">Every radio change requires an explicit click. Nothing is tuned automatically.</p></article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="flightboard" hidden>
+          <header class="page-heading"><div><small>SIMULATOR TRAFFIC</small><h1 data-i18n="flightboard">Flightboard</h1><p data-i18n="flightboardIntro">Nearby aircraft reported by MSFS, including traffic injected into the simulator by compatible add-ons.</p></div><span id="flightboard-status-pill" class="module-status waiting">WAITING</span></header>
+          <div class="flightboard-layout">
+            <article class="efb-card flightboard-card">
+              <header class="flightboard-toolbar"><div><small data-i18n="airportFilter">AIRPORT FILTER</small><strong id="flightboard-airport">ALL NEARBY</strong></div><div class="flightboard-tabs" role="group"><button type="button" class="active" data-traffic-view="all" data-i18n="allTraffic">ALL</button><button type="button" data-traffic-view="departures" data-i18n="departures">DEPARTURES</button><button type="button" data-traffic-view="arrivals" data-i18n="arrivals">ARRIVALS</button></div><button id="flightboard-refresh" class="secondary-card-action" type="button" data-i18n="refresh">REFRESH</button></header>
+              <div class="flightboard-table" role="table" aria-label="Simulator traffic flightboard"><div class="flightboard-row flightboard-head" role="row"><span>TIME</span><span>FLIGHT</span><span>FROM</span><span>TO</span><span>RWY / STAND</span><span>STATUS</span></div><div id="flightboard-list"><p class="empty-list">No simulator traffic received yet.</p></div></div>
+              <footer><span id="flightboard-updated">—</span><strong data-i18n="trafficSourceNote">Source: SimConnect. The public SayIntentions API does not expose its private global flightboard.</strong></footer>
+            </article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="charts" hidden>
+          <header class="page-heading"><div><small>NAVIGRAPH CONNECTOR</small><h1 data-i18n="charts">Charts</h1><p data-i18n="chartsIntro">Airport, taxi, SID, STAR and approach charts.</p></div><span id="charts-status-pill" class="module-status configuration-required">SETUP REQUIRED</span></header>
+          <div class="charts-layout">
+            <article class="chart-browser efb-card">
+              <div class="airport-chart-heading"><div><small>CURRENT AIRPORT</small><strong id="charts-airport">—</strong></div><span id="charts-sim-gate">SIM OFFLINE</span></div>
+              <div class="chart-types">
+                <button type="button" disabled><i>APT</i><span><strong>Airport</strong><small>Airport overview</small></span></button>
+                <button type="button" disabled><i>TXI</i><span><strong>Taxi</strong><small>Parking & taxi routes</small></span></button>
+                <button type="button" disabled><i>SID</i><span><strong>Departure</strong><small>Standard departures</small></span></button>
+                <button type="button" disabled><i>STAR</i><span><strong>Arrival</strong><small>Standard arrivals</small></span></button>
+                <button type="button" disabled><i>APP</i><span><strong>Approach</strong><small>Instrument approaches</small></span></button>
+                <button type="button" disabled><i>REF</i><span><strong>Reference</strong><small>Airport information</small></span></button>
+              </div>
+            </article>
+            <aside class="connector-card efb-card">
+              <span class="connector-logo">N</span><small>PROTECTED INTEGRATION</small><h2>Navigraph Developer Access</h2><p id="navigraph-detail">Für echte Charts benötigt diese App eine Navigraph-Developer-Freigabe und einen persönlichen Login.</p>
+              <ol><li>Developer-Zugang für das EFB beantragen</li><li>Client-Zugangsdaten nur im Windows-Host hinterlegen</li><li>Per Device-Login mit dem eigenen Navigraph-Konto verbinden</li></ol>
+              <div id="navigraph-login-code" class="login-code" hidden><small>DEVICE CODE</small><strong id="navigraph-user-code">—</strong><a id="navigraph-verification-link" href="https://navigraph.com/code" target="_blank" rel="noreferrer">CODE BESTÄTIGEN</a></div>
+              <div class="connector-actions"><button id="navigraph-login" class="primary-card-action" type="button">NAVIGRAPH LOGIN</button><button id="navigraph-logout" class="secondary-card-action" type="button" hidden>LOGOUT</button><a class="secondary-card-action external-action" href="https://charts.navigraph.com/" target="_blank" rel="noreferrer">CHARTS ÖFFNEN</a></div>
+              <a class="text-action" href="https://developers.navigraph.com/docs/request-access" target="_blank" rel="noreferrer">Developer access beantragen →</a>
+              <small class="connector-note">Wichtig: Navigraph erlaubt Charts im virtuellen Cockpit, aber nicht eingebettet in einer eigenständigen Windows-/Tablet-App. Deshalb öffnet dieses EFB die offizielle Charts-App extern und speichert keine Charts.</small>
+            </aside>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="ground" hidden>
+          <header class="page-heading"><div><small>TURNAROUND MANAGEMENT</small><h1 data-i18n="groundServices">Ground Services</h1><p data-i18n="groundIntro">Local GSX installation, Couatl and simulator readiness.</p></div><span id="gsx-status-pill" class="module-status waiting">SEARCHING</span></header>
+          <div class="ground-layout">
+            <article class="efb-card ground-overview"><div class="ground-brand"><span>GSX</span><div><small>LOCAL CONNECTOR</small><h2 id="gsx-title">Installation wird gesucht</h2></div></div><p id="gsx-detail">GSX Pro wird in den Standardordnern gesucht.</p><div class="bridge-facts"><span><small>INSTALLATION</small><b id="gsx-install">NICHT ERKANNT</b></span><span><small>SIMCONNECT</small><b id="gsx-sim">OFFLINE</b></span><span><small>COUATL RUNTIME</small><b id="gsx-control">OFFLINE</b></span></div><div id="gsx-setup-steps" class="setup-steps"></div><div class="connector-actions"><button id="gsx-refresh" class="primary-card-action" type="button">CHECK AGAIN</button><a class="secondary-card-action external-action" href="https://www.fsdreamteam.com/products_gsxpro.html" target="_blank" rel="noreferrer">FSDT / INSTALLER</a></div></article>
+            <article class="efb-card service-panel"><div class="section-title"><h2>Available services</h2><span id="gsx-service-status">NATIVE GSX MENU</span></div><div id="gsx-services" class="service-grid"></div><p class="safety-note">GSX veröffentlicht keine allgemeine Fernsteuerungs-API für externe EFBs. Der Statuscheck ist echt; Servicebefehle bleiben deshalb im nativen GSX-Menü. Beim Fenix A32X nutzt du „Mass &amp; Balance → Load Aircraft → GSX“.</p></article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="atc" hidden>
+          <header class="page-heading"><div><small>ATC &amp; LIVE NETWORKS</small><h1 data-i18n="atcCenter">ATC Center</h1><p data-i18n="atcCombinedIntro">Clearances, all SayIntentions messages and read-only online network data in one place.</p></div><span id="atc-active-pill" class="module-status waiting">AUTO</span></header>
+          <div class="atc-layout combined-atc-layout">
+            <article class="efb-card provider-panel"><h2>Provider</h2><div class="provider-selector" role="radiogroup" aria-label="ATC-Quelle">
+              <button type="button" data-provider="auto"><i>A</i><span><strong>Automatic</strong><small>Beste verfügbare Quelle</small></span></button>
+              <button type="button" data-provider="sayintentions"><i>SI</i><span><strong>SayIntentions</strong><small>Native flightJSON / SAPI</small></span></button>
+              <button type="button" data-provider="beyondatc"><i>B</i><span><strong>BeyondATC</strong><small>Lokaler Log-Kompatibilitätsmodus</small></span></button>
+              <button type="button" data-provider="manual"><i>M</i><span><strong>Manual</strong><small>Eingefügte oder eigene Freigabe</small></span></button>
+            </div><div class="provider-statuses"><span><i id="atc-si-dot"></i><b>SayIntentions</b><small id="atc-si-detail">Wird gesucht</small></span><span><i id="atc-batc-dot"></i><b>BeyondATC</b><small id="atc-batc-detail">Log wird gesucht</small></span></div></article>
+            <article class="efb-card clearance-panel"><small>CURRENT CLEARANCE</small><h2 id="atc-clearance-station">—</h2><p id="atc-clearance-text">Noch keine Taxifreigabe empfangen.</p><time id="atc-clearance-time"></time></article>
+            <article class="efb-card atc-messages-card">
+              <div class="section-title"><div><small>SAYINTENTIONS</small><h2 data-i18n="siMessages">Messages</h2></div><div class="message-view-selector" role="group" aria-label="SayIntentions message filter"><button type="button" class="active" data-si-message-view="recent" data-i18n="recentRelevant">RECENT</button><button type="button" data-si-message-view="all" data-i18n="allSiMessages">ALL SI MESSAGES</button></div></div>
+              <p class="card-intro" data-i18n="siMessagesHelp">Shows the current session received through the official SayIntentions interface. Messages stay local.</p>
+              <div id="atc-si-message-list" class="atc-message-list"><p class="empty-list" data-i18n="noSiMessages">No SayIntentions messages received yet.</p></div>
+            </article>
+            <article class="efb-card manual-clearance"><h2>Freigabe manuell übernehmen</h2><p>Ideal als Fallback oder für Netzwerke ohne direkte Schnittstelle. Die Route wird anschließend aus dem Airport-Netz abgeleitet.</p><textarea id="manual-clearance-input" maxlength="1500" placeholder="Taxi to runway 23L via L5, M, L1, hold short runway 23L."></textarea><div><span id="manual-clearance-message" role="status"></span><button id="apply-manual-clearance" class="primary-card-action" type="button">FREIGABE ÜBERNEHMEN</button></div></article>
+            <aside class="compatibility-note atc-compatibility-note"><strong>BeyondATC Beta Connector</strong><span>BeyondATC veröffentlicht derzeit keine allgemeine Taxiweg-API. Der Connector liest opt-in ausschließlich lokale Logdateien und sendet nichts an BeyondATC.</span></aside>
+            <article class="efb-card network-selector-card"><div class="section-title"><div><small>READ ONLY</small><h2>VATSIM / IVAO</h2></div><span id="online-status-pill" class="module-status waiting">OFF</span></div><div class="network-selector" role="radiogroup"><button type="button" data-network="off" class="active">OFF</button><button type="button" data-network="vatsim">VATSIM</button><button type="button" data-network="ivao">IVAO</button></div><p id="online-detail">Choose VATSIM or IVAO to load relevant controllers.</p><button id="online-refresh" class="secondary-card-action" type="button" data-i18n="refresh">REFRESH</button><p class="compatibility-note"><strong data-i18n="networkAdvisoryTitle">ATC source advisory</strong><span data-i18n="networkAdvisory">When flying online, do not run an AI ATC conversation in parallel. This module never changes frequencies automatically.</span></p></article>
+            <article class="efb-card online-controllers-card"><div class="section-title"><h2 data-i18n="controllers">Controllers</h2><span id="online-updated">—</span></div><div id="online-controller-list" class="controller-list"><p class="empty-list">No network loaded.</p></div></article>
+            <article class="efb-card online-atis-card"><div class="section-title"><h2>ATIS</h2><span id="online-airports">—</span></div><div id="online-atis-list" class="atis-list"><p class="empty-list">No ATIS loaded.</p></div></article>
+          </div>
+        </section>
+
+        <section class="efb-page fenix-page" data-page="fenix" hidden>
+          <header class="page-heading"><div><small>FENIX A32X</small><h1>Fenix Remote EFB</h1><p data-i18n="fenixIntro">Connect the official Fenix web EFB running locally with the aircraft.</p></div><span id="fenix-status-pill" class="module-status waiting">NOT CHECKED</span></header>
+          <div class="fenix-layout">
+            <article class="efb-card fenix-connect-card"><div class="section-title"><h2 data-i18n="connection">Connection</h2><span>PORT 8083</span></div><p id="fenix-detail">Load a Fenix A32X flight first. The official Remote EFB is then available on the PC.</p><div class="inline-form"><input id="fenix-url" inputmode="url" value="http://127.0.0.1:8083/" aria-label="Fenix Remote EFB URL"><button id="fenix-connect" class="primary-card-action" type="button" data-i18n="connect">CONNECT</button></div><div class="connector-actions"><button id="fenix-embed" class="secondary-card-action" type="button" disabled data-i18n="showHere">SHOW HERE</button><a id="fenix-open" class="secondary-card-action external-action" href="http://127.0.0.1:8083/" target="_blank" rel="noreferrer" data-i18n="openSeparate">OPEN SEPARATELY</a></div><ol class="fenix-help"><li>Start MSFS and load the Fenix A32X.</li><li>Keep the Fenix App running.</li><li>For a tablet, use the Windows PC address instead of 127.0.0.1.</li></ol><a class="text-action" href="https://support.fenixsim.com/hc/en-us/articles/12458456428303-Linking-your-tablet-to-the-EFB" target="_blank" rel="noreferrer">Official Fenix tablet guide →</a></article>
+            <article class="efb-card fenix-frame-card"><div class="fenix-frame-placeholder" id="fenix-placeholder"><strong>FENIX REMOTE EFB</strong><span data-i18n="fenixPlaceholder">Connect first, then display the official EFB here.</span></div><iframe id="fenix-frame" title="Fenix Remote EFB" sandbox="allow-forms allow-scripts allow-same-origin allow-popups" hidden></iframe></article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="automations" hidden>
+          <header class="page-heading"><div><small>AIRCRAFT LOGIC</small><h1 data-i18n="automations">Automations</h1><p data-i18n="automationsIntro">Read approved MSFS/Fenix variables and run one-shot actions when a phase, app or variable condition changes.</p></div><span id="automation-status-pill" class="module-status waiting">TEST</span></header>
+          <div class="automation-layout">
+            <article class="efb-card automation-master-card"><div class="section-title"><div><small data-i18n="automationMaster">MASTER MODE</small><h2 data-i18n="automationSafety">Safe by default</h2></div><select id="automation-mode"><option value="off" data-i18n="alertOff">Off</option><option value="test" data-i18n="automationTest">Test / log only</option><option value="armed" data-i18n="automationArmed">Armed</option></select></div><p id="automation-detail">Test mode records triggers but does not send actions to MSFS.</p><div class="automation-safety-strip"><strong data-i18n="automationOneShot">ONE SHOT + COOLDOWN</strong><span data-i18n="automationSafetyHelp">Rules run only on a state transition. Variable writes must be explicitly allowlisted below.</span></div></article>
+            <article class="efb-card automation-variable-card"><div class="section-title"><div><small>SIMCONNECT</small><h2 data-i18n="monitoredVariables">Monitored variables</h2></div><span id="automation-variable-count">0</span></div><p data-i18n="variablesHelp">Use documented SimVars or aircraft-specific L: / Z: variables. Names can change with aircraft updates.</p><div class="automation-variable-form"><label><span data-i18n="variableLabel">Label</span><input id="automation-variable-label" maxlength="80" placeholder="e.g. Beacon"></label><label><span data-i18n="variableName">Variable name</span><input id="automation-variable-name" maxlength="120" placeholder="L:VARIABLE_NAME"></label><label><span data-i18n="unit">Unit</span><input id="automation-variable-unit" maxlength="32" value="number" placeholder="number"></label><button id="automation-add-variable" class="primary-card-action" type="button" data-i18n="addVariable">ADD VARIABLE</button></div><div id="automation-variable-list" class="automation-list"></div></article>
+            <article class="efb-card automation-rule-builder"><div class="section-title"><div><small>IF → THEN</small><h2 data-i18n="newAutomationRule">New rule</h2></div><span data-i18n="testFirst">TEST FIRST</span></div><div class="automation-rule-form"><label><span data-i18n="ruleName">Rule name</span><input id="automation-rule-name" maxlength="80" placeholder="Ground services lights"></label><label><span data-i18n="trigger">Trigger</span><select id="automation-trigger-type"><option value="phase-enter" data-i18n="triggerPhase">Enter flight phase</option><option value="atc-station">ATC handoff / station</option><option value="app-open" data-i18n="triggerApp">Open EFB app</option><option value="variable-condition" data-i18n="triggerVariable">Variable condition becomes true</option></select></label><label><span data-i18n="triggerValue">Trigger value</span><select id="automation-trigger-value"></select></label><label id="automation-condition-field" hidden><span data-i18n="condition">Condition</span><span class="automation-inline-fields"><select id="automation-operator"><option value="eq">=</option><option value="ne">≠</option><option value="gt">&gt;</option><option value="gte">≥</option><option value="lt">&lt;</option><option value="lte">≤</option></select><input id="automation-comparison-value" type="number" step="any" value="1"></span></label><label><span data-i18n="action">Action</span><select id="automation-action-type"><option value="input-event">MSFS 2024 Input Event</option><option value="sim-event" data-i18n="actionEvent">Send SimConnect event</option><option value="set-variable" data-i18n="actionVariable">Set approved variable</option></select></label><label><span data-i18n="target">Target</span><input id="automation-action-target" maxlength="120" list="automation-target-options" placeholder="LIGHTING_BEACON_1"><datalist id="automation-target-options"></datalist></label><label><span data-i18n="value">Value</span><input id="automation-action-value" type="number" step="any" value="1"></label><label><span data-i18n="cooldown">Cooldown</span><select id="automation-cooldown"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="30">30 s</option><option value="60">60 s</option></select></label><label><span>Ground guard</span><select id="automation-ground-guard"><option value="any">Any</option><option value="yes">On ground only</option><option value="no">Airborne only</option></select></label><label><span>Max. groundspeed (kt)</span><input id="automation-max-speed" type="number" min="0" max="250" step="1" placeholder="Optional"></label><label><span>Aircraft contains</span><input id="automation-aircraft-match" maxlength="80" placeholder="e.g. Fenix A320"></label></div><button id="automation-add-rule" class="primary-card-action" type="button" data-i18n="addRule">ADD RULE</button><p id="automation-form-message" class="form-message" role="status"></p></article>
+            <article class="efb-card automation-rules-card"><div class="section-title"><div><small>AUTOMATION ENGINE</small><h2 data-i18n="activeRules">Rules</h2></div><span id="automation-rule-count">0</span></div><div id="automation-rule-list" class="automation-list"></div></article>
+            <article class="efb-card automation-log-card"><div class="section-title"><div><small>AUDIT LOG</small><h2 data-i18n="automationLog">Recent activity</h2></div><span id="automation-log-status">—</span></div><div id="automation-log-list" class="automation-list"></div></article>
+          </div>
+        </section>
+
+        <section class="efb-page" data-page="settings" hidden>
+          <header class="page-heading"><div><small>SYSTEM</small><h1 data-i18n="settings">Settings & Integrations</h1><p data-i18n="settingsIntro">Local connectors, display, language and mobile access.</p></div><span class="version-pill">v1.3.0</span></header>
+          <div class="settings-grid">
+            <article class="efb-card settings-card"><h2>Integration status</h2><div class="integration-list"><div><i id="settings-msfs-dot"></i><span><strong>Microsoft Flight Simulator</strong><small id="settings-msfs">Wird gesucht</small></span></div><div><i id="settings-atc-dot"></i><span><strong>ATC &amp; Online Networks</strong><small id="settings-atc">Auto</small></span></div><div><i id="settings-nav-dot"></i><span><strong>Navigraph</strong><small id="settings-nav">Setup erforderlich</small></span></div><div><i id="settings-gsx-dot"></i><span><strong>GSX Pro</strong><small id="settings-gsx">Wird gesucht</small></span></div></div></article>
+            <article class="efb-card settings-card diagnostics-card"><div class="section-title"><div><small>SYSTEM HEALTH</small><h2 data-i18n="diagnostics">Diagnostics</h2></div><span id="diagnostics-status">NOT RUN</span></div><p data-i18n="diagnosticsHelp">Checks connections, GSX readiness, map cache and local flight data without exposing secrets or personal content.</p><div id="diagnostics-list" class="diagnostics-list"></div><div class="connector-actions"><button id="run-diagnostics" class="primary-card-action" type="button" data-i18n="runChecks">RUN CHECKS</button><button id="download-support" class="secondary-card-action" type="button" data-i18n="supportFile">SUPPORT FILE</button></div></article>
+            <article class="efb-card settings-card mobile-access-card"><div class="section-title"><div><small>SECOND SCREEN</small><h2 data-i18n="tabletSecondMonitor">Tablet & second monitor</h2></div><label class="compact-switch"><input id="sharing-enabled" type="checkbox" checked><span>LAN</span></label></div><p data-i18n="tabletHelp">iPad and Android connect directly to the Windows host on your local Wi-Fi. Every device gets an individually revocable access token.</p><button id="settings-share-button" class="primary-card-action" type="button" data-i18n="connectTablet">CONNECT IPAD / ANDROID</button><div id="paired-device-list" class="paired-device-list"><p class="empty-list" data-i18n="noPairedDevices">No paired devices yet.</p></div></article>
+            <article class="efb-card settings-card preference-card"><h2 data-i18n="appearanceLanguage">Appearance & language</h2><label for="language-select" data-i18n="language">Language</label><select id="language-select"><option value="system">System / Auto</option><option value="de">Deutsch</option><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="nl">Nederlands</option></select><label for="theme-select" data-i18n="theme">Theme</label><select id="theme-select"><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select><label for="text-size-select" data-i18n="textSize">Text size</label><select id="text-size-select"><option value="standard">Standard</option><option value="large">Large</option><option value="compact">Compact</option></select></article>
+            <article class="efb-card settings-card preference-card"><h2 data-i18n="displayPreferences">Display preferences</h2><div class="preference-pairs"><label for="weight-unit-select"><span data-i18n="weightUnit">Weight unit</span><select id="weight-unit-select"><option value="kg">kg</option><option value="lb">lb</option></select></label><label for="distance-unit-select"><span data-i18n="distanceUnit">Distance unit</span><select id="distance-unit-select"><option value="nm">NM</option><option value="km">km</option></select></label><label for="pressure-unit-select"><span data-i18n="pressureUnit">Pressure</span><select id="pressure-unit-select"><option value="hpa">hPa</option><option value="inhg">inHg</option></select></label><label for="temperature-unit-select"><span data-i18n="temperatureUnit">Temperature</span><select id="temperature-unit-select"><option value="c">°C</option><option value="f">°F</option></select></label><label for="clock-format-select"><span data-i18n="clockFormat">Clock</span><select id="clock-format-select"><option value="24">24 h</option><option value="12">12 h</option></select></label></div><label class="preference-toggle" for="show-phase-home"><span><strong data-i18n="phaseOverviewHome">Phase overview on Home</strong><small data-i18n="phaseOverviewHelp">Show the current phase, progress and recommended actions.</small></span><input id="show-phase-home" type="checkbox" checked></label></article>
+            <article class="efb-card settings-card preference-card"><h2 data-i18n="pilotProfile">Pilot profile</h2><p data-i18n="pilotProfileHelp">Apply a useful starting layout. You can adjust every app afterwards.</p><label for="pilot-profile-select" data-i18n="profile">Profile</label><select id="pilot-profile-select"><option value="custom" data-i18n="profileCustom">Custom</option><option value="airliner" data-i18n="profileAirliner">Airliner</option><option value="ga" data-i18n="profileGa">General aviation</option><option value="online" data-i18n="profileOnline">Online flying</option></select><button id="apply-pilot-profile" class="primary-card-action" type="button" data-i18n="applyProfile">APPLY PROFILE</button></article>
+            <article class="efb-card settings-card preference-card"><h2 data-i18n="flightPlanning">Flight planning</h2><label for="settings-simbrief-identifier"><span data-i18n="simbriefPilotId">SimBrief Pilot ID / username</span></label><div class="settings-inline-save"><input id="settings-simbrief-identifier" autocomplete="username" maxlength="80" placeholder="Pilot ID / username"><span id="settings-simbrief-saved" role="status" data-i18n="savedLocally">SAVED LOCALLY</span></div><small data-i18n="simbriefStoredHelp">Saved once on this device. No SimBrief password is stored.</small><label class="preference-toggle" for="simbrief-auto-import"><span><strong data-i18n="simbriefAutoImport">Import latest SimBrief OFP automatically</strong><small data-i18n="simbriefAutoImportHelp">Uses the saved Pilot ID/username after the Windows host starts. No SimBrief password is stored.</small></span><input id="simbrief-auto-import" type="checkbox"></label><label class="preference-toggle" for="destination-prefetch"><span><strong data-i18n="prepareDestination">Prepare destination data</strong><small data-i18n="prepareDestinationHelp">Preloads destination map and official METAR/TAF after an OFP import.</small></span><input id="destination-prefetch" type="checkbox" checked></label><button id="weather-refresh" class="secondary-card-action" type="button" data-i18n="refreshWeather">REFRESH METAR / TAF</button></article>
+            <article class="efb-card settings-card setup-assistant-card"><div><small>GUIDED SETUP</small><h2 data-i18n="setupAssistant">Setup Assistant</h2><p data-i18n="setupAssistantHelp">Run the guided setup again for display, SimBrief and simulator connections.</p></div><button id="open-setup-assistant" class="primary-card-action" type="button" data-i18n="startSetup">START SETUP</button></article>
+            <article class="efb-card settings-card preference-card"><h2 data-i18n="operationalAlerts">Operational alerts</h2><label for="alert-mode-select" data-i18n="alertMode">Alert mode</label><select id="alert-mode-select"><option value="normal" data-i18n="alertNormal">Visual + vibration</option><option value="visual" data-i18n="alertVisual">Visual only</option><option value="off" data-i18n="alertOff">Off</option></select><label for="arrival-trigger-select" data-i18n="arrivalPlanningTrigger">Arrival planning reminder</label><select id="arrival-trigger-select"><option value="50">50 NM</option><option value="100">100 NM</option><option value="150">150 NM</option><option value="200">200 NM</option></select><label for="fuel-buffer-select" data-i18n="fuelBuffer">Fuel buffer above reserve</label><select id="fuel-buffer-select"><option value="0">0 lb</option><option value="500">500 lb</option><option value="1000">1,000 lb</option><option value="2000">2,000 lb</option></select><label class="preference-toggle" for="focus-mode-default"><span><strong data-i18n="focusModeDefault">Start Flight Hub in Focus Mode</strong><small data-i18n="focusModeHelp">Hide secondary cards and keep phase-critical information visible.</small></span><input id="focus-mode-default" type="checkbox"></label></article>
+            <article class="efb-card settings-card app-customization-card"><div class="section-title"><div><small>EFB LAYOUT</small><h2 data-i18n="customizeApps">Customize apps</h2></div><button id="reset-app-layout" class="text-mini-action" type="button" data-i18n="resetLayout">RESET</button></div><p data-i18n="customizeAppsHelp">Choose which apps appear on Home and arrange them for this device. Flight and Settings remain available.</p><div id="app-customization-list" class="app-customization-list"></div></article>
+            <article class="efb-card settings-card new-flight-card"><h2 data-i18n="newFlight">New Flight</h2><p data-i18n="newFlightHelp">Clears the old clearance, route, hold-short points, gate, planning and imported OFP. Display and connector settings remain.</p><button id="settings-new-flight" class="danger-card-action" type="button" data-i18n="resetFlight">RESET FLIGHT DATA</button></article>
+            <article class="efb-card settings-card backup-card"><div class="section-title"><div><small>LOCAL DATA</small><h2 data-i18n="backupRestore">Backup & restore</h2></div><span id="backup-status">READY</span></div><p data-i18n="backupHelp">Exports flight archive, app layout, units and safe automation rules. Access tokens and API credentials are never included.</p><div class="connector-actions"><button id="export-backup" class="primary-card-action" type="button" data-i18n="exportBackup">EXPORT BACKUP</button><button id="import-backup" class="secondary-card-action" type="button" data-i18n="restoreBackup">RESTORE</button><input id="backup-file" type="file" accept="application/json,.json" hidden></div></article>
+            <article class="efb-card settings-card update-card"><div class="section-title"><div><small>WINDOWS APP</small><h2 data-i18n="updates">Updates</h2></div><span id="update-version">v1.3.0</span></div><p id="update-detail" data-i18n="updateReadyManual">Installed with the Windows setup. Future setup files update the app in place and keep local data.</p><div class="update-progress" id="update-progress" hidden><i></i><span id="update-progress-label">0%</span></div><div class="connector-actions"><button id="check-update" class="primary-card-action" type="button" data-i18n="checkUpdates">CHECK FOR UPDATES</button><button id="install-update" class="secondary-card-action" type="button" hidden data-i18n="restartInstall">RESTART &amp; INSTALL</button></div></article>
+            <article class="efb-card settings-card legal-card"><div><small>ABOUT</small><h2 data-i18n="legalLicenses">Legal &amp; licenses</h2><p data-i18n="legalSummary">Attributions, open-source licenses, trademarks, privacy and simulation-use notice.</p></div><button id="open-legal" class="secondary-card-action" type="button" data-i18n="openLegal">OPEN</button></article>
+            <article class="efb-card settings-card"><h2>Connector configuration</h2><p>Optionale lokale Variablen für den Windows-Host:</p><code>NAVIGRAPH_CLIENT_ID</code><code>NAVIGRAPH_CLIENT_SECRET</code><code>BEYONDATC_LOG_DIR</code><code>GSX_ADDON_MANAGER</code><code>FLIGHT_DECK_UPDATE_URL</code><small>Zugangsdaten werden nicht an Browser oder Mobilgerät ausgegeben. Der Update-Kanal muss HTTPS verwenden.</small></article>
+            <article class="efb-card settings-card"><h2>Data sources</h2><p>Airport-Vektoren: OpenStreetMap und OurAirports. Live-Flugdaten: SimConnect. ATC: gewählter lokaler Provider. Online-Netzwerke werden nur auf Anforderung gelesen.</p><div class="source-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · ODbL</a><a href="https://ourairports.com/data/" target="_blank" rel="noreferrer">OurAirports · Public Domain</a></div></article>
+          </div>
+        </section>
+      </main>
+      <footer class="global-footer"><span>Flight Deck EFB</span><strong>Flight simulation use only — not for real-world navigation.</strong></footer>
+    </div>
+
+    <dialog id="new-flight-dialog" class="modal confirm-modal">
+      <form method="dialog" class="modal-shell compact-modal-shell">
+        <button class="modal-close" value="cancel" aria-label="Close">×</button>
+        <div class="modal-heading"><span class="modal-icon">↻</span><div><small>FLIGHT SESSION</small><h2 data-i18n="startNewFlight">Start a new flight?</h2></div></div>
+        <p data-i18n="newFlightConfirm">The current taxi route, clearance, hold-short points, gate, manual planning and SimBrief OFP will be cleared. Theme, language and connector setup stay unchanged.</p>
+        <div class="confirm-actions"><button value="cancel" class="secondary-card-action" data-i18n="cancel">CANCEL</button><button id="confirm-new-flight" value="confirm" class="danger-card-action" type="button" data-i18n="newFlight">NEW FLIGHT</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="onboarding-dialog" class="modal onboarding-modal">
+      <form method="dialog" class="modal-shell onboarding-shell">
+        <div class="modal-heading"><span class="modal-icon">A</span><div><small>WELCOME ABOARD</small><h2 data-i18n="setupEfb">Set up Flight Deck EFB</h2></div></div>
+        <p class="onboarding-intro" data-i18n="setupEfbHelp">A short setup keeps the EFB readable on your tablet or second monitor and verifies the optional simulator connectors.</p>
+        <div class="onboarding-progress" aria-label="Setup progress"><i class="active">1</i><span></span><i>2</i><span></span><i>3</i></div>
+        <section class="onboarding-step" data-onboarding-step="1">
+          <div class="onboarding-step-heading"><small>STEP 1 / 3</small><h3 data-i18n="displayProfile">Display & profile</h3><p data-i18n="displayProfileHelp">Choose a readable setup for this screen. You can change everything later.</p></div>
+          <div class="onboarding-grid">
+            <label><span>Language</span><select id="onboarding-language"><option value="system">System / Auto</option><option value="de">Deutsch</option><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="nl">Nederlands</option></select></label>
+            <label><span>Appearance</span><select id="onboarding-theme"><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+            <label><span>Text size</span><select id="onboarding-text-size"><option value="standard">Standard</option><option value="large">Large</option><option value="compact">Compact</option></select></label>
+            <label><span>Pilot profile</span><select id="onboarding-profile"><option value="airliner">Airliner</option><option value="ga">General aviation</option><option value="online">Online flying</option><option value="custom">Custom</option></select></label>
+          </div>
+        </section>
+        <section class="onboarding-step" data-onboarding-step="2" hidden>
+          <div class="onboarding-step-heading"><small>STEP 2 / 3</small><h3>SimBrief</h3><p data-i18n="simbriefSetupHelp">Enter your Pilot ID once. The EFB remembers it on this device.</p></div>
+          <label class="onboarding-wide-field"><span data-i18n="simbriefPilotId">SimBrief Pilot ID / username</span><input id="onboarding-simbrief-identifier" autocomplete="username" maxlength="80" placeholder="Pilot ID / username"><small data-i18n="simbriefStoredHelp">Saved locally. No SimBrief password is stored.</small></label>
+          <label class="preference-toggle onboarding-toggle" for="onboarding-simbrief-auto"><span><strong data-i18n="simbriefAutoImport">Import latest SimBrief OFP automatically</strong><small data-i18n="simbriefAutoImportHelp">Uses the saved Pilot ID after the Windows host starts.</small></span><input id="onboarding-simbrief-auto" type="checkbox"></label>
+        </section>
+        <section class="onboarding-step" data-onboarding-step="3" hidden>
+          <div class="onboarding-step-heading"><small>STEP 3 / 3</small><h3 data-i18n="connectionCheck">Connection check</h3><p data-i18n="connectionCheckHelp">Start MSFS and your optional ATC tools. The EFB keeps retrying automatically.</p></div>
+          <div id="onboarding-checks" class="onboarding-checks"><span><i></i>Checking MSFS and integrations …</span></div>
+        </section>
+        <div class="onboarding-actions"><button id="onboarding-later" value="later" class="secondary-card-action" type="button" data-i18n="later">LATER</button><button id="onboarding-back" class="secondary-card-action" type="button" hidden data-i18n="back">BACK</button><button id="onboarding-next" class="primary-card-action" type="button" data-i18n="continue">CONTINUE</button><button id="onboarding-finish" value="finish" class="primary-card-action" type="button" hidden data-i18n="finishSetup">FINISH SETUP</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="legal-dialog" class="modal legal-modal">
+      <form method="dialog" class="modal-shell legal-shell">
+        <button class="modal-close" value="close" aria-label="Close">×</button>
+        <div class="modal-heading"><span class="modal-icon">§</span><div><small>FLIGHT DECK EFB</small><h2 data-i18n="legalLicenses">Legal &amp; licenses</h2></div></div>
+        <div class="legal-content">
+          <section><h3 data-i18n="simulationOnly">Simulation only</h3><p><strong>Flight simulation use only — not for real-world navigation.</strong></p></section>
+          <section><h3 data-i18n="dataAttribution">Data &amp; attribution</h3><p>Airport map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">ODbL 1.0</a>. Airport reference data: <a href="https://ourairports.com/data/" target="_blank" rel="noreferrer">OurAirports</a>, Public Domain.</p></section>
+          <section><h3 data-i18n="thirdPartySoftware">Third-party software</h3><p>Electron, Node.js, Leaflet, node-simconnect and QRCode are distributed under their respective open-source licenses. The complete notices are included in <code>THIRD-PARTY-NOTICES.md</code> with every installer.</p></section>
+          <section><h3 data-i18n="trademarks">Trademarks &amp; integrations</h3><p>Microsoft Flight Simulator, SayIntentions.AI, BeyondATC, Navigraph, SimBrief, Fenix, GSX, VATSIM and IVAO are trademarks or names of their respective owners. Flight Deck EFB is an independent companion and is not endorsed by or affiliated with those providers unless expressly stated.</p></section>
+          <section><h3 data-i18n="privacyLocal">Local privacy</h3><p data-i18n="privacyLocalDetail">Flight archive, settings and access tokens are stored locally on the Windows PC. The support export excludes API keys, tokens, ATC messages and flight notes.</p></section>
+          <section><h3>Copyright</h3><p>Copyright © 2026 Christoph Heckner. Der Anwendungscode steht unter der mitgelieferten MIT-Lizenz; Daten, Laufzeiten und Bibliotheken behalten ihre jeweiligen Lizenzen.</p></section>
+        </div>
+        <div class="confirm-actions"><button value="close" class="primary-card-action" data-i18n="close">CLOSE</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="share-dialog" class="modal share-modal">
+      <form method="dialog" class="modal-shell">
+        <button class="modal-close" value="close" aria-label="Schließen">×</button>
+        <div class="modal-heading">
+          <span class="modal-icon">⌁</span>
+          <div><small>MOBILE MOVING MAP</small><h2>Auf iPad oder Android öffnen</h2></div>
+        </div>
+        <div class="share-content">
+          <div class="qr-frame"><img id="share-qr" alt="QR-Code zum Öffnen der Moving Map"></div>
+          <div class="share-instructions">
+            <ol>
+              <li>Mobilgerät mit demselben WLAN verbinden.</li>
+              <li>QR-Code scannen oder Adresse im Browser öffnen.</li>
+              <li>Falls gefragt, die sechsstellige PIN eingeben.</li>
+            </ol>
+            <div class="pin-card"><small>PAIRING PIN</small><strong id="pairing-pin">—— ——</strong></div>
+            <div id="sharing-urls" class="sharing-urls"></div>
+            <p class="firewall-note">Beim ersten Start den Zugriff in der Windows-Firewall für private Netzwerke erlauben.</p>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="plan-dialog" class="modal planner-modal">
+      <div class="planner-shell">
+        <header class="planner-heading">
+          <div><small>GROUND NAVIGATION</small><h2>Taxiweg planen</h2><p>Ohne SI, vor dem Abflug oder bereits vor der Landung.</p></div>
+          <button id="planner-close" class="modal-close" type="button" aria-label="Schließen">×</button>
+        </header>
+
+        <div class="planner-scroll">
+          <section class="planner-section airport-picker-section">
+            <label for="airport-search">Flughafen</label>
+            <div class="airport-search-wrap">
+              <input id="airport-search" type="search" autocomplete="off" placeholder="ICAO, Flughafen oder Stadt">
+              <span id="airport-search-spinner" class="field-spinner" hidden></span>
+            </div>
+            <div id="airport-results" class="airport-results" hidden></div>
+            <div id="selected-airport" class="selected-airport" hidden>
+              <span><strong id="selected-airport-icao">—</strong><small id="selected-airport-name">—</small></span>
+              <button id="change-airport" type="button">ÄNDERN</button>
+            </div>
+          </section>
+
+          <section class="planner-section route-builder-section">
+            <div class="planner-field">
+              <label for="planner-mode">Was möchtest du planen?</label>
+              <select id="planner-mode">
+                <option value="departure">Zum Holding Point einer Runway</option>
+                <option value="arrival">Von der Runway zu einem Gate / Stand</option>
+                <option value="custom">Eigene Route auf der Karte</option>
+              </select>
+            </div>
+            <div id="runway-field" class="planner-field">
+              <label for="planner-runway">Runway</label>
+              <select id="planner-runway"><option value="">Runway auswählen</option></select>
+            </div>
+            <div id="start-field" class="planner-field">
+              <label for="planner-start">Start</label>
+              <select id="planner-start"><option value="aircraft">Aktuelle Flugzeugposition</option></select>
+            </div>
+            <div id="destination-field" class="planner-field" hidden>
+              <label for="planner-destination">Gate / Stand</label>
+              <select id="planner-destination"><option value="">Stand auswählen</option></select>
+            </div>
+            <div id="custom-fields" class="custom-fields" hidden>
+              <button id="pick-custom-start" class="map-pick-button" type="button"><i>A</i><span><strong>Start auf Karte setzen</strong><small id="custom-start-value">Noch nicht gesetzt</small></span></button>
+              <button id="pick-custom-end" class="map-pick-button" type="button"><i>B</i><span><strong>Ziel auf Karte setzen</strong><small id="custom-end-value">Noch nicht gesetzt</small></span></button>
+            </div>
+            <button id="find-routes" class="primary-action" type="button">TAXIROUTEN BERECHNEN</button>
+            <p id="planner-message" class="planner-message" role="status"></p>
+          </section>
+
+          <section class="planner-section route-options-section">
+            <div class="section-title"><h3>Routenoptionen</h3><span id="route-count"></span></div>
+            <div id="route-options" class="route-options"><p>Wähle Flughafen und Ziel, um passende Routen zu berechnen.</p></div>
+          </section>
+        </div>
+
+        <footer class="planner-footer">
+          <button id="start-guidance" class="primary-action" type="button" disabled>GUIDANCE STARTEN</button>
+          <button id="clear-plan" class="secondary-action" type="button">ROUTE LÖSCHEN</button>
+          <small>Nur für Flugsimulation. ATC-Anweisungen und Airport-Beschilderung haben immer Vorrang.</small>
+        </footer>
+      </div>
+    </dialog>
+
+    <div id="pair-overlay" class="pair-overlay" hidden>
+      <form id="pair-form" class="pair-card">
+        <div class="brand centered"><span class="brand-mark"><span></span></span><span class="brand-copy"><strong>FLIGHT DECK EFB</strong><small>FLIGHT OPS</small></span></div>
+        <small>MOBILE CONNECTION</small>
+        <h1>Mit Windows-App verbinden</h1>
+        <p>Gib die sechsstellige PIN ein, die in der Windows-App angezeigt wird.</p>
+        <label for="pin-input">Pairing PIN</label>
+        <input id="pin-input" name="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+        <button type="submit">Moving Map öffnen</button>
+        <span id="pair-error" class="pair-error" role="alert"></span>
+      </form>
+    </div>
+
+    <script src="/vendor/leaflet/leaflet.js"></script>
+    <script type="module" src="/app.js?v=1.3.0"></script>
+  </body>
+</html>
