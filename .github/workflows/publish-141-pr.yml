@@ -1,0 +1,105 @@
+name: Publish Flight Deck EFB 1.4.1 via PR trigger
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: ${{ github.head_ref == 'publish/1.4.1' }}
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_SHA: 7f95b640e5b649017fae59b7eeb8e2c0e6c458fe
+    steps:
+      - name: Checkout validated 1.4.1 source
+        uses: actions/checkout@v5
+        with:
+          ref: 7f95b640e5b649017fae59b7eeb8e2c0e6c458fe
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify source
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.4.1') { throw "Expected 1.4.1, got $version" }
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/state-engine.mjs
+          node --check src/taxi-route-planner.mjs
+          node --check public/app.js
+          node --check public/i18n.js
+          if (Test-Path 'src/navigraph-client.mjs') { throw 'Navigraph backend must remain disabled.' }
+
+      - name: Build airport data and Windows installer
+        run: |
+          npm run prepare-data
+          npm run dist
+
+      - name: Smoke test packaged Windows app
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-unpacked/Flight Deck EFB.exe'
+          if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo') -PassThru
+          try {
+            Start-Sleep -Seconds 10
+            $process.Refresh()
+            if ($process.HasExited) { throw "Packaged Flight Deck EFB exited during startup with code $($process.ExitCode)." }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Verify tag and updater assets
+        shell: pwsh
+        run: |
+          foreach ($file in @('dist/Flight-Deck-EFB-Setup-1.4.1.exe','dist/Flight-Deck-EFB-Setup-1.4.1.exe.blockmap','dist/latest.yml')) {
+            if (!(Test-Path $file)) { throw "Missing release asset: $file" }
+          }
+          $latest = Get-Content dist/latest.yml -Raw
+          if ($latest -notmatch 'version:\s*1\.4\.1') { throw 'latest.yml does not advertise 1.4.1.' }
+          git fetch --tags --force
+          $tagged = git rev-list -n 1 v1.4.1
+          if ($tagged -ne $env:RELEASE_SHA) { throw "v1.4.1 points to unexpected commit $tagged" }
+
+      - name: Publish GitHub release
+        shell: pwsh
+        run: |
+          $assets = @('dist/Flight-Deck-EFB-Setup-1.4.1.exe','dist/Flight-Deck-EFB-Setup-1.4.1.exe.blockmap','dist/latest.yml')
+          gh release view v1.4.1 --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload v1.4.1 @assets --repo $env:GITHUB_REPOSITORY --clobber
+            if ($LASTEXITCODE -ne 0) { throw 'Uploading 1.4.1 release assets failed.' }
+            gh release edit v1.4.1 --repo $env:GITHUB_REPOSITORY --draft=false --prerelease=false --title 'Flight Deck EFB 1.4.1'
+          } else {
+            gh release create v1.4.1 @assets --repo $env:GITHUB_REPOSITORY --title 'Flight Deck EFB 1.4.1' --notes 'Flight Deck EFB 1.4.1. See CHANGELOG.md for the complete list of changes. Flight simulation use only — not for real-world navigation.' --verify-tag
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Publishing 1.4.1 GitHub release failed.' }
+          $release = gh release view v1.4.1 --repo $env:GITHUB_REPOSITORY --json tagName,isDraft,isPrerelease,assets | ConvertFrom-Json
+          if ($release.tagName -ne 'v1.4.1' -or $release.isDraft -or $release.isPrerelease) { throw 'Published release metadata is invalid.' }
+          $names = @($release.assets | ForEach-Object { $_.name })
+          foreach ($name in @('Flight-Deck-EFB-Setup-1.4.1.exe','Flight-Deck-EFB-Setup-1.4.1.exe.blockmap','latest.yml')) {
+            if ($name -notin $names) { throw "Published release is missing $name" }
+          }
+
+      - name: Record successful publication
+        shell: pwsh
+        run: |
+          $payload = @{ status = 'success'; run_id = '${{ github.run_id }}'; release_sha = $env:RELEASE_SHA; version = '1.4.1'; finished_at = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress
+          $base64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
+          $statusInfo = gh api "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status?ref=main" | ConvertFrom-Json
+          gh api --method PUT "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status" -f message="Record successful 1.4.1 publication" -f content="$base64" -f sha="$($statusInfo.sha)" -f branch="main"
