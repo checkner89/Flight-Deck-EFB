@@ -64,7 +64,7 @@ jobs:
           foreach ($required in @('renderTrackingTraffic','nextComSuggestion','importSimBriefFromHome','showHelpTexts','checkForUpdate','trafficRouteFields','homeGateLabel','ensureAutomaticAtcProvider','setSettingsTab','setAtcTab','setFlightHubTab')) {
             if ($app -notmatch [regex]::Escape($required)) { throw "Missing application behavior: $required" }
           }
-          if ($app -notmatch "trafficBoardView === 'all' \? all") { throw 'Flightboard ALL does not use all nearby traffic.' }
+          if ($app -notmatch "trafficBoardView === 'all' \|\| !airport \? all : airportTraffic") { throw 'Flightboard ALL does not use all nearby traffic.' }
           if ($state -notmatch 'guidanceSegmentIndex') { throw 'Progressive taxi guidance state missing.' }
           if ($state -notmatch 'minSegment = 0, maxSegment = null') { throw 'Segment-window taxi guidance missing.' }
 
