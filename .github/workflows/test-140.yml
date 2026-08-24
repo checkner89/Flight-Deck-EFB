@@ -36,6 +36,7 @@ jobs:
           node scripts/apply-140-c1b.mjs
           node scripts/apply-140-c2.mjs
           node scripts/apply-140-rc2.mjs
+          node scripts/apply-140-rc2b.mjs
 
       - name: Verify source and UX contract
         shell: pwsh
