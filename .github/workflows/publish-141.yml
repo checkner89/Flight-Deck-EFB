@@ -133,7 +133,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Uploading 1.4.1 release assets failed.' }
             gh release edit v1.4.1 --repo $env:GITHUB_REPOSITORY --draft=false --prerelease=false --title 'Flight Deck EFB 1.4.1'
           } else {
-            gh release create v1.4.1 @assets --repo $env:GITHUB_REPOSITORY --title 'Flight Deck EFB 1.4.1' --notes-from-tag --verify-tag
+            gh release create v1.4.1 @assets --repo $env:GITHUB_REPOSITORY --title 'Flight Deck EFB 1.4.1' --notes 'Flight Deck EFB 1.4.1. See CHANGELOG.md for the complete list of changes. Flight simulation use only — not for real-world navigation.' --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing 1.4.1 GitHub release failed.' }
           $release = gh release view v1.4.1 --repo $env:GITHUB_REPOSITORY --json tagName,isDraft,isPrerelease,assets | ConvertFrom-Json
@@ -151,4 +151,10 @@ jobs:
         run: |
           $payload = @{ status = $env:FINAL_STATUS; run_id = '${{ github.run_id }}'; release_sha = $env:RELEASE_SHA; version = '1.4.1'; finished_at = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress
           $base64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
-          gh api --method PUT "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status" -f message="Record 1.4.1 publish status" -f content="$base64" -f branch="main"
+          $statusInfo = $null
+          try { $statusInfo = gh api "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status?ref=main" | ConvertFrom-Json } catch {}
+          if ($statusInfo?.sha) {
+            gh api --method PUT "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status" -f message="Record 1.4.1 publish status" -f content="$base64" -f sha="$($statusInfo.sha)" -f branch="main"
+          } else {
+            gh api --method PUT "repos/$env:GITHUB_REPOSITORY/contents/.publish-141-status" -f message="Record 1.4.1 publish status" -f content="$base64" -f branch="main"
+          }
