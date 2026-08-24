@@ -214,7 +214,7 @@ export function distanceMeters(a, b) {
   return Math.hypot(localA.x - localB.x, localA.y - localB.y);
 }
 
-export function closestPointOnPath(position, path) {
+export function closestPointOnPath(position, path, { minSegment = 0, maxSegment = null } = {}) {
   if (!position || !Array.isArray(path) || path.length === 0) return null;
   if (path.length === 1) {
     return {
@@ -230,7 +230,9 @@ export function closestPointOnPath(position, path) {
   const localPosition = toLocalMeters(position, referenceLatitude);
   let best = null;
 
-  for (let index = 0; index < path.length - 1; index += 1) {
+  const firstSegment = Math.max(0, Math.min(path.length - 2, Number(minSegment) || 0));
+  const lastSegment = Math.max(firstSegment, Math.min(path.length - 2, Number.isFinite(Number(maxSegment)) ? Number(maxSegment) : path.length - 2));
+  for (let index = firstSegment; index <= lastSegment; index += 1) {
     const start = toLocalMeters(path[index], referenceLatitude);
     const end = toLocalMeters(path[index + 1], referenceLatitude);
     const dx = end.x - start.x;
@@ -326,6 +328,7 @@ export class StateEngine extends EventEmitter {
     super();
     this.thresholds = { ...DEFAULT_THRESHOLDS, ...thresholds };
     this.offRouteSince = null;
+    this.guidanceSegmentIndex = null;
     this.state = {
       updatedAt: new Date().toISOString(),
       mode: 'live',
@@ -1033,6 +1036,7 @@ export class StateEngine extends EventEmitter {
     this.state.taxi.pathMetadata = metadata ? structuredClone(metadata) : null;
     this.state.taxi.pathRevision += 1;
     this.offRouteSince = null;
+    this.guidanceSegmentIndex = null;
   }
 
   #refreshHoldShorts() {
@@ -1082,10 +1086,16 @@ export class StateEngine extends EventEmitter {
       this.offRouteSince = null;
       return;
     }
-
-    const closest = closestPointOnPath(aircraft, path);
+    const previousSegment = Number.isInteger(this.guidanceSegmentIndex) ? this.guidanceSegmentIndex : null;
+    const closest = previousSegment === null
+      ? closestPointOnPath(aircraft, path)
+      : closestPointOnPath(aircraft, path, {
+        minSegment: Math.max(0, previousSegment - 2),
+        maxSegment: Math.min(path.length - 2, previousSegment + 14),
+      });
     if (!closest) return;
     const deviation = closest.distanceMeters;
+    if (deviation < 180) this.guidanceSegmentIndex = closest.segmentIndex;
     if (deviation > MAX_GUIDANCE_ROUTE_DISTANCE_METERS) {
       this.state.guidance = unavailableGuidance('route-position-mismatch');
       this.offRouteSince = null;

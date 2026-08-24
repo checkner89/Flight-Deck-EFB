@@ -5284,3 +5284,59 @@ html[data-theme="light"] button:disabled, html[data-theme="light"] .phase-quick-
 html[data-theme="light"] .home-phase-actions button { color:#0d615b !important; background:#e2f5f2 !important; border:1px solid #99cec8 !important; }
 html[data-theme="light"] .home-heading-actions .secondary-card-action { color:#17364a !important; background:#fff !important; }
 html[data-theme="light"] .auto-flight-detection { color:#153849; background:#e9f7f5; border-color:#a2d6d0; }
+
+/* v1.4.0 workflow/navigation additions */
+.floating-section-nav{position:sticky;top:10px;z-index:850;display:flex;gap:8px;width:max-content;max-width:calc(100% - 24px);margin:0 auto 18px;padding:7px;border:1px solid rgba(120,151,168,.34);border-radius:16px;background:color-mix(in srgb,var(--panel,#0b1822) 92%,transparent);box-shadow:0 10px 30px rgba(0,0,0,.16);backdrop-filter:blur(16px);overflow-x:auto}
+.floating-section-nav button{min-height:36px;padding:8px 13px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--text,#eaf4f7);font:700 11px/1.1 inherit;letter-spacing:.06em;white-space:nowrap}
+.floating-section-nav button:hover,.floating-section-nav button.active{border-color:rgba(91,220,202,.55);background:rgba(91,220,202,.14);color:var(--accent,#72e7d5)}
+.settings-health-card{grid-column:1/-1}
+.settings-health-card .integration-list{margin-bottom:18px}
+.auto-recorder-badge{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid rgba(91,220,202,.4);border-radius:11px;color:var(--accent,#72e7d5);font-size:11px;font-weight:800;letter-spacing:.06em}
+.com-next-station-card{grid-column:1/-1}
+.com-next-station-card #com-next-frequency{font-size:26px;letter-spacing:.03em}
+.update-modal-shell{max-width:560px}
+.update-modal-shell .update-progress{margin:16px 0}
+.onboarding-help-toggle{display:flex!important;align-items:center;justify-content:space-between;gap:14px}
+#display-name,#onboarding-display-name,#simbrief-quick-identifier{width:100%;box-sizing:border-box}
+.tracking-legend i.traffic{background:#f1b94d}
+.tracking-traffic-icon{background:transparent!important;border:0!important}
+.tracking-traffic-icon span{display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);width:max-content;padding:4px 7px 4px 5px;border-radius:10px;background:#132936;color:#fff;border:1px solid rgba(255,255,255,.6);box-shadow:0 4px 12px rgba(0,0,0,.3);font-size:10px;font-weight:800}
+.tracking-traffic-icon span:before{content:'✈';color:#f1b94d;font-size:13px}
+.tracking-traffic-icon.selected span{background:#f1b94d;color:#17242b;border-color:#fff}
+html[data-help-text="off"] .help-text,
+html[data-help-text="off"] .page-heading p,
+html[data-help-text="off"] .card-intro,
+html[data-help-text="off"] .safety-note,
+html[data-help-text="off"] .compatibility-note,
+html[data-help-text="off"] .settings-card>p,
+html[data-help-text="off"] .planner-heading p,
+html[data-help-text="off"] .onboarding-intro,
+html[data-help-text="off"] .onboarding-step-heading p{display:none!important}
+html[data-theme="light"] .floating-section-nav{background:rgba(246,250,252,.96);border-color:#aebdc6;box-shadow:0 10px 30px rgba(31,55,68,.12)}
+html[data-theme="light"] .floating-section-nav button{color:#173142;background:#edf3f6;border-color:#c5d1d8}
+html[data-theme="light"] .floating-section-nav button:hover,
+html[data-theme="light"] .floating-section-nav button.active{color:#063f3b;background:#c9f0ea;border-color:#55bfb1}
+html[data-theme="light"] :is(.secondary-card-action,.tracking-control,.text-mini-action,.message-view-selector button,.network-selector button,.tracking-basemap-selector button,.connector-actions button,.connector-actions a,button.secondary-action):not(:disabled){color:#102f40!important;background:#f8fbfc!important;border-color:#aebfc9!important}
+html[data-theme="light"] button:disabled,
+html[data-theme="light"] .secondary-card-action:disabled{opacity:1!important;color:#61747f!important;background:#dfe7eb!important;border-color:#bbc8cf!important}
+html[data-theme="light"] :is(.primary-card-action,.primary-action):not(:disabled){color:#073531!important;background:#72d9ca!important;border-color:#4cb7aa!important}
+html[data-theme="light"] .automatic-recorder-badge{color:#176b62;background:#e2f7f3;border-color:#75cfc3}
+@media(max-width:900px){.floating-section-nav{top:6px;max-width:100%;margin-bottom:12px}.floating-section-nav button{padding:8px 10px}.home-heading-actions{flex-wrap:wrap}}
+
+/* v1.4.0 RC2 layout fixes */
+[data-settings-panel][hidden],[data-atc-panel][hidden],.tracking-map-card[hidden],.tracking-recorder-card[hidden],.tracking-detail-layout[hidden]{display:none!important}
+.settings-layout:has([data-settings-panel]:not([hidden])){align-content:start}
+.atc-layout:has([data-atc-panel]:not([hidden])){align-content:start}
+.atc-auto-provider{grid-column:1/-1}
+.fenix-page .fenix-layout{grid-template-columns:minmax(250px,.30fr) minmax(0,1.70fr);min-height:calc(100vh - 165px)}
+.fenix-page .fenix-frame-card{min-height:calc(100vh - 165px);padding:6px}
+.fenix-page .fenix-frame-card iframe,.fenix-page .fenix-frame-placeholder{min-height:calc(100vh - 185px);height:100%}
+.home-flight-facts>span:nth-child(1){border-color:rgba(22,227,212,.32);background:linear-gradient(135deg,rgba(22,227,212,.10),rgba(22,227,212,.025))}
+.home-flight-facts>span:nth-child(2){border-color:rgba(45,184,255,.34);background:linear-gradient(135deg,rgba(45,184,255,.11),rgba(45,184,255,.025))}
+.home-flight-facts>span:nth-child(3){border-color:rgba(255,200,87,.34);background:linear-gradient(135deg,rgba(255,200,87,.10),rgba(255,200,87,.025))}
+.home-flight-facts>span:nth-child(1) b{color:#8ff5e9}.home-flight-facts>span:nth-child(2) b{color:#9bddff}.home-flight-facts>span:nth-child(3) b{color:#ffd878}
+.flightboard-table{max-height:calc(100vh - 285px);overflow:auto}
+html[data-theme="light"] .home-flight-facts>span:nth-child(1){background:#dff7f3;border-color:#79c9bd}html[data-theme="light"] .home-flight-facts>span:nth-child(1) b{color:#075f59}
+html[data-theme="light"] .home-flight-facts>span:nth-child(2){background:#e1f2fb;border-color:#82bddc}html[data-theme="light"] .home-flight-facts>span:nth-child(2) b{color:#15577a}
+html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf;border-color:#d4b55c}html[data-theme="light"] .home-flight-facts>span:nth-child(3) b{color:#735500}
+@media(max-width:1050px){.fenix-page .fenix-layout{grid-template-columns:1fr;min-height:auto}.fenix-page .fenix-frame-card{min-height:680px}.fenix-page .fenix-frame-card iframe,.fenix-page .fenix-frame-placeholder{min-height:660px}}

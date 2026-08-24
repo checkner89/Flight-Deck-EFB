@@ -33,7 +33,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.1';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -271,6 +271,7 @@ export async function createTaxiServer({
       detail: 'Der Windows-Installer aktualisiert die App unter Beibehaltung der lokalen Daten. Ein automatischer Release-Kanal ist noch nicht konfiguriert.',
     }),
     check: async () => ({ state: 'manual', currentVersion: APP_VERSION, configured: false }),
+    download: async () => ({ state: 'manual', currentVersion: APP_VERSION, configured: false }),
     install: async () => { throw new Error('Noch kein heruntergeladenes Update verfügbar.'); },
   };
 
@@ -441,6 +442,15 @@ export async function createTaxiServer({
         }
       }
 
+      if (pathname === '/api/update/download' && request.method === 'POST') {
+        if (!hostAuthenticated) return json(response, 403, { error: 'Updates können nur in der Windows-App heruntergeladen werden.' });
+        try {
+          return json(response, 202, await updater.download());
+        } catch (error) {
+          return json(response, 409, { error: error.message, ...(await updater.status()) });
+        }
+      }
+
       if (pathname === '/api/update/install' && request.method === 'POST') {
         if (!hostAuthenticated) return json(response, 403, { error: 'Updates können nur in der Windows-App installiert werden.' });
         try {
@@ -537,7 +547,7 @@ export async function createTaxiServer({
         const body = await readJsonBody(request, { maxBytes: 512_000 });
         const allowedPreferenceKeys = new Set([
           'language', 'theme', 'textSize', 'weightUnit', 'distanceUnit', 'pressureUnit', 'temperatureUnit', 'clockFormat',
-          'pilotProfile', 'alertMode', 'arrivalTriggerNm', 'fuelBufferPounds', 'focusMode', 'showPhaseHome', 'appLayout', 'simbriefIdentifier',
+          'displayName', 'showHelpTexts', 'alertMode', 'arrivalTriggerNm', 'fuelBufferPounds', 'focusMode', 'showPhaseHome', 'appLayout', 'simbriefIdentifier',
           'simbriefAutoImport', 'destinationPrefetch',
         ]);
         const preferences = body.preferences && typeof body.preferences === 'object'

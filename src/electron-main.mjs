@@ -22,10 +22,10 @@ function createUpdateService() {
   const set = (patch) => { value = { ...value, ...patch, currentVersion, updatedAt: new Date().toISOString() }; };
 
   if (app.isPackaged && process.platform === 'win32') {
-    autoUpdater.autoDownload = true;
+    autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.on('checking-for-update', () => set({ state: 'checking', percent: 0, detail: 'GitHub Release wird geprüft.' }));
-    autoUpdater.on('update-available', (info) => set({ state: 'downloading', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} wird heruntergeladen.`.replace(/\s+/g, ' ').trim() }));
+    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\s+/g, ' ').trim() }));
     autoUpdater.on('update-not-available', (info) => set({ state: 'current', percent: 0, releaseName: info?.version || currentVersion, detail: 'Flight Deck EFB ist aktuell.' }));
     autoUpdater.on('download-progress', (progress) => set({ state: 'downloading', percent: Math.round(progress.percent || 0), detail: `Update wird heruntergeladen: ${Math.round(progress.percent || 0)} %` }));
     autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', percent: 100, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist bereit. Neustart zum Installieren.`.replace(/\s+/g, ' ').trim() }));
@@ -38,6 +38,13 @@ function createUpdateService() {
       if (!app.isPackaged || process.platform !== 'win32') return { ...value };
       set({ state: 'checking', detail: 'GitHub Release wird geprüft.' });
       await autoUpdater.checkForUpdates();
+      return { ...value };
+    },
+    async download() {
+      if (!app.isPackaged || process.platform !== 'win32') return { ...value };
+      if (!['available', 'error'].includes(value.state)) return { ...value };
+      set({ state: 'downloading', percent: 0, detail: 'Update wird heruntergeladen.' });
+      await autoUpdater.downloadUpdate();
       return { ...value };
     },
     async install() {
@@ -153,7 +160,6 @@ async function createWindow() {
   mainWindow.show();
   mainWindow.focus();
   createTray();
-  setTimeout(() => updateService.check().catch(() => {}), 15_000);
 }
 
 app.setAppUserModelId('de.checkner.flightdeckefb');
