@@ -1,4 +1,4 @@
-# Third-party notices — Flight Deck EFB 1.2.0
+# Third-party notices — Flight Deck EFB 1.3.0
 
 Flight Deck EFB is an independent community project. It is not affiliated
 with or endorsed by SayIntentions.AI, Microsoft, Asobo Studio, TaxiNow,
@@ -7,12 +7,13 @@ Simulations, VATSIM, IVAO, BeyondATC, or any online network division.
 
 The application includes or uses:
 
-- Node.js — MIT and bundled third-party licenses; the recommended Windows
-  browser host includes the official Node.js LTS x64 runtime and its license.
-- Electron — MIT; used by the native Windows package. Its Windows
-  runtime also contains Chromium and bundled third-party licenses.
-- Squirrel.Windows — MIT; used for per-user installation, shortcuts, upgrades,
-  rollback metadata, and uninstall support in the Windows setup package.
+- Node.js — MIT and bundled third-party licenses; used as the application/build
+  runtime where applicable.
+- Electron — MIT; used by the native Windows package. Its Windows runtime also
+  contains Chromium and bundled third-party licenses.
+- electron-updater and electron-builder — MIT; used for GitHub Release update
+  checks and Windows packaging. The installer is generated with NSIS; bundled
+  installer components retain their own applicable notices and licenses.
 - Leaflet — BSD-2-Clause.
 - node-simconnect — LGPL-3.0-or-later.
 - qrcode and its runtime dependencies — MIT and compatible open-source
@@ -34,7 +35,8 @@ The application includes or uses:
 - SayIntentions.AI, SimBrief/Navigraph, BeyondATC, Fenix Remote EFB, and GSX —
   optional compatibility interfaces. Access and returned content remain
   subject to each provider's account, API, and product terms. No provider API
-  key is distributed with Flight Deck EFB.
+  key is distributed with Flight Deck EFB. Navigraph connectivity is disabled
+  in Flight Deck EFB 1.3.0.
 
 Product names including Microsoft Flight Simulator, SayIntentions.AI,
 BeyondATC, Navigraph, SimBrief, Fenix, GSX, VATSIM, and IVAO are trademarks or
@@ -48,10 +50,9 @@ Copyright © 2026 Christoph Heckner. Flight Deck EFB application code is
 provided under the accompanying MIT License. This license does not relicense
 third-party data, trademarks, runtimes, libraries, map tiles, or service APIs.
 
-The Node.js browser-host distribution retains `runtime/NODE-LICENSE.txt`. The
-Electron distribution retains `LICENSE`, `LICENSES.chromium.html`, and
-the runtime's other required notices. Individual dependency licenses remain
-with their packages in `node_modules` or `resources/app/node_modules`.
+The Electron distribution retains its runtime and Chromium third-party notices.
+Individual dependency licenses remain with their packages in `node_modules` or
+inside the packaged application resources as applicable.
 
 See `PRIVACY.md` for the local storage, LAN access, optional network requests,
 credential handling, export, and deletion summary.
