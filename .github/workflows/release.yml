@@ -12,6 +12,8 @@ on:
     branches:
       - main
       - feature/full-efb-shell
+    paths-ignore:
+      - 'build-status/**'
     tags:
       - 'v*'
 
@@ -103,3 +105,21 @@ jobs:
             dist/Flight-Deck-EFB-Setup-*.exe.blockmap
             dist/latest.yml
           if-no-files-found: error
+
+      - name: Record feature build status
+        if: ${{ always() && github.ref == 'refs/heads/feature/full-efb-shell' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build-status -Force | Out-Null
+          @"
+          run_id=${{ github.run_id }}
+          run_attempt=${{ github.run_attempt }}
+          status=${{ job.status }}
+          commit=${{ github.sha }}
+          version=$(node -p "require('./package.json').version")
+          "@ | Set-Content -Path build-status/feature-latest.txt -Encoding utf8
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-status/feature-latest.txt
+          git commit -m "Record feature build status for run ${{ github.run_id }}" || exit 0
+          git push origin HEAD:feature/full-efb-shell
