@@ -1,0 +1,133 @@
+name: Publish Flight Deck EFB 1.3.0 Assets
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'release-publish-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout v1.3.0
+        uses: actions/checkout@v5
+        with:
+          ref: v1.3.0
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Verify tagged source
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.3.0') { throw "Unexpected version $version" }
+          if (Test-Path 'src/navigraph-client.mjs') { throw 'Navigraph backend must remain disabled in 1.3.0.' }
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check public/app.js
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build OurAirports offline catalog
+        run: npm run prepare-data
+
+      - name: Verify OurAirports data
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'data/ourairports.min.json.gz')) { throw 'OurAirports catalog missing.' }
+          $size = (Get-Item 'data/ourairports.min.json.gz').Length
+          if ($size -lt 100000) { throw "OurAirports catalog unexpectedly small: $size" }
+          Write-Host "OurAirports catalog: $size bytes"
+
+      - name: Smoke test local EFB host
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'efb-smoke.out.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'efb-smoke.err.log'
+          $process = Start-Process -FilePath node -ArgumentList @('src/server.mjs', '--demo', '--port', '8745') -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          try {
+            $deadline = (Get-Date).AddSeconds(25)
+            $ready = $false
+            do {
+              Start-Sleep -Milliseconds 500
+              try {
+                $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8745/' -UseBasicParsing -TimeoutSec 2
+                if ($response.StatusCode -eq 200 -and $response.Content -match 'Flight Deck EFB') { $ready = $true }
+              } catch {}
+            } until ($ready -or (Get-Date) -gt $deadline)
+            if (!$ready) {
+              if (Test-Path $stdout) { Get-Content $stdout }
+              if (Test-Path $stderr) { Get-Content $stderr }
+              throw 'Flight Deck EFB host smoke test failed.'
+            }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Verify updater assets
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/Flight-Deck-EFB-Setup-1.3.0.exe',
+            'dist/Flight-Deck-EFB-Setup-1.3.0.exe.blockmap',
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing release asset: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch 'version:\s*1\.3\.0') { throw 'latest.yml does not advertise version 1.3.0.' }
+
+      - name: Create or update GitHub release
+        shell: pwsh
+        run: |
+          $repo = 'checkner89/Flight-Deck-EFB'
+          $assets = @(
+            'dist/Flight-Deck-EFB-Setup-1.3.0.exe',
+            'dist/Flight-Deck-EFB-Setup-1.3.0.exe.blockmap',
+            'dist/latest.yml'
+          )
+          gh release view v1.3.0 --repo $repo *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload v1.3.0 @assets --repo $repo --clobber
+            if ($LASTEXITCODE -ne 0) { throw 'Uploading release assets failed.' }
+            gh release edit v1.3.0 --repo $repo --draft=false --prerelease=false --title 'Flight Deck EFB 1.3.0'
+          } else {
+            gh release create v1.3.0 @assets --repo $repo --title 'Flight Deck EFB 1.3.0' --notes 'Restores the full Flight Deck EFB application on the validated SimConnect and GitHub updater foundation. Navigraph backend integration remains disabled in this release. Flight simulation use only — not for real-world navigation.' --verify-tag
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Publishing GitHub release failed.' }
+
+      - name: Record publish result
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release-status -Force | Out-Null
+          @"
+          status=${{ job.status }}
+          version=1.3.0
+          tag=v1.3.0
+          run_id=${{ github.run_id }}
+          "@ | Set-Content -Path release-status/publish-1.3.0.txt -Encoding utf8
+          git checkout main
+          git pull origin main
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release-status/publish-1.3.0.txt
+          git commit -m 'Record Flight Deck EFB 1.3.0 publish result' || exit 0
+          git push origin HEAD:main
