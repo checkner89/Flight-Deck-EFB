@@ -3,7 +3,7 @@ name: Test 1.4.0 Windows Build
 on:
   push:
     branches:
-      - feature/1.4.0-ux-workflows
+      - feature/1.4.0-rc2
   pull_request:
     branches:
       - main
@@ -35,6 +35,7 @@ jobs:
           node scripts/apply-140-c1a.mjs
           node scripts/apply-140-c1b.mjs
           node scripts/apply-140-c2.mjs
+          node scripts/apply-140-rc2.mjs
 
       - name: Verify source and UX contract
         shell: pwsh
@@ -52,15 +53,20 @@ jobs:
           $html = Get-Content public/index.html -Raw
           $app = Get-Content public/app.js -Raw
           $server = Get-Content src/server.mjs -Raw
-          foreach ($required in @('home-greeting','home-simbrief-import','floating-section-nav','update-dialog','planner-holding-point','com-next-station','show-help-texts')) {
+          $state = Get-Content src/state-engine.mjs -Raw
+          foreach ($required in @('home-greeting','home-simbrief-import','floating-section-nav','update-dialog','planner-holding-point','com-next-station','show-help-texts','data-settings-tab','data-atc-tab','data-flight-hub-tab')) {
             if ($html -notmatch [regex]::Escape($required)) { throw "Missing UI contract: $required" }
           }
           if ($html -match 'onboarding-profile') { throw 'Pilot profile is still present in onboarding.' }
           if ($html -match 'efb-app-tile tracking-app') { throw 'Separate Flight Tracking home tile is still present.' }
+          if ($html -match 'provider-selector') { throw 'Selectable ATC provider UI must be removed.' }
           if ($server -notmatch '/api/update/download') { throw 'Update download endpoint missing.' }
-          foreach ($required in @('renderTrackingTraffic','nextComSuggestion','importSimBriefFromHome','showHelpTexts','checkForUpdate')) {
+          foreach ($required in @('renderTrackingTraffic','nextComSuggestion','importSimBriefFromHome','showHelpTexts','checkForUpdate','trafficRouteFields','homeGateLabel','ensureAutomaticAtcProvider','setSettingsTab','setAtcTab','setFlightHubTab')) {
             if ($app -notmatch [regex]::Escape($required)) { throw "Missing application behavior: $required" }
           }
+          if ($app -notmatch "trafficBoardView === 'all' \? all") { throw 'Flightboard ALL does not use all nearby traffic.' }
+          if ($state -notmatch 'guidanceSegmentIndex') { throw 'Progressive taxi guidance state missing.' }
+          if ($state -notmatch 'minSegment = 0, maxSegment = null') { throw 'Segment-window taxi guidance missing.' }
 
       - name: Build OurAirports offline catalog
         run: npm run prepare-data
@@ -126,7 +132,7 @@ jobs:
       - name: Upload test artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Flight-Deck-EFB-1.4.0-Test
+          name: Flight-Deck-EFB-1.4.0-RC2-Test
           path: |
             dist/Flight-Deck-EFB-Setup-1.4.0.exe
             dist/Flight-Deck-EFB-Setup-1.4.0.exe.blockmap
