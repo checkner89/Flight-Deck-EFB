@@ -11,6 +11,7 @@ on:
   push:
     branches:
       - main
+      - feature/full-efb-shell
     tags:
       - 'v*'
 
@@ -32,34 +33,45 @@ jobs:
         with:
           node-version: 24
 
-      - name: Prepare restored Flight Deck EFB source
-        shell: pwsh
-        run: |
-          $archive = 'legacy/Flight-Deck-EFB-1.2.2-source.zip'
-          if (!(Test-Path $archive)) {
-            throw "Missing $archive. Upload the prepared restored source package before running this workflow."
-          }
-          if (Test-Path 'app-source') {
-            Remove-Item 'app-source' -Recurse -Force
-          }
-          Expand-Archive -Path $archive -DestinationPath . -Force
-          if (!(Test-Path 'app-source/package.json')) {
-            throw 'Restored source package did not contain app-source/package.json.'
-          }
-          Write-Host "Prepared Flight Deck EFB $(node -p \"require('./app-source/package.json').version\")"
-
       - name: Install dependencies
-        working-directory: app-source
         run: npm install
 
-      - name: Create release tag
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release }}
+      - name: Verify restored application source
         shell: pwsh
         run: |
-          $version = node -p "require('./app-source/package.json').version"
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check public/app.js
+          node --check public/i18n.js
+          if (Test-Path 'src/navigraph-client.mjs') {
+            throw 'Navigraph client must remain disabled in this build.'
+          }
+          $version = node -p "require('./package.json').version"
+          Write-Host "Building Flight Deck EFB $version"
+
+      - name: Build OurAirports offline catalog
+        run: npm run prepare-data
+
+      - name: Verify bundled airport data
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'data/ourairports.min.json.gz')) {
+            throw 'OurAirports offline catalog was not generated.'
+          }
+          $size = (Get-Item 'data/ourairports.min.json.gz').Length
+          if ($size -lt 100000) {
+            throw "OurAirports offline catalog is unexpectedly small: $size bytes"
+          }
+          Write-Host "OurAirports catalog: $size bytes"
+
+      - name: Create release tag
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main' }}
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
           $tag = "v$version"
           git fetch --tags --force
-
           $existing = git tag --list $tag
           if ($existing -eq $tag) {
             Write-Host "Tag $tag already exists."
@@ -72,24 +84,22 @@ jobs:
           }
 
       - name: Build installer
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
-        working-directory: app-source
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') }}
         run: npm run dist
 
       - name: Publish GitHub release
-        if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
-        working-directory: app-source
+        if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
 
       - name: Upload installer artifact
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') }}
         uses: actions/upload-artifact@v4
         with:
           name: Flight-Deck-EFB-Windows
           path: |
-            app-source/dist/Flight-Deck-EFB-Setup-*.exe
-            app-source/dist/Flight-Deck-EFB-Setup-*.exe.blockmap
-            app-source/dist/latest.yml
+            dist/Flight-Deck-EFB-Setup-*.exe
+            dist/Flight-Deck-EFB-Setup-*.exe.blockmap
+            dist/latest.yml
           if-no-files-found: error
