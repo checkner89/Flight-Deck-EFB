@@ -28,7 +28,12 @@ for (const file of [
   if (fs.existsSync(file)) write(file, read(file).replaceAll('1.3.2', VERSION));
 }
 
-replaceLiteral('src/electron-main.mjs', "    autoUpdater.autoDownload = true;\n    autoUpdater.autoInstallOnAppQuit = true;\n    autoUpdater.on('checking-for-update', () => set({ state: 'checking', percent: 0, detail: 'GitHub Release wird geprüft.' }));\n    autoUpdater.on('update-available', (info) => set({ state: 'downloading', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} wird heruntergeladen.`.replace(/\\s+/g, ' ').trim() }));", "    autoUpdater.autoDownload = false;\n    autoUpdater.autoInstallOnAppQuit = true;\n    autoUpdater.on('checking-for-update', () => set({ state: 'checking', percent: 0, detail: 'GitHub Release wird geprüft.' }));\n    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\\s+/g, ' ').trim() }));", 'auto updater setup');
+{
+  let text = read('src/electron-main.mjs');
+  text = text.replace('    autoUpdater.autoDownload = true;', '    autoUpdater.autoDownload = false;');
+  text = text.replace(/^    autoUpdater\.on\('update-available'.*$/m, "    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\\s+/g, ' ').trim() }));");
+  write('src/electron-main.mjs', text);
+}
 replaceLiteral('src/electron-main.mjs', "    async install() {\n      if (value.state !== 'downloaded') throw new Error('Noch kein heruntergeladenes Update verfügbar.');", "    async download() {\n      if (!app.isPackaged || process.platform !== 'win32') return { ...value };\n      if (!['available', 'error'].includes(value.state)) return { ...value };\n      set({ state: 'downloading', percent: 0, detail: 'Update wird heruntergeladen.' });\n      await autoUpdater.downloadUpdate();\n      return { ...value };\n    },\n    async install() {\n      if (value.state !== 'downloaded') throw new Error('Noch kein heruntergeladenes Update verfügbar.');", 'updater download method');
 {
   let text = read('src/electron-main.mjs');
