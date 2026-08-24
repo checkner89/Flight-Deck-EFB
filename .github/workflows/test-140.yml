@@ -1,0 +1,133 @@
+name: Test 1.4.0 Windows Build
+
+on:
+  push:
+    branches:
+      - feature/1.4.0-ux-workflows
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Apply 1.4.0 migration
+        shell: pwsh
+        run: |
+          node scripts/apply-140-a.mjs
+          node scripts/apply-140-b1.mjs
+          node scripts/apply-140-b2.mjs
+          node scripts/apply-140-c1a.mjs
+          node scripts/apply-140-c1b.mjs
+          node scripts/apply-140-c2.mjs
+
+      - name: Verify source and UX contract
+        shell: pwsh
+        run: |
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/state-engine.mjs
+          node --check src/taxi-route-planner.mjs
+          node --check public/app.js
+          node --check public/i18n.js
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.4.0') { throw "Expected 1.4.0, got $version" }
+          if (Test-Path 'src/navigraph-client.mjs') { throw 'Navigraph backend must remain disabled.' }
+          $html = Get-Content public/index.html -Raw
+          $app = Get-Content public/app.js -Raw
+          $server = Get-Content src/server.mjs -Raw
+          foreach ($required in @('home-greeting','home-simbrief-import','floating-section-nav','update-dialog','planner-holding-point','com-next-station','show-help-texts')) {
+            if ($html -notmatch [regex]::Escape($required)) { throw "Missing UI contract: $required" }
+          }
+          if ($html -match 'onboarding-profile') { throw 'Pilot profile is still present in onboarding.' }
+          if ($html -match 'efb-app-tile tracking-app') { throw 'Separate Flight Tracking home tile is still present.' }
+          if ($server -notmatch '/api/update/download') { throw 'Update download endpoint missing.' }
+          foreach ($required in @('renderTrackingTraffic','nextComSuggestion','importSimBriefFromHome','showHelpTexts','checkForUpdate')) {
+            if ($app -notmatch [regex]::Escape($required)) { throw "Missing application behavior: $required" }
+          }
+
+      - name: Build OurAirports offline catalog
+        run: npm run prepare-data
+
+      - name: Verify bundled airport data
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'data/ourairports.min.json.gz')) { throw 'OurAirports offline catalog missing.' }
+          $size = (Get-Item 'data/ourairports.min.json.gz').Length
+          if ($size -lt 100000) { throw "OurAirports catalog unexpectedly small: $size bytes" }
+
+      - name: Smoke test local EFB host
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'efb140-host.out.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'efb140-host.err.log'
+          $process = Start-Process -FilePath node -ArgumentList @('src/server.mjs', '--demo', '--port', '8745') -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          try {
+            $deadline = (Get-Date).AddSeconds(30)
+            $ready = $false
+            do {
+              Start-Sleep -Milliseconds 500
+              try {
+                $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8745/' -UseBasicParsing -TimeoutSec 2
+                if ($response.StatusCode -eq 200 -and $response.Content -match 'Flight Deck EFB') { $ready = $true }
+              } catch {}
+            } until ($ready -or (Get-Date) -gt $deadline)
+            if (!$ready) {
+              if (Test-Path $stdout) { Get-Content $stdout }
+              if (Test-Path $stderr) { Get-Content $stderr }
+              throw 'Local EFB host smoke test failed.'
+            }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Smoke test packaged Windows app
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-unpacked/Flight Deck EFB.exe'
+          if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo') -PassThru
+          try {
+            Start-Sleep -Seconds 10
+            $process.Refresh()
+            if ($process.HasExited) { throw "Packaged Flight Deck EFB exited during startup with code $($process.ExitCode)." }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Verify updater assets
+        shell: pwsh
+        run: |
+          foreach ($file in @('dist/Flight-Deck-EFB-Setup-1.4.0.exe','dist/Flight-Deck-EFB-Setup-1.4.0.exe.blockmap','dist/latest.yml')) {
+            if (!(Test-Path $file)) { throw "Missing updater asset: $file" }
+          }
+          $latest = Get-Content dist/latest.yml -Raw
+          if ($latest -notmatch 'version:\s*1\.4\.0') { throw 'latest.yml does not advertise 1.4.0.' }
+
+      - name: Upload test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flight-Deck-EFB-1.4.0-Test
+          path: |
+            dist/Flight-Deck-EFB-Setup-1.4.0.exe
+            dist/Flight-Deck-EFB-Setup-1.4.0.exe.blockmap
+            dist/latest.yml
