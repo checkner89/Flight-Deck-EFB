@@ -152,5 +152,11 @@ jobs:
             Write-Host 'Materialized source already committed.'
           } else {
             git commit -m "Materialize Flight Deck EFB 1.4.1 source"
+            $materialized = git rev-parse HEAD
+            git fetch origin "$env:GITHUB_HEAD_REF"
+            git checkout -B materialized-branch "origin/$env:GITHUB_HEAD_REF"
+            git cherry-pick $materialized
+            if ($LASTEXITCODE -ne 0) { throw 'Could not rebase materialized source onto current release branch.' }
             git push origin "HEAD:$env:GITHUB_HEAD_REF"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not push materialized source to release branch.' }
           }
