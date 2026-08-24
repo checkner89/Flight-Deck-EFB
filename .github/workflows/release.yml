@@ -32,14 +32,31 @@ jobs:
         with:
           node-version: 24
 
+      - name: Prepare restored Flight Deck EFB source
+        shell: pwsh
+        run: |
+          $archive = 'legacy/Flight-Deck-EFB-1.2.2-source.zip'
+          if (!(Test-Path $archive)) {
+            throw "Missing $archive. Upload the prepared restored source package before running this workflow."
+          }
+          if (Test-Path 'app-source') {
+            Remove-Item 'app-source' -Recurse -Force
+          }
+          Expand-Archive -Path $archive -DestinationPath . -Force
+          if (!(Test-Path 'app-source/package.json')) {
+            throw 'Restored source package did not contain app-source/package.json.'
+          }
+          Write-Host "Prepared Flight Deck EFB $(node -p \"require('./app-source/package.json').version\")"
+
       - name: Install dependencies
+        working-directory: app-source
         run: npm install
 
       - name: Create release tag
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release }}
         shell: pwsh
         run: |
-          $version = node -p "require('./package.json').version"
+          $version = node -p "require('./app-source/package.json').version"
           $tag = "v$version"
           git fetch --tags --force
 
@@ -56,10 +73,12 @@ jobs:
 
       - name: Build installer
         if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+        working-directory: app-source
         run: npm run dist
 
       - name: Publish GitHub release
         if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+        working-directory: app-source
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
@@ -70,7 +89,7 @@ jobs:
         with:
           name: Flight-Deck-EFB-Windows
           path: |
-            dist/Flight-Deck-EFB-Setup-*.exe
-            dist/Flight-Deck-EFB-Setup-*.exe.blockmap
-            dist/latest.yml
+            app-source/dist/Flight-Deck-EFB-Setup-*.exe
+            app-source/dist/Flight-Deck-EFB-Setup-*.exe.blockmap
+            app-source/dist/latest.yml
           if-no-files-found: error
