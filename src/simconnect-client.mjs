@@ -569,6 +569,10 @@ export class SimConnectClient {
       TRAFFIC_DATA_DEFINITION, name, null, type, 0, SimConnectConstants.UNUSED,
     ), `Verkehr: ${name}`, optional);
 
+    // Keep the primary traffic definition deliberately small and generic. Third-party injectors
+    // such as SayIntentions Living World can create PassiveAircraft/AI objects that do not expose
+    // every "AI TRAFFIC ..." SimVar. A single unsupported field can otherwise invalidate the
+    // complete object request even though the aircraft itself is visible in MSFS/TCAS.
     addFloat('PLANE LATITUDE', 'degrees');
     addFloat('PLANE LONGITUDE', 'degrees');
     addFloat('PLANE ALTITUDE', 'feet');
@@ -579,16 +583,6 @@ export class SimConnectClient {
     addFloat('VERTICAL SPEED', 'feet per minute');
     addString('TITLE', SimConnectDataType.STRING128);
     addString('ATC ID', SimConnectDataType.STRING32);
-    addString('ATC AIRLINE', SimConnectDataType.STRING64);
-    addString('ATC FLIGHT NUMBER', SimConnectDataType.STRING8);
-    addString('AI TRAFFIC STATE', SimConnectDataType.STRING32);
-    addString('AI TRAFFIC CURRENT AIRPORT', SimConnectDataType.STRING8);
-    addString('AI TRAFFIC ASSIGNED RUNWAY', SimConnectDataType.STRING32);
-    addString('AI TRAFFIC ASSIGNED PARKING', SimConnectDataType.STRING64);
-    addString('AI TRAFFIC FROMAIRPORT', SimConnectDataType.STRING8);
-    addString('AI TRAFFIC TOAIRPORT', SimConnectDataType.STRING8);
-    addFloat('AI TRAFFIC ETD', 'seconds');
-    addFloat('AI TRAFFIC ETA', 'seconds');
 
     handle.on('simObjectDataByType', (received) => {
       if (received.requestID !== TRAFFIC_DATA_REQUEST) return;
@@ -607,20 +601,20 @@ export class SimConnectClient {
           aglFeet: data.readFloat64(),
           groundSpeed: data.readFloat64(),
           heading: data.readFloat64(),
-          onGround: data.readInt32() === 1,
+          onGround: data.readInt32() !== 0,
           verticalSpeedFpm: data.readFloat64(),
           title: data.readString128(),
           atcId: data.readString32(),
-          airline: data.readString64(),
-          flightNumber: data.readString8(),
-          state: data.readString32(),
-          currentAirport: data.readString8(),
-          runway: data.readString32(),
-          parking: data.readString64(),
-          origin: data.readString8(),
-          destination: data.readString8(),
-          etdSeconds: data.readFloat64(),
-          etaSeconds: data.readFloat64(),
+          airline: '',
+          flightNumber: '',
+          state: '',
+          currentAirport: '',
+          runway: '',
+          parking: '',
+          origin: '',
+          destination: '',
+          etdSeconds: null,
+          etaSeconds: null,
         };
         if (received.objectID !== SimConnectConstants.OBJECT_ID_USER) this.trafficBatch.aircraft.push(this.#normalizeTrafficEntry(entry));
       } catch (error) {
