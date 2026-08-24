@@ -1,9 +1,11 @@
 import { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import updaterPackage from 'electron-updater';
 import { createTaxiServer } from './server.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const { autoUpdater } = updaterPackage;
 
 let mainWindow;
 let taxiServer;
