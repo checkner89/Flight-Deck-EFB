@@ -20,7 +20,7 @@ regex('public/app.js', /function renderUpdateStatus\(status = \{\}\) \{[\s\S]*?a
   text = text.replace("    clockFormat: 'flight-deck-clock-format', pilotProfile: 'flight-deck-pilot-profile', alertMode: 'flight-deck-alert-mode',", "    clockFormat: 'flight-deck-clock-format', alertMode: 'flight-deck-alert-mode',");
   text = text.replace("    ['focusMode', 'flight-deck-focus-mode'], ['showPhaseHome', 'flight-deck-show-phase-home'],", "    ['focusMode', 'flight-deck-focus-mode'], ['showPhaseHome', 'flight-deck-show-phase-home'], ['showHelpTexts', 'flight-deck-show-help-texts'],");
   const anchor = "  if (value.appLayout && Array.isArray(value.appLayout.order)) {";
-  const nameRestore = "  if (typeof value.displayName === 'string') { preferences.displayName = value.displayName.slice(0, 40); localStorage.setItem('flight-deck-display-name', preferences.displayName); }\\n";
+  const nameRestore = "  if (typeof value.displayName === 'string') { preferences.displayName = value.displayName.slice(0, 40); localStorage.setItem('flight-deck-display-name', preferences.displayName); }\n";
   if (!text.includes("typeof value.displayName === 'string'")) text = text.replace(anchor, nameRestore + anchor);
   write('public/app.js', text);
 }
