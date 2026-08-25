@@ -1,0 +1,250 @@
+from pathlib import Path
+
+
+def read(path):
+    return Path(path).read_text(encoding='utf-8')
+
+
+def write(path, text):
+    Path(path).write_text(text, encoding='utf-8')
+
+
+def replace_once(text, old, new, label):
+    if old not in text:
+        raise SystemExit(f'missing patch target: {label}')
+    return text.replace(old, new, 1)
+
+
+# ---------- HTML ----------
+p = Path('public/index.html')
+html = read(p)
+html = replace_once(html, 'data-app-version="1.7.9"', 'data-app-version="1.7.10"', 'html app version')
+html = html.replace('/styles.css?v=1.7.9', '/styles.css?v=1.7.10')
+html = html.replace('/si-operations.css?v=1.7.9', '/si-operations.css?v=1.7.10')
+html = html.replace('/app.js?v=1.7.9', '/app.js?v=1.7.10')
+html = html.replace('/si-operations.js?v=1.7.9', '/si-operations.js?v=1.7.10')
+
+refresh_button = '''          <button id="refresh-map-button" class="map-button" type="button" title="Airport-Karte neu laden">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m9.1-3A7 7 0 0 0 6.5 6.5L4 9m2 6.9a7 7 0 0 0 11.5 1.6L20 15"/></svg><span>MAP</span>
+          </button>'''
+focus_button = refresh_button + '''
+          <button id="airport-focus-button" class="map-button active" type="button" title="Nur Flughafen hervorheben" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4M4 16v4h4m8 0h4v-4M8 12h8M12 8v8"/></svg><span>AIRPORT</span>
+          </button>'''
+html = replace_once(html, refresh_button, focus_button, 'airport focus control')
+html = html.replace('id="update-version">v1.7.9', 'id="update-version">v1.7.10', 1)
+html = html.replace('CURRENT v1.7.9', 'CURRENT v1.7.10', 1)
+changelog_anchor = '<div class="update-changelog"><section><b>1.7.9</b>'
+changelog_insert = '<div class="update-changelog"><section><b>1.7.10</b><div><strong>Airport focus &amp; clearer Taxi controls</strong><ul><li>New Airport Focus mode hides almost all surrounding map context while keeping the complete airport clearly visible.</li><li>Airport Focus is enabled by default and can be toggled from the Taxi map.</li><li>PLAN TAXI is now a high-contrast primary action in light and dark themes.</li><li>APPS and GROUND NAVIGATION are more readable, especially in light mode.</li></ul></div></section><section><b>1.7.9</b>'
+html = replace_once(html, changelog_anchor, changelog_insert, 'in-app changelog')
+write(p, html)
+
+# ---------- JavaScript ----------
+p = Path('public/app.js')
+js = read(p)
+js = js.replace("./i18n.js?v=1.7.9", "./i18n.js?v=1.7.10")
+js = js.replace("./flight-phases.js?v=1.7.9", "./flight-phases.js?v=1.7.10")
+js = js.replace("./live-traffic.js?v=1.7.9", "./live-traffic.js?v=1.7.10")
+js = replace_once(
+    js,
+    "  refreshMapButton: $('#refresh-map-button'),\n  mapStatus: $('#map-status'),",
+    "  refreshMapButton: $('#refresh-map-button'),\n  airportFocusButton: $('#airport-focus-button'),\n  mapStatus: $('#map-status'),",
+    'airport focus element',
+)
+js = replace_once(
+    js,
+    "const taxiBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {\n  maxZoom: 19,\n  subdomains: 'abc',\n  updateWhenIdle: true,\n  keepBuffer: 3,\n  opacity: 0.78,\n  attribution: '&copy; OpenStreetMap contributors',\n}).addTo(map);",
+    "const taxiBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {\n  maxZoom: 19,\n  subdomains: 'abc',\n  updateWhenIdle: true,\n  keepBuffer: 3,\n  opacity: 0.78,\n  attribution: '&copy; OpenStreetMap contributors',\n}).addTo(map);\n\nlet airportFocusEnabled = localStorage.getItem('flight-deck-airport-focus') !== 'false';",
+    'airport focus state',
+)
+js = replace_once(
+    js,
+    "for (const [name, zIndex] of [\n  ['airportBoundary', 210],",
+    "for (const [name, zIndex] of [\n  ['airportFocusMask', 205],\n  ['airportBoundary', 210],",
+    'airport focus pane',
+)
+js = replace_once(
+    js,
+    "const layers = {\n  airport: L.layerGroup().addTo(map),",
+    "const layers = {\n  airportFocus: L.layerGroup().addTo(map),\n  airport: L.layerGroup().addTo(map),",
+    'airport focus layer',
+)
+function_anchor = '''function renderAirportMap(mapData) {
+  layers.airport.clearLayers();'''
+function_insert = '''function syncAirportFocusButton() {
+  if (!elements.airportFocusButton) return;
+  elements.airportFocusButton.classList.toggle('active', airportFocusEnabled);
+  elements.airportFocusButton.setAttribute('aria-pressed', String(airportFocusEnabled));
+  elements.airportFocusButton.title = airportFocusEnabled ? 'Airport Focus ausschalten' : 'Nur Flughafen hervorheben';
+}
+
+function airportFocusHole(mapData) {
+  const aerodrome = (mapData?.features || []).find((feature) => (
+    feature.kind === 'aerodrome'
+    && feature.geometry === 'polygon'
+    && Array.isArray(feature.coordinates)
+    && feature.coordinates.length >= 4
+  ));
+  if (aerodrome) return aerodrome.coordinates.map(([lat, lon]) => [lat, lon]);
+  if (!Array.isArray(mapData?.bounds) || mapData.bounds.length < 2) return null;
+  const bounds = L.latLngBounds(mapData.bounds);
+  if (!bounds.isValid()) return null;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  return [[sw.lat, sw.lng], [sw.lat, ne.lng], [ne.lat, ne.lng], [ne.lat, sw.lng], [sw.lat, sw.lng]];
+}
+
+function renderAirportFocus(mapData = loadedAirportMapData) {
+  layers.airportFocus.clearLayers();
+  taxiBasemap.setOpacity(airportFocusEnabled ? 0.58 : 0.78);
+  syncAirportFocusButton();
+  if (!airportFocusEnabled || !mapData) return;
+  const hole = airportFocusHole(mapData);
+  if (!hole?.length) return;
+  const airportBounds = L.latLngBounds(hole);
+  const outer = airportBounds.pad(4.5);
+  const sw = outer.getSouthWest();
+  const ne = outer.getNorthEast();
+  const shell = [[sw.lat, sw.lng], [sw.lat, ne.lng], [ne.lat, ne.lng], [ne.lat, sw.lng], [sw.lat, sw.lng]];
+  const light = document.documentElement.dataset.theme === 'light';
+  L.polygon([shell, hole], {
+    pane: 'airportFocusMask',
+    interactive: false,
+    stroke: false,
+    fill: true,
+    fillRule: 'evenodd',
+    fillColor: light ? '#e7eef2' : '#06121b',
+    fillOpacity: light ? 0.94 : 0.92,
+  }).addTo(layers.airportFocus);
+}
+
+function renderAirportMap(mapData) {
+  layers.airport.clearLayers();'''
+js = replace_once(js, function_anchor, function_insert, 'airport focus functions')
+js = replace_once(
+    js,
+    "  latestAirportBounds = Array.isArray(mapData.bounds) ? L.latLngBounds(mapData.bounds) : null;\n  loadedAirportIcao = mapData.icao;",
+    "  latestAirportBounds = Array.isArray(mapData.bounds) ? L.latLngBounds(mapData.bounds) : null;\n  renderAirportFocus(mapData);\n  loadedAirportIcao = mapData.icao;",
+    'render focus with airport',
+)
+js = replace_once(
+    js,
+    "elements.fitButton.addEventListener('click', fitRoute);\nelements.refreshMapButton.addEventListener('click', () => {\n  if (latestState) loadAirportMap(latestState, { forceRefresh: true }).catch(() => {});\n});",
+    "elements.fitButton.addEventListener('click', fitRoute);\nelements.refreshMapButton.addEventListener('click', () => {\n  if (latestState) loadAirportMap(latestState, { forceRefresh: true }).catch(() => {});\n});\nelements.airportFocusButton?.addEventListener('click', () => {\n  airportFocusEnabled = !airportFocusEnabled;\n  localStorage.setItem('flight-deck-airport-focus', String(airportFocusEnabled));\n  renderAirportFocus();\n});\nsyncAirportFocusButton();",
+    'airport focus event',
+)
+js = js.replace("navigator.serviceWorker.register('/service-worker.js?v=1.7.9'", "navigator.serviceWorker.register('/service-worker.js?v=1.7.10'")
+write(p, js)
+
+# ---------- CSS ----------
+p = Path('public/styles.css')
+css = read(p)
+css += '''
+
+/* 1.7.10 — Taxi readability and Airport Focus */
+.plan-button {
+  min-width: 122px;
+  justify-content: center;
+  border-color: #5bc9bd !important;
+  background: linear-gradient(180deg, #bdf8f1, #9ee9df) !important;
+  color: #073936 !important;
+  font-weight: 900 !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 14px rgba(0, 104, 98, 0.18);
+}
+.plan-button:hover {
+  border-color: #279f95 !important;
+  background: linear-gradient(180deg, #d1fff9, #a9eee5) !important;
+  color: #042e2c !important;
+}
+.app-home-button {
+  border-color: rgba(141, 194, 204, 0.42) !important;
+  background: rgba(14, 38, 51, 0.92) !important;
+  color: #e9fbfd !important;
+  font-weight: 900 !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+}
+.app-home-button:hover {
+  border-color: rgba(93, 224, 207, 0.7) !important;
+  background: rgba(21, 63, 72, 0.98) !important;
+  color: #c9fff9 !important;
+}
+.app-toolbar-context {
+  color: #b7ced8 !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+}
+#airport-focus-button.active {
+  border-color: rgba(25, 184, 170, 0.78) !important;
+  background: rgba(18, 203, 185, 0.19) !important;
+  color: #77f4e8 !important;
+  box-shadow: inset 0 0 0 1px rgba(119, 244, 232, 0.12), 0 6px 18px rgba(0, 0, 0, 0.14);
+}
+html[data-theme="light"] .app-home-button {
+  border-color: #a8bdc7 !important;
+  background: #ffffff !important;
+  color: #173846 !important;
+  box-shadow: 0 4px 13px rgba(38, 66, 80, 0.13);
+}
+html[data-theme="light"] .app-home-button:hover {
+  border-color: #64a9a3 !important;
+  background: #eaf8f6 !important;
+  color: #0c554f !important;
+}
+html[data-theme="light"] .app-toolbar-context {
+  color: #425f6c !important;
+}
+html[data-theme="light"] #airport-focus-button.active {
+  border-color: #5aaba3 !important;
+  background: #dff5f1 !important;
+  color: #075d56 !important;
+}
+html[data-theme="light"] .map-attribution {
+  background: rgba(247, 250, 252, 0.86);
+  color: #496875;
+}
+'''
+write(p, css)
+
+# ---------- Service worker ----------
+p = Path('public/service-worker.js')
+sw = read(p)
+sw = sw.replace("const CACHE_NAME = 'flight-deck-efb-v179';", "const CACHE_NAME = 'flight-deck-efb-v1710';")
+sw = sw.replace('1.7.9', '1.7.10')
+write(p, sw)
+
+# ---------- Host version ----------
+p = Path('src/server.mjs')
+server = read(p)
+server = replace_once(server, "const APP_VERSION = '1.7.9';", "const APP_VERSION = '1.7.10';", 'server version')
+write(p, server)
+
+# ---------- Docs / notices ----------
+p = Path('README.md')
+readme = read(p)
+readme = readme.replace('**Current release: 1.7.9 — Real Airport Map & Standalone Taxi Planning**', '**Current release: 1.7.10 — Airport Focus & Taxi Readability**', 1)
+readme = readme.replace('## 1.7.9 highlights', '## 1.7.10 highlights', 1)
+readme = readme.replace('Flight-Deck-EFB-Setup-1.7.9.exe', 'Flight-Deck-EFB-Setup-1.7.10.exe')
+write(p, readme)
+
+p = Path('THIRD_PARTY_NOTICES.md')
+notices = read(p).replace('# Third-party notices — Flight Deck EFB 1.7.9', '# Third-party notices — Flight Deck EFB 1.7.10', 1)
+write(p, notices)
+
+p = Path('CHANGELOG.md')
+changelog = read(p)
+marker = '# Flight Deck EFB changelog\n\n'
+section = '''## 1.7.10 — Airport Focus & Taxi Readability
+
+- Added **Airport Focus** to Taxi Navigation. It is enabled by default and masks almost all map context outside the airport boundary while keeping the operational airport vectors fully visible.
+- Added an **AIRPORT** map toggle so the surrounding OpenStreetMap context can be restored at any time.
+- Made **PLAN TAXI** a high-contrast primary action in both light and dark themes.
+- Improved contrast of the **APPS** button and **GROUND NAVIGATION** toolbar label, especially in light mode.
+- Airport Focus preference is stored locally per device.
+
+'''
+if marker not in changelog:
+    raise SystemExit('CHANGELOG header missing')
+if '## 1.7.10 — Airport Focus & Taxi Readability' not in changelog:
+    changelog = changelog.replace(marker, marker + section, 1)
+write(p, changelog)
