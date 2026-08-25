@@ -34,7 +34,7 @@ Function ThirdPartyPageCreate
   ${NSD_CreateLabel} 0 17u 100% 20u "Open-source software, data sources and optional compatibility services used by Flight Deck EFB."
   Pop $0
 
-  nsDialogs::CreateControl EDIT ${DEFAULT_STYLES}|${WS_TABSTOP}|${WS_VSCROLL}|${ES_MULTILINE}|${ES_READONLY}|${ES_AUTOVSCROLL}|${WS_BORDER} ${WS_EX_CLIENTEDGE} 0 42u 100% -42u ""
+  nsDialogs::CreateControl EDIT ${DEFAULT_STYLES}|${WS_TABSTOP}|${WS_VSCROLL}|${ES_MULTILINE}|${ES_READONLY}|${ES_AUTOVSCROLL} ${WS_EX_CLIENTEDGE} 0 42u 100% -42u ""
   Pop $ThirdPartyText
 
   File /oname=$PLUGINSDIR\flight-deck-third-party-notices.txt "${BUILD_RESOURCES_DIR}\third-party-notices.txt"
