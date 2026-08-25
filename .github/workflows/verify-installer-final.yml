@@ -1,14 +1,14 @@
-name: Verify 1.7.5 Installer Final
+name: Verify 1.7.6 Installer Final
 
 on:
   push:
     branches:
-      - release/1.7.5-installer-legal-final
+      - release/1.7.6-installer-legal
     paths:
       - '.github/workflows/verify-installer-final.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-installer:
@@ -17,12 +17,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: release/1.7.5-installer-legal-final
+          ref: release/1.7.6-installer-legal
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 24
+
+      - name: Synchronize 1.7.6 source and release notes
+        shell: pwsh
+        run: |
+          $files = @(
+            'package-lock.json',
+            'public/index.html',
+            'public/app.js',
+            'public/service-worker.js',
+            'src/server.mjs',
+            'README.md',
+            'PRIVACY.md',
+            'THIRD_PARTY_NOTICES.md'
+          )
+          foreach ($file in $files) {
+            $text = Get-Content $file -Raw
+            $text = $text.Replace('1.7.5', '1.7.6')
+            if ($file -eq 'public/service-worker.js') {
+              $text = [regex]::Replace($text, "flight-deck-efb-v\d+", 'flight-deck-efb-v176')
+            }
+            Set-Content -Path $file -Value $text -NoNewline
+          }
+
+          $changelog = Get-Content 'CHANGELOG.md' -Raw
+          $replacement = @'
+          ## 1.7.6 — Installer & Legal Transparency
+
+          - Added a proper assisted Windows Setup **License Agreement** page containing the complete MIT License plus simulation-only Safety, Privacy/LAN and Third-Party acknowledgements. The installer agreement explicitly does not remove, reduce or contradict MIT rights.
+          - Added a dedicated scrollable **Third-party notices** Setup page for the open-source components, data sources and optional compatibility services actually used by Flight Deck EFB.
+          - Added an **Additional Tasks** Setup page with a user-selectable **Create a Desktop Shortcut** option while retaining the Start Menu shortcut.
+          - Confirmed non-destructive uninstall behavior: uninstall/reinstall does not silently delete local settings, caches or flight history.
+          - Added permanent installer regression checks to the Windows release workflow so future releases cannot silently drop the MIT agreement, legal pages, shortcut selection or non-destructive uninstall behavior.
+
+          ## 1.7.5 — Traffic & Taxi Recovery
+
+          - Expanded Live Traffic to **Arriving 80 NM** and **Nearby 120 NM** while Ground remains 8 NM; the active tab now shows its actual scope.
+          - Restored the documented maximum SimConnect discovery radius of **200 km (~108 NM)**. The 120 NM Nearby filter is retained as the UI target, while direct SimConnect visibility remains capped by the simulator API.
+          - Broadened injected-traffic discovery to accept **PassiveAircraft / aircraft-style categories**, improving compatibility with SayIntentions Living World and other injectors that are visible in MSFS but were filtered out before detail reads.
+          - Fixed Taxi Navigation getting stuck on a **runway-only preview**: preview maps are no longer persisted as complete browser maps, existing poisoned preview caches self-heal, and the host waits longer for OSM/Overpass geometry when MSFS facility data arrives first.
+          - Fixed **New Flight** immediately re-importing the just-finished taxi route/session, which could make the red ROUTE / POSITION warning reappear and leave guidance unusable.
+          - Taxi/map fixes are implemented independently with documented MSFS facility data, OpenStreetMap/Overpass and OurAirports; no TaxiNow code, assets or protected implementation were reused.
+
+          '@
+          $changelog = [regex]::Replace($changelog, '(?ms)^## 1\.7\.5\b.*?(?=^## 1\.7\.4\b)', $replacement)
+          Set-Content -Path 'CHANGELOG.md' -Value $changelog -NoNewline
 
       - name: Install dependencies
         run: npm install
@@ -47,10 +93,23 @@ jobs:
         shell: pwsh
         run: |
           $version = node -p "require('./package.json').version"
-          if ($version -ne '1.7.5') { throw "Unexpected package version: $version" }
+          if ($version -ne '1.7.6') { throw "Unexpected package version: $version" }
           $installer = "dist/Flight-Deck-EFB-Setup-$version.exe"
           if (!(Test-Path $installer)) { throw "Installer missing: $installer" }
           if ((Get-Item $installer).Length -lt 50000000) { throw 'Installer is unexpectedly small.' }
           if (!(Test-Path "dist/Flight-Deck-EFB-Setup-$version.exe.blockmap")) { throw 'Blockmap missing.' }
           if (!(Test-Path 'dist/latest.yml')) { throw 'latest.yml missing.' }
           Write-Host "Final combined NSIS build passed: $installer"
+
+      - name: Commit materialized 1.7.6 files
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json public/index.html public/app.js public/service-worker.js src/server.mjs README.md PRIVACY.md THIRD_PARTY_NOTICES.md CHANGELOG.md
+          if (git diff --cached --quiet) {
+            Write-Host 'No materialized version changes to commit.'
+          } else {
+            git commit -m 'Finalize Flight Deck EFB 1.7.6 installer release'
+            git push origin HEAD:release/1.7.6-installer-legal
+          }
