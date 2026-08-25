@@ -56,12 +56,22 @@ jobs:
           node --check src/littlenavmap-client.mjs
           node --check src/aircraft-adapter-manager.mjs
           node --check src/ground-safety-engine.mjs
+          node --check src/route-sync-service.mjs
+          node --check src/flight-intelligence-engine.mjs
           node --check src/gsx-client.mjs
           node --check src/state-engine.mjs
+          node --check public/flight-phases.js
           node --check public/app.js
           node --check public/si-operations.js
           node --check public/i18n.js
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
+          $native = Get-Content 'MSFS-2024-EFB-App/src/FlightDeckEFB.tsx' -Raw
+          if ($native -notmatch 'GET_EFB_ROUTE' -or $native -notmatch 'AvionicsRouteSync') {
+            throw 'Native MSFS EFB route bridge contract is incomplete.'
+          }
+          if ($native -match 'SEND_ROUTE_TO_AVIONICS|SEND_ROUTE_TO_EFB|SAVE_EFB_ROUTE|GPS FLIGHT PLAN') {
+            throw 'Native MSFS EFB source contains a prohibited undocumented/legacy route-write path.'
+          }
           if (Test-Path 'src/navigraph-client.mjs') {
             throw 'Navigraph backend must remain disabled until explicitly re-enabled.'
           }
@@ -106,7 +116,11 @@ jobs:
               if (Test-Path $stderr) { Get-Content $stderr }
               throw 'Flight Deck EFB host smoke test did not become ready.'
             }
-            Write-Host 'Flight Deck EFB host smoke test passed.'
+            $nativeHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:8745/api/native/health' -Method Get -TimeoutSec 3
+            if ($nativeHealth.status -ne 'ok' -or !$nativeHealth.routeBridge) {
+              throw 'Native MSFS EFB loopback bridge health check failed.'
+            }
+            Write-Host 'Flight Deck EFB host + native route bridge smoke test passed.'
           } finally {
             if ($process -and !$process.HasExited) {
               Stop-Process -Id $process.Id -Force

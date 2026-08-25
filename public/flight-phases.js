@@ -96,7 +96,9 @@ export function deriveAutomaticFlightPhase(state = {}, activeRecord = null) {
 }
 
 export function resolveFlightPhase(state, activeRecord, override = 'auto') {
-  return PHASE_IDS.has(override) ? override : deriveAutomaticFlightPhase(state, activeRecord);
+  if (PHASE_IDS.has(override)) return override;
+  const stabilized = state?.integrations?.flightIntelligence?.phase;
+  return PHASE_IDS.has(stabilized) ? stabilized : deriveAutomaticFlightPhase(state, activeRecord);
 }
 
 function routePoints(state) {

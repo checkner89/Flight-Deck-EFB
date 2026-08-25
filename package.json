@@ -1,8 +1,8 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.6.0",
-  "description": "Flight Deck EFB for MSFS with flight operations, taxi guidance, traffic, aircraft adapters, ground safety and guarded simulator integrations.",
+  "version": "1.7.0",
+  "description": "Flight Deck EFB for MSFS with native MSFS 2024 EFB route bridging, flight intelligence, turnaround coordination, taxi safety and guarded simulator integrations.",
   "author": "checkner89",
   "license": "MIT",
   "type": "module",

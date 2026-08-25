@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.6.0';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.0';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.6.0';
+} from './flight-phases.js?v=1.7.0';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -141,12 +141,16 @@ const elements = {
   settingsMsfsDot: $('#settings-msfs-dot'),
   settingsLnmDot: $('#settings-lnm-dot'),
   settingsAdapterDot: $('#settings-adapter-dot'),
+  settingsIntelligenceDot: $('#settings-intelligence-dot'),
+  settingsRouteSyncDot: $('#settings-route-sync-dot'),
   settingsAtcDot: $('#settings-atc-dot'),
   settingsNavDot: $('#settings-nav-dot'),
   settingsGsxDot: $('#settings-gsx-dot'),
   settingsMsfs: $('#settings-msfs'),
   settingsLnm: $('#settings-lnm'),
   settingsAdapter: $('#settings-adapter'),
+  settingsIntelligence: $('#settings-intelligence'),
+  settingsRouteSync: $('#settings-route-sync'),
   settingsAtc: $('#settings-atc'),
   settingsNav: $('#settings-nav'),
   settingsGsx: $('#settings-gsx'),
@@ -184,6 +188,29 @@ const elements = {
   homeFlightEta: $('#home-flight-eta'),
   homeFlightFuel: $('#home-flight-fuel'),
   homePhaseActions: $('#home-phase-actions'),
+  homeAssistantStatus: $('#home-assistant-status'),
+  homeAssistantDetail: $('#home-assistant-detail'),
+  homeAssistantList: $('#home-assistant-list'),
+  flightIntelligenceStatus: $('#flight-intelligence-status'),
+  flightIntelligencePhase: $('#flight-intelligence-phase'),
+  flightIntelligenceRaw: $('#flight-intelligence-raw'),
+  flightIntelligenceConfidence: $('#flight-intelligence-confidence'),
+  flightIntelligenceDetail: $('#flight-intelligence-detail'),
+  flightIntelligenceEvidence: $('#flight-intelligence-evidence'),
+  routeSyncStatus: $('#route-sync-status'),
+  routeSyncFlightdeck: $('#route-sync-flightdeck'),
+  routeSyncMsfs: $('#route-sync-msfs'),
+  routeSyncMatch: $('#route-sync-match'),
+  routeSyncAvionics: $('#route-sync-avionics'),
+  routeSyncDetail: $('#route-sync-detail'),
+  routeSyncDifferences: $('#route-sync-differences'),
+  turnaroundStatus: $('#turnaround-status'),
+  turnaroundStage: $('#turnaround-stage'),
+  turnaroundProgress: $('#turnaround-progress'),
+  turnaroundProgressBar: $('#turnaround-progress-bar'),
+  turnaroundDetail: $('#turnaround-detail'),
+  turnaroundNext: $('#turnaround-next'),
+  turnaroundBlockers: $('#turnaround-blockers'),
   flightPhaseTitle: $('#flight-phase-title'),
   flightPhaseDescription: $('#flight-phase-description'),
   flightPhaseSelect: $('#flight-phase-select'),
@@ -3891,7 +3918,7 @@ async function afterAuthentication() {
 
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.6.0';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.7.0';
   elements.updateVersion.textContent = `v${currentVersion}`;
   const states = {
     manual: t('updateReadyManual'), idle: t('updateReady'), checking: t('checkingUpdates'),
@@ -3942,7 +3969,7 @@ async function checkForUpdate({ startup = false } = {}) {
   const existing = await refreshUpdateStatus().catch(() => null);
   if (existing?.canManage === false) return existing;
   if (elements.checkUpdate) elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', canManage: existing?.canManage });
+  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', canManage: existing?.canManage });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
@@ -3950,7 +3977,7 @@ async function checkForUpdate({ startup = false } = {}) {
     renderUpdateStatus(data);
     return data;
   } catch (error) {
-    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message, canManage: existing?.canManage };
+    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message, canManage: existing?.canManage };
     renderUpdateStatus(failed);
     if (!startup) throw error;
     return failed;
@@ -3967,7 +3994,7 @@ async function downloadAvailableUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message });
   } finally {
     elements.updateDialogDownload.disabled = false;
   }
@@ -3982,7 +4009,7 @@ async function installDownloadedUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message });
     if (elements.installUpdate) elements.installUpdate.disabled = false;
     if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = false;
   }
@@ -4545,7 +4572,104 @@ async function maybeDeriveTaxiRoute() {
   elements.plannerMessage.textContent = 'Taxiweg wurde aus der ATC-Freigabe und dem Airport-Netz abgeleitet.';
 }
 
+function phase3RouteLabel(route) {
+  if (!route) return '—';
+  const from = route.departureAirport || '—';
+  const to = route.destinationAirport || '—';
+  return `${from} → ${to}`;
+}
+
+function phase3StatusClass(value) {
+  const status = String(value || '').toLowerCase();
+  if (['ready', 'matched', 'stable', 'clear', 'complete', 'connected'].includes(status)) return 'connected';
+  if (['attention', 'warning', 'critical', 'different', 'error'].includes(status)) return 'attention';
+  return 'waiting';
+}
+
+function renderPhase3(state) {
+  const intelligence = state.integrations?.flightIntelligence || {};
+  const routeSync = state.integrations?.routeSync || {};
+  const turnaround = state.integrations?.turnaround || {};
+  const assistant = state.integrations?.flightAssistant || {};
+
+  if (elements.flightIntelligenceStatus) {
+    elements.flightIntelligenceStatus.className = `module-status ${phase3StatusClass(intelligence.status)}`;
+    elements.flightIntelligenceStatus.textContent = String(intelligence.status || 'waiting').toUpperCase();
+    elements.flightIntelligencePhase.textContent = String(intelligence.phase || '—').toUpperCase();
+    elements.flightIntelligenceRaw.textContent = String(intelligence.rawPhase || '—').toUpperCase();
+    elements.flightIntelligenceConfidence.textContent = Number.isFinite(Number(intelligence.confidence)) ? `${Math.round(Number(intelligence.confidence) * 100)}%` : '—';
+    elements.flightIntelligenceDetail.textContent = intelligence.detail || 'Waiting for simulator state.';
+    elements.flightIntelligenceEvidence.textContent = (intelligence.evidence || []).join(' · ') || '—';
+  }
+
+  if (elements.routeSyncStatus) {
+    elements.routeSyncStatus.className = `module-status ${phase3StatusClass(routeSync.status)}`;
+    elements.routeSyncStatus.textContent = String(routeSync.status || 'waiting').replace(/-/g, ' ').toUpperCase();
+    elements.routeSyncFlightdeck.textContent = phase3RouteLabel(routeSync.flightDeckRoute);
+    elements.routeSyncMsfs.textContent = phase3RouteLabel(routeSync.msfsEfbRoute);
+    elements.routeSyncMatch.textContent = Number.isFinite(Number(routeSync.comparison?.matchPercent)) ? `${Math.round(routeSync.comparison.matchPercent)}%` : '—';
+    elements.routeSyncAvionics.textContent = routeSync.avionicsSync?.lastAt ? formatTime(routeSync.avionicsSync.lastAt) : '—';
+    elements.routeSyncDetail.textContent = routeSync.detail || 'Open the native MSFS EFB app to compare routes.';
+    elements.routeSyncDifferences.replaceChildren();
+    for (const item of routeSync.comparison?.mismatches || []) {
+      const row = document.createElement('span');
+      row.innerHTML = `<b>${escapeHtml(String(item.field || 'route').toUpperCase())}</b><small>${escapeHtml(item.flightDeck || '—')} ↔ ${escapeHtml(item.msfsEfb || '—')}</small>`;
+      elements.routeSyncDifferences.append(row);
+    }
+  }
+
+  if (elements.turnaroundStatus) {
+    elements.turnaroundStatus.className = `module-status ${phase3StatusClass(turnaround.status)}`;
+    elements.turnaroundStatus.textContent = String(turnaround.status || 'waiting').toUpperCase();
+    elements.turnaroundStage.textContent = String(turnaround.stage || '—').replace(/-/g, ' ').toUpperCase();
+    const progress = Math.max(0, Math.min(100, Number(turnaround.progressPercent) || 0));
+    elements.turnaroundProgress.textContent = `${Math.round(progress)}%`;
+    elements.turnaroundProgressBar.style.width = `${progress}%`;
+    elements.turnaroundDetail.textContent = turnaround.detail || 'Waiting for aircraft and ground-service state.';
+    elements.turnaroundNext.textContent = turnaround.recommendedNext || '—';
+    elements.turnaroundBlockers.replaceChildren();
+    for (const blocker of turnaround.blockers || []) {
+      const chip = document.createElement('span');
+      chip.textContent = blocker;
+      elements.turnaroundBlockers.append(chip);
+    }
+  }
+
+  if (elements.homeAssistantStatus) {
+    elements.homeAssistantStatus.className = `module-status ${phase3StatusClass(assistant.status)}`;
+    elements.homeAssistantStatus.textContent = String(assistant.status || 'clear').toUpperCase();
+    elements.homeAssistantDetail.textContent = assistant.detail || 'No operational advisories.';
+    elements.homeAssistantList.replaceChildren();
+    for (const item of assistant.advisories || []) {
+      const row = document.createElement('article');
+      row.className = `flight-assistant-item ${item.severity || 'info'}`;
+      const copy = document.createElement('span');
+      copy.innerHTML = `<strong>${escapeHtml(item.title || 'ADVISORY')}</strong><small>${escapeHtml(item.detail || '')}</small>`;
+      row.append(copy);
+      if (item.action && isAppEnabled(item.action)) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'OPEN';
+        button.addEventListener('click', () => switchModule(item.action));
+        row.append(button);
+      }
+      elements.homeAssistantList.append(row);
+    }
+    if (!elements.homeAssistantList.childElementCount) elements.homeAssistantList.innerHTML = '<p class="empty-list">No active advisories.</p>';
+  }
+
+  if (elements.settingsIntelligenceDot) {
+    setStatusDot(elements.settingsIntelligenceDot, intelligence.status === 'stable' ? 'ready' : intelligence.status);
+    elements.settingsIntelligence.textContent = intelligence.detail || 'Automatic flight phase is waiting for data';
+  }
+  if (elements.settingsRouteSyncDot) {
+    setStatusDot(elements.settingsRouteSyncDot, routeSync.status === 'ready' ? 'ready' : routeSync.status);
+    elements.settingsRouteSync.textContent = routeSync.detail || 'Native MSFS EFB app not connected';
+  }
+}
+
 function renderState(state) {
+  renderPhase3(state);
   latestState = state;
   const flight = state.flight ?? {};
   const plannedAirport = state.planning?.selectedAirport;

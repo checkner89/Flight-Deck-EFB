@@ -1,19 +1,110 @@
 .flight-deck-efb-surface {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #07121c;
+  color: #f3f9fc;
+}
+
+.flight-deck-native-bridge {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(143, 170, 186, 0.22);
+  background: #0b1924;
+}
+
+.flight-deck-native-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.flight-deck-native-copy > i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #d9a938;
+  box-shadow: 0 0 9px rgba(217, 169, 56, 0.46);
+}
+
+.flight-deck-efb-surface[data-native-status="ready"] .flight-deck-native-copy > i {
+  background: #46d6a7;
+  box-shadow: 0 0 9px rgba(70, 214, 167, 0.5);
+}
+
+.flight-deck-efb-surface[data-native-status="attention"] .flight-deck-native-copy > i {
+  background: #ff6b78;
+  box-shadow: 0 0 9px rgba(255, 107, 120, 0.5);
+}
+
+.flight-deck-native-copy span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.flight-deck-native-copy strong {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.flight-deck-native-copy small {
+  overflow: hidden;
+  max-width: 620px;
+  color: #8faaba;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flight-deck-native-bridge button {
+  flex: 0 0 auto;
+  min-height: 31px;
+  padding: 0 12px;
+  border: 1px solid rgba(70, 214, 167, 0.42);
+  border-radius: 7px;
+  background: rgba(70, 214, 167, 0.08);
+  color: #f3f9fc;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.flight-deck-native-bridge button:hover {
+  background: rgba(70, 214, 167, 0.15);
+}
+
+.flight-deck-efb-content {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .flight-deck-efb-frame {
   position: relative;
   z-index: 2;
-  display: block;
+  display: none;
   width: 100%;
   height: 100%;
   border: 0;
   background: #07121c;
+}
+
+.flight-deck-efb-surface.host-ready .flight-deck-efb-frame {
+  display: block;
 }
 
 .flight-deck-efb-host-hint {
