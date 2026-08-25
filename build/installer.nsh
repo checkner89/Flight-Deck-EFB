@@ -2,6 +2,8 @@
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
 
+!ifndef BUILD_UNINSTALLER
+
 Var ThirdPartyDialog
 Var ThirdPartyText
 Var DesktopShortcutCheckbox
@@ -104,3 +106,5 @@ FunctionEnd
     ${EndIf}
   ${EndIf}
 !macroend
+
+!endif
