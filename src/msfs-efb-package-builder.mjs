@@ -435,11 +435,35 @@ export class MsfsEfbPackageBuilder {
 
   publicStatus() {
     return {
+      status: this.current.status,
+      supported: this.current.supported,
+      canBuild: this.current.canBuild,
+      canInstall: this.current.canInstall,
+      building: this.building,
+      progressPercent: this.current.progressPercent,
+      step: this.current.step,
+      detail: this.current.detail,
+      sdkDetected: Boolean(this.current.sdk?.ready),
+      communityDetected: Boolean(this.current.communityDirectory),
+      sdkLabel: this.current.sdk?.ready ? (path.win32.basename(this.current.sdk.sdkRoot) || 'MSFS 2024 SDK') : null,
+      communityLabel: this.current.communityDirectory ? path.win32.basename(this.current.communityDirectory) : null,
+      lastBuild: this.lastBuild ? {
+        version: this.lastBuild.version,
+        packageName: this.lastBuild.packageName,
+        builtAt: this.lastBuild.builtAt,
+        installed: this.lastBuild.installed === true,
+      } : null,
+    };
+  }
+
+  detailedStatus() {
+    return {
       ...this.current,
       building: this.building,
       configuredSdkRoot: this.configuration.sdkRoot,
       configuredCommunityDirectory: this.configuration.communityDirectory,
       lastBuild: this.lastBuild,
+      public: this.publicStatus(),
     };
   }
 

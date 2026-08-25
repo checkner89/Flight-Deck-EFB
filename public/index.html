@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-app-version="1.7.0" data-theme="dark" data-text-size="standard">
+<html lang="de" data-app-version="1.7.1" data-theme="dark" data-text-size="standard">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,8 +13,8 @@
     <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/assets/app-icon-192.png">
     <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="/styles.css?v=1.7.0">
-      <link rel="stylesheet" href="/si-operations.css?v=1.7.0">
+    <link rel="stylesheet" href="/styles.css?v=1.7.1">
+      <link rel="stylesheet" href="/si-operations.css?v=1.7.1">
   </head>
   <body>
     <div id="app" class="app-shell home-mode">
@@ -441,7 +441,7 @@
         </section>
 
         <section class="efb-page" data-page="settings" hidden>
-          <header class="page-heading"><div><small>SYSTEM</small><h1 data-i18n="settings">Settings & Integrations</h1><p data-i18n="settingsIntro">Local connectors, display, language and mobile access.</p></div><span class="version-pill">v1.7.0</span></header>
+          <header class="page-heading"><div><small>SYSTEM</small><h1 data-i18n="settings">Settings & Integrations</h1><p data-i18n="settingsIntro">Local connectors, display, language and mobile access.</p></div><span class="version-pill">v1.7.1</span></header>
           <nav class="floating-section-nav settings-subnav" aria-label="Einstellungen"><button type="button" data-settings-tab="system">SYSTEM</button><button type="button" data-settings-tab="appearance">DARSTELLUNG</button><button type="button" data-settings-tab="flight">FLUG</button><button type="button" data-settings-tab="devices">GERÄTE & DATEN</button><button type="button" data-settings-tab="updates">UPDATES & HILFE</button></nav>
           <div class="settings-grid">
             <article id="settings-health" data-settings-panel="system" class="efb-card settings-card diagnostics-card settings-health-card">
@@ -453,12 +453,23 @@
                 <div><i id="settings-adapter-dot"></i><span><strong>Aircraft Adapters</strong><small id="settings-adapter">Fenix / PMDG wird erkannt</small></span></div>
                 <div><i id="settings-intelligence-dot"></i><span><strong>Flight Intelligence</strong><small id="settings-intelligence">Automatische Phase wird validiert</small></span></div>
                 <div><i id="settings-route-sync-dot"></i><span><strong>MSFS EFB Route Bridge</strong><small id="settings-route-sync">Native EFB-App noch nicht verbunden</small></span></div>
+                <div><i id="settings-efb-builder-dot"></i><span><strong>MSFS EFB Package Builder</strong><small id="settings-efb-builder">SDK wird geprüft</small></span></div>
                 <div><i id="settings-atc-dot"></i><span><strong>ATC &amp; Online Networks</strong><small id="settings-atc">Auto</small></span></div>
                 <div><i id="settings-nav-dot"></i><span><strong>Navigraph</strong><small id="settings-nav">Deaktiviert</small></span></div>
                 <div><i id="settings-gsx-dot"></i><span><strong>GSX Pro</strong><small id="settings-gsx">Wird gesucht</small></span></div>
               </div>
               <div id="diagnostics-list" class="diagnostics-list"></div>
               <div class="connector-actions"><button id="run-diagnostics" class="primary-card-action" type="button">JETZT PRÜFEN</button><button id="download-support" class="secondary-card-action" type="button">SUPPORT-DATEI</button></div>
+            </article>
+            <article id="settings-msfs-efb-builder" data-settings-panel="system" class="efb-card settings-card msfs-efb-builder-card">
+              <div class="section-title"><div><small>MSFS 2024 COMMUNITY PACKAGE</small><h2>Native EFB Package Builder</h2></div><span id="msfs-efb-builder-status" class="module-status waiting">NOT CHECKED</span></div>
+              <p id="msfs-efb-builder-detail">Flight Deck sucht das installierte MSFS 2024 SDK und den Community2024-Ordner.</p>
+              <div class="bridge-facts"><span><small>SDK</small><b id="msfs-efb-builder-sdk">—</b></span><span><small>COMMUNITY2024</small><b id="msfs-efb-builder-community">—</b></span><span><small>LAST BUILD</small><b id="msfs-efb-builder-last">—</b></span></div>
+              <div class="builder-progress"><i id="msfs-efb-builder-progress"></i></div>
+              <div class="builder-path-grid"><label><span>SDK root <small>(optional override)</small></span><input id="msfs-efb-builder-sdk-path" autocomplete="off" spellcheck="false" placeholder="C:\\MSFS 2024 SDK"></label><label><span>Community2024 <small>(optional override)</small></span><input id="msfs-efb-builder-community-path" autocomplete="off" spellcheck="false" placeholder="…\\Packages\\Community2024"></label></div>
+              <div class="connector-actions builder-actions"><button id="msfs-efb-builder-detect" class="secondary-card-action" type="button">SDK PRÜFEN</button><button id="msfs-efb-builder-build" class="primary-card-action" type="button" disabled>PAKET BAUEN</button><button id="msfs-efb-builder-install" class="primary-card-action" type="button" disabled>BAUEN &amp; INSTALLIEREN</button><button id="msfs-efb-builder-open" class="secondary-card-action" type="button" disabled>OUTPUT ÖFFNEN</button></div>
+              <p id="msfs-efb-builder-message" class="form-message" role="status"></p>
+              <small class="safety-note">Verwendet ausschließlich dein lokal installiertes Microsoft SDK/Template. Microsoft-SDK-Dateien werden nicht mit Flight Deck ausgeliefert. Eine Installation in Community2024 erfolgt nur nach deinem expliziten Klick.</small>
             </article>
             <article id="settings-devices" data-settings-panel="devices" class="efb-card settings-card mobile-access-card"><div class="section-title"><div><small>SECOND SCREEN</small><h2 data-i18n="tabletSecondMonitor">Tablet & second monitor</h2></div><label class="compact-switch"><input id="sharing-enabled" type="checkbox" checked><span>LAN</span></label></div><p data-i18n="tabletHelp">iPad and Android connect directly to the Windows host on your local Wi-Fi. Every device gets an individually revocable access token.</p><button id="settings-share-button" class="primary-card-action" type="button" data-i18n="connectTablet">CONNECT IPAD / ANDROID</button><div id="paired-device-list" class="paired-device-list"><p class="empty-list" data-i18n="noPairedDevices">No paired devices yet.</p></div></article>
             <article id="settings-appearance" data-settings-panel="appearance" class="efb-card settings-card preference-card"><h2 data-i18n="appearanceLanguage">Appearance &amp; language</h2><label for="display-name">Wie möchtest du genannt werden?</label><input id="display-name" maxlength="40" autocomplete="nickname" placeholder="z. B. Christoph"><small class="help-text">Wird nur lokal gespeichert und für die Begrüßung verwendet.</small><label class="preference-toggle" for="show-help-texts"><span><strong>Hilfetexte anzeigen</strong><small>Erklärungen und Hinweise in den Modulen ein- oder ausblenden.</small></span><input id="show-help-texts" type="checkbox" checked></label><label for="language-select" data-i18n="language">Language</label><select id="language-select"><option value="system">System / Auto</option><option value="de">Deutsch</option><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="nl">Nederlands</option></select><label for="theme-select" data-i18n="theme">Theme</label><select id="theme-select"><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select><label for="text-size-select" data-i18n="textSize">Text size</label><select id="text-size-select"><option value="standard">Standard</option><option value="large">Large</option><option value="compact">Compact</option></select></article>
@@ -469,7 +480,7 @@
             <article data-settings-panel="appearance" class="efb-card settings-card app-customization-card"><div class="section-title"><div><small>EFB LAYOUT</small><h2 data-i18n="customizeApps">Customize apps</h2></div><button id="reset-app-layout" class="text-mini-action" type="button" data-i18n="resetLayout">RESET</button></div><p data-i18n="customizeAppsHelp">Choose which apps appear on Home and arrange them for this device. Flight and Settings remain available.</p><div id="app-customization-list" class="app-customization-list"></div></article>
             <article data-settings-panel="flight" class="efb-card settings-card new-flight-card"><h2 data-i18n="newFlight">New Flight</h2><p data-i18n="newFlightHelp">Clears the old clearance, route, hold-short points, gate, planning and imported OFP. Display and connector settings remain.</p><button id="settings-new-flight" class="danger-card-action" type="button" data-i18n="resetFlight">RESET FLIGHT DATA</button></article>
             <article data-settings-panel="devices" class="efb-card settings-card backup-card"><div class="section-title"><div><small>LOCAL DATA</small><h2 data-i18n="backupRestore">Backup & restore</h2></div><span id="backup-status">READY</span></div><p data-i18n="backupHelp">Exports flight archive, app layout, units and safe automation rules. Access tokens and API credentials are never included.</p><div class="connector-actions"><button id="export-backup" class="primary-card-action" type="button" data-i18n="exportBackup">EXPORT BACKUP</button><button id="import-backup" class="secondary-card-action" type="button" data-i18n="restoreBackup">RESTORE</button><input id="backup-file" type="file" accept="application/json,.json" hidden></div></article>
-            <article id="settings-updates" data-settings-panel="updates" class="efb-card settings-card update-card"><div class="section-title"><div><small>WINDOWS APP</small><h2 data-i18n="updates">Updates</h2></div><span id="update-version">v1.7.0</span></div><p id="update-detail" data-i18n="updateReadyManual">Installed with the Windows setup. Future setup files update the app in place and keep local data.</p><div class="update-progress" id="update-progress" hidden><i></i><span id="update-progress-label">0%</span></div><div class="connector-actions"><button id="check-update" class="primary-card-action" type="button" data-i18n="checkUpdates">CHECK FOR UPDATES</button><button id="install-update" class="secondary-card-action" type="button" hidden data-i18n="restartInstall">RESTART &amp; INSTALL</button></div></article>
+            <article id="settings-updates" data-settings-panel="updates" class="efb-card settings-card update-card"><div class="section-title"><div><small>WINDOWS APP</small><h2 data-i18n="updates">Updates</h2></div><span id="update-version">v1.7.1</span></div><p id="update-detail" data-i18n="updateReadyManual">Installed with the Windows setup. Future setup files update the app in place and keep local data.</p><div class="update-progress" id="update-progress" hidden><i></i><span id="update-progress-label">0%</span></div><div class="connector-actions"><button id="check-update" class="primary-card-action" type="button" data-i18n="checkUpdates">CHECK FOR UPDATES</button><button id="install-update" class="secondary-card-action" type="button" hidden data-i18n="restartInstall">RESTART &amp; INSTALL</button></div></article>
             <article data-settings-panel="updates" class="efb-card settings-card legal-card"><div><small>ABOUT</small><h2 data-i18n="legalLicenses">Legal &amp; licenses</h2><p data-i18n="legalSummary">Attributions, open-source licenses, trademarks, privacy and simulation-use notice.</p></div><button id="open-legal" class="secondary-card-action" type="button" data-i18n="openLegal">OPEN</button></article>
             <article data-settings-panel="system" class="efb-card settings-card"><h2>Connector configuration</h2><p>Optionale lokale Pfad-/Endpoint-Overrides für Sonderinstallationen. In einer Standardinstallation ist hier keine Konfiguration erforderlich:</p><code>BEYONDATC_LOG_DIR</code><code>GSX_ADDON_MANAGER</code><code>PMDG_PACKAGES_DIR</code><code>LITTLENAVMAP_API_URL</code><small>Diese Werte bleiben ausschließlich im Windows-Host. Fenix Remote EFB wird lokal auf Port 8083 erkannt; Updates kommen direkt aus dem GitHub-Release-Kanal. Navigraph ist in diesem Build weiterhin deaktiviert.</small></article>
             <article data-settings-panel="system" class="efb-card settings-card"><h2>Data sources</h2><p>Airport-Vektoren: OpenStreetMap und OurAirports. Live-Flugdaten: SimConnect. ATC: gewählter lokaler Provider. Online-Netzwerke werden nur auf Anforderung gelesen.</p><div class="source-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · ODbL</a><a href="https://ourairports.com/data/" target="_blank" rel="noreferrer">OurAirports · Public Domain</a></div></article>
@@ -658,7 +669,7 @@
     </div>
 
     <script src="/vendor/leaflet/leaflet.js"></script>
-    <script type="module" src="/app.js?v=1.7.0"></script>
-      <script type="module" src="/si-operations.js?v=1.7.0"></script>
+    <script type="module" src="/app.js?v=1.7.1"></script>
+      <script type="module" src="/si-operations.js?v=1.7.1"></script>
   </body>
 </html>

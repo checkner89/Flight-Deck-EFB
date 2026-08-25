@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.0';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.1';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.0';
+} from './flight-phases.js?v=1.7.1';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -143,6 +143,7 @@ const elements = {
   settingsAdapterDot: $('#settings-adapter-dot'),
   settingsIntelligenceDot: $('#settings-intelligence-dot'),
   settingsRouteSyncDot: $('#settings-route-sync-dot'),
+  settingsEfbBuilderDot: $('#settings-efb-builder-dot'),
   settingsAtcDot: $('#settings-atc-dot'),
   settingsNavDot: $('#settings-nav-dot'),
   settingsGsxDot: $('#settings-gsx-dot'),
@@ -151,9 +152,23 @@ const elements = {
   settingsAdapter: $('#settings-adapter'),
   settingsIntelligence: $('#settings-intelligence'),
   settingsRouteSync: $('#settings-route-sync'),
+  settingsEfbBuilder: $('#settings-efb-builder'),
   settingsAtc: $('#settings-atc'),
   settingsNav: $('#settings-nav'),
   settingsGsx: $('#settings-gsx'),
+  msfsEfbBuilderStatus: $('#msfs-efb-builder-status'),
+  msfsEfbBuilderDetail: $('#msfs-efb-builder-detail'),
+  msfsEfbBuilderSdk: $('#msfs-efb-builder-sdk'),
+  msfsEfbBuilderCommunity: $('#msfs-efb-builder-community'),
+  msfsEfbBuilderLast: $('#msfs-efb-builder-last'),
+  msfsEfbBuilderProgress: $('#msfs-efb-builder-progress'),
+  msfsEfbBuilderSdkPath: $('#msfs-efb-builder-sdk-path'),
+  msfsEfbBuilderCommunityPath: $('#msfs-efb-builder-community-path'),
+  msfsEfbBuilderDetect: $('#msfs-efb-builder-detect'),
+  msfsEfbBuilderBuild: $('#msfs-efb-builder-build'),
+  msfsEfbBuilderInstall: $('#msfs-efb-builder-install'),
+  msfsEfbBuilderOpen: $('#msfs-efb-builder-open'),
+  msfsEfbBuilderMessage: $('#msfs-efb-builder-message'),
   settingsShareButton: $('#settings-share-button'),
   newFlightButton: $('#new-flight-button'),
   homeNewFlight: $('#home-new-flight'),
@@ -4586,7 +4601,69 @@ function phase3StatusClass(value) {
   return 'waiting';
 }
 
+function renderMsfsEfbBuilder(state) {
+  if (!elements.msfsEfbBuilderStatus) return;
+  const builder = state?.integrations?.msfsEfbBuilder || state?.builder || {};
+  const status = String(builder.status || 'not-checked').toLowerCase();
+  const ready = ['ready', 'built', 'installed'].includes(status);
+  const attention = ['error'].includes(status);
+  const className = ready ? 'connected' : attention ? 'attention' : 'waiting';
+  elements.msfsEfbBuilderStatus.className = `module-status ${className}`;
+  elements.msfsEfbBuilderStatus.textContent = status.replace(/-/g, ' ').toUpperCase();
+  elements.msfsEfbBuilderDetail.textContent = builder.detail || 'MSFS 2024 SDK has not been checked yet.';
+  elements.msfsEfbBuilderSdk.textContent = builder.sdkDetected || builder.sdk?.ready ? 'READY' : status === 'unsupported' ? 'WINDOWS ONLY' : 'NOT FOUND';
+  elements.msfsEfbBuilderCommunity.textContent = builder.communityDetected || builder.communityDirectory ? 'READY' : 'NOT FOUND';
+  const lastBuild = builder.lastBuild;
+  elements.msfsEfbBuilderLast.textContent = lastBuild?.builtAt ? `${lastBuild.installed ? 'INSTALLED · ' : ''}${formatTime(lastBuild.builtAt) || 'BUILT'}` : '—';
+  const progress = Math.max(0, Math.min(100, Number(builder.progressPercent) || 0));
+  elements.msfsEfbBuilderProgress.style.width = `${progress}%`;
+  const building = builder.building === true || status === 'building';
+  elements.msfsEfbBuilderDetect.disabled = building;
+  elements.msfsEfbBuilderBuild.disabled = building || builder.canBuild !== true;
+  elements.msfsEfbBuilderInstall.disabled = building || builder.canInstall !== true;
+  elements.msfsEfbBuilderOpen.disabled = building || !lastBuild;
+  if (elements.settingsEfbBuilderDot) elements.settingsEfbBuilderDot.className = className;
+  if (elements.settingsEfbBuilder) elements.settingsEfbBuilder.textContent = builder.detail || 'SDK wird geprüft';
+  const active = document.activeElement;
+  if (builder.configuredSdkRoot !== undefined && active !== elements.msfsEfbBuilderSdkPath) elements.msfsEfbBuilderSdkPath.value = builder.configuredSdkRoot || '';
+  if (builder.configuredCommunityDirectory !== undefined && active !== elements.msfsEfbBuilderCommunityPath) elements.msfsEfbBuilderCommunityPath.value = builder.configuredCommunityDirectory || '';
+}
+
+async function requestMsfsEfbBuilder(action, { install = false } = {}) {
+  const endpoint = action === 'detect' ? '/api/msfs-efb-builder/detect'
+    : action === 'open' ? '/api/msfs-efb-builder/open-output' : '/api/msfs-efb-builder/build';
+  const controls = [elements.msfsEfbBuilderDetect, elements.msfsEfbBuilderBuild, elements.msfsEfbBuilderInstall, elements.msfsEfbBuilderOpen].filter(Boolean);
+  for (const control of controls) control.disabled = true;
+  elements.msfsEfbBuilderMessage.textContent = action === 'open' ? 'Opening output …' : action === 'detect' ? 'Checking SDK …' : 'Building native EFB package …';
+  try {
+    const options = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (action !== 'open') {
+      const sdkRoot = elements.msfsEfbBuilderSdkPath.value.trim();
+      const communityDirectory = elements.msfsEfbBuilderCommunityPath.value.trim();
+      const body = { install };
+      if (action === 'detect') {
+        body.sdkRoot = sdkRoot;
+        body.communityDirectory = communityDirectory;
+      } else {
+        if (sdkRoot) body.sdkRoot = sdkRoot;
+        if (communityDirectory) body.communityDirectory = communityDirectory;
+      }
+      options.body = JSON.stringify(body);
+    }
+    const response = await fetch(authenticatedUrl(endpoint), options);
+    const data = await response.json();
+    if (data.builder) renderMsfsEfbBuilder({ integrations: { msfsEfbBuilder: data.builder } });
+    if (!response.ok) throw new Error(data.error || 'MSFS EFB builder action failed.');
+    elements.msfsEfbBuilderMessage.textContent = action === 'open' ? 'Output opened.' : data.builder?.detail || 'Done.';
+  } catch (error) {
+    elements.msfsEfbBuilderMessage.textContent = error.message;
+  } finally {
+    if (latestState) renderMsfsEfbBuilder(latestState);
+  }
+}
+
 function renderPhase3(state) {
+  renderMsfsEfbBuilder(state);
   const intelligence = state.integrations?.flightIntelligence || {};
   const routeSync = state.integrations?.routeSync || {};
   const turnaround = state.integrations?.turnaround || {};
@@ -5065,6 +5142,13 @@ elements.openLegal.addEventListener('click', () => {
   if (typeof elements.legalDialog.showModal === 'function') elements.legalDialog.showModal();
   else elements.legalDialog.setAttribute('open', '');
 });
+elements.msfsEfbBuilderDetect?.addEventListener('click', () => requestMsfsEfbBuilder('detect'));
+elements.msfsEfbBuilderBuild?.addEventListener('click', () => requestMsfsEfbBuilder('build'));
+elements.msfsEfbBuilderInstall?.addEventListener('click', () => {
+  if (!window.confirm('Flight Deck EFB jetzt bauen und in Community2024 installieren? Ein vorhandenes Flight-Deck-Paket wird ersetzt.')) return;
+  requestMsfsEfbBuilder('build', { install: true });
+});
+elements.msfsEfbBuilderOpen?.addEventListener('click', () => requestMsfsEfbBuilder('open'));
 elements.checkUpdate.addEventListener('click', () => checkForUpdate());
 elements.updateDialogDownload?.addEventListener('click', downloadAvailableUpdate);
 elements.updateDialogInstall?.addEventListener('click', installDownloadedUpdate);

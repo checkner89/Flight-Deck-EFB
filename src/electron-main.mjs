@@ -107,6 +107,7 @@ async function createWindow() {
     flightStorageDirectory: path.join(app.getPath('userData'), 'flights'),
     automationStorageDirectory: path.join(app.getPath('userData'), 'automations'),
     accessStorageDirectory: path.join(app.getPath('userData'), 'access'),
+    msfsEfbBuilderStorageDirectory: path.join(app.getPath('userData'), 'msfs-efb-builder'),
     updateService,
   });
   const { workAreaSize } = screen.getPrimaryDisplay();

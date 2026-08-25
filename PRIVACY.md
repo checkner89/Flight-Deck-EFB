@@ -1,6 +1,6 @@
 # Flight Deck EFB — Privacy and data flow
 
-Effective for version 1.7.0 (25 August 2026)
+Effective for version 1.7.1 (25 August 2026)
 
 Flight Deck EFB is a local companion for flight simulation. The Windows host stores settings, paired-device tokens, cached airport data, automation rules, flight recordings and the optional SimBrief identifier in the current Windows user's application-data folder. Normal application updates keep this data. **New Flight** resets the current operational session but does not delete the archive or application preferences.
 
@@ -51,3 +51,8 @@ Flight GPX/JSON exports and user-created backups are written only after an expli
 Third-party providers process optional requests under their own privacy notices and terms. See `THIRD_PARTY_NOTICES.md` for licensing and compatibility notices.
 
 Flight simulation use only — not for real-world navigation.
+
+
+## MSFS 2024 EFB Package Builder
+
+The optional builder reads the locally installed MSFS 2024 SDK/template and may read `UserCfg.opt` only to determine `InstalledPackagesPath`/`Community2024`. It does not modify `UserCfg.opt`, upload SDK files, or send local SDK/Community paths to paired devices. Optional path overrides, build logs and package exports are stored locally on the Windows host. Installation into Community2024 occurs only after an explicit user action.

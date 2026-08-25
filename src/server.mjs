@@ -16,6 +16,7 @@ import { AircraftAdapterManager } from './aircraft-adapter-manager.mjs';
 import { GroundSafetyEngine } from './ground-safety-engine.mjs';
 import { RouteSyncService } from './route-sync-service.mjs';
 import { FlightIntelligenceEngine } from './flight-intelligence-engine.mjs';
+import { MsfsEfbPackageBuilder } from './msfs-efb-package-builder.mjs';
 import { GsxClient } from './gsx-client.mjs';
 import { SimBriefClient } from './simbrief-client.mjs';
 import { OnlineNetworkClient } from './online-network-client.mjs';
@@ -39,7 +40,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.1';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -224,6 +225,7 @@ export async function createTaxiServer({
   flightRecorder,
   automationStorageDirectory,
   accessStorageDirectory,
+  msfsEfbBuilderStorageDirectory,
   updateService,
 } = {}) {
   const engine = new StateEngine();
@@ -247,6 +249,13 @@ export async function createTaxiServer({
   const groundSafety = new GroundSafetyEngine(engine);
   const routeSync = new RouteSyncService(engine);
   const flightIntelligence = new FlightIntelligenceEngine(engine);
+  const msfsEfbBuilder = new MsfsEfbPackageBuilder(engine, {
+    sourceDirectory: path.join(PROJECT_DIR, 'MSFS-2024-EFB-App'),
+    storageDirectory: msfsEfbBuilderStorageDirectory
+      || (flightStorageDirectory ? path.join(path.dirname(flightStorageDirectory), 'msfs-efb-builder') : undefined),
+    appVersion: APP_VERSION,
+  });
+  await msfsEfbBuilder.start();
   const facilityMapCache = new Map();
   const navigraph = {
     start() {
@@ -313,6 +322,7 @@ export async function createTaxiServer({
       { id: 'ground-safety', label: 'Ground / Taxi Safety', status: state.integrations.groundSafety?.status === 'clear' ? 'ready' : state.integrations.groundSafety?.status || 'waiting', detail: state.integrations.groundSafety?.detail || '' },
       { id: 'flight-intelligence', label: 'Automatic Flight Intelligence', status: state.integrations.flightIntelligence?.status === 'stable' ? 'ready' : state.integrations.flightIntelligence?.status || 'waiting', detail: state.integrations.flightIntelligence?.detail || '' },
       { id: 'route-sync', label: 'Native MSFS EFB Route Bridge', status: state.integrations.routeSync?.status === 'ready' ? 'ready' : state.integrations.routeSync?.status || 'waiting', detail: state.integrations.routeSync?.detail || '' },
+      { id: 'msfs-efb-builder', label: 'MSFS 2024 EFB Package Builder', status: ['ready', 'built', 'installed'].includes(state.integrations.msfsEfbBuilder?.status) ? 'ready' : state.integrations.msfsEfbBuilder?.status || 'not-checked', detail: state.integrations.msfsEfbBuilder?.detail || '' },
       { id: 'flight-assistant', label: 'Flight Assistant', status: state.integrations.flightAssistant?.status === 'clear' ? 'ready' : state.integrations.flightAssistant?.status || 'waiting', detail: state.integrations.flightAssistant?.detail || '' },
       { id: 'turnaround', label: 'Turnaround Coordinator', status: ['ready', 'complete', 'inactive'].includes(state.integrations.turnaround?.status) ? 'ready' : state.integrations.turnaround?.status || 'waiting', detail: state.integrations.turnaround?.detail || '' },
       { id: 'atc', label: 'ATC source', status: activeConnectionStatus(state), detail: state.taxi?.clearance?.provider || state.atc?.selectedProvider || 'auto' },
@@ -327,7 +337,7 @@ export async function createTaxiServer({
       runtime: { platform: process.platform, architecture: process.arch, osRelease: os.release(), node: process.version },
       checks,
       data: { flightCount: flights.length, mapFiles, mapBytes, pairedDevices: accessManager.list().length, sharingEnabled: accessManager.sharingEnabled },
-      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, turnaroundRemoteServiceControl: false, adapterControlRequiresExplicitRequest: true, groundSafetyAdvisoryOnly: true, flightAssistantAdvisoryOnly: true, routeSyncUsesDocumentedReadApi: true, secretsIncluded: false },
+      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, turnaroundRemoteServiceControl: false, adapterControlRequiresExplicitRequest: true, groundSafetyAdvisoryOnly: true, flightAssistantAdvisoryOnly: true, routeSyncUsesDocumentedReadApi: true, communityInstallExplicitOnly: true, microsoftSdkRedistributed: false, secretsIncluded: false },
     };
   };
 
@@ -525,6 +535,48 @@ export async function createTaxiServer({
           return json(response, 202, result);
         } catch (error) {
           return json(response, 409, { error: error.message, ...(await updater.status()) });
+        }
+      }
+
+      if (pathname === '/api/msfs-efb-builder/status' && request.method === 'GET') {
+        if (!hostAuthenticated) return json(response, 403, { error: 'Der MSFS EFB Package Builder ist nur in der Windows-App verfügbar.' });
+        return json(response, 200, { builder: msfsEfbBuilder.detailedStatus() });
+      }
+
+      if (pathname === '/api/msfs-efb-builder/detect' && request.method === 'POST') {
+        if (!hostAuthenticated) return json(response, 403, { error: 'Der MSFS EFB Package Builder ist nur in der Windows-App verfügbar.' });
+        try {
+          const body = await readJsonBody(request);
+          await msfsEfbBuilder.configure({
+            sdkRoot: body.sdkRoot === '' ? null : body.sdkRoot,
+            communityDirectory: body.communityDirectory === '' ? null : body.communityDirectory,
+          });
+          return json(response, 200, { builder: msfsEfbBuilder.detailedStatus() });
+        } catch (error) {
+          return json(response, 422, { error: error.message, builder: msfsEfbBuilder.detailedStatus() });
+        }
+      }
+
+      if (pathname === '/api/msfs-efb-builder/build' && request.method === 'POST') {
+        if (!hostAuthenticated) return json(response, 403, { error: 'Der MSFS EFB Package Builder ist nur in der Windows-App verfügbar.' });
+        try {
+          const body = await readJsonBody(request);
+          const options = { install: body.install === true };
+          if (body.sdkRoot) options.sdkRoot = body.sdkRoot;
+          if (body.communityDirectory) options.communityDirectory = body.communityDirectory;
+          await msfsEfbBuilder.build(options);
+          return json(response, 200, { builder: msfsEfbBuilder.detailedStatus() });
+        } catch (error) {
+          return json(response, 409, { error: error.message, builder: msfsEfbBuilder.detailedStatus() });
+        }
+      }
+
+      if (pathname === '/api/msfs-efb-builder/open-output' && request.method === 'POST') {
+        if (!hostAuthenticated) return json(response, 403, { error: 'Builder-Ausgaben können nur in der Windows-App geöffnet werden.' });
+        try {
+          return json(response, 200, await msfsEfbBuilder.openOutput());
+        } catch (error) {
+          return json(response, 409, { error: error.message });
         }
       }
 
@@ -1306,6 +1358,7 @@ export async function createTaxiServer({
     mapCacheDirectory: mapService.cacheDirectory,
     flightRecorder: recorder,
     automationEngine: automation,
+    msfsEfbPackageBuilder: msfsEfbBuilder,
     accessManager,
     openInDefaultBrowser,
     async close() {
@@ -1340,6 +1393,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     : path.join(os.homedir(), '.flight-deck-efb');
   const application = await createTaxiServer({
     ...options,
+    msfsEfbBuilderStorageDirectory: path.join(standaloneDataDirectory, 'msfs-efb-builder'),
   });
   process.stdout.write(`Flight Deck EFB: ${application.authenticatedLocalUrl}\n`);
   process.stdout.write(`Mobile PIN: ${application.pairingPin}\n`);

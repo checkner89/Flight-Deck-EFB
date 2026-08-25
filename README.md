@@ -1,10 +1,18 @@
 # Flight Deck EFB
 
-**Current release: 1.7.0 — Phase 3 Native EFB & Flight Intelligence**
+**Current release: 1.7.1 — Native EFB Community Package Builder**
 
 Flight Deck EFB is a Windows companion and responsive Electronic Flight Bag for Microsoft Flight Simulator 2020/2024. The Windows host owns SimConnect, local data and guarded integrations; the same Flight Deck interface can be used in the desktop app, a browser, an iPad/iPhone, Android device and — with the optional SDK-built adapter — directly inside the native MSFS 2024 EFB.
 
 > **Flight simulation use only — not for real-world navigation.**
+
+## 1.7.1 highlights
+
+- **One-click native EFB builder:** Settings → System can detect the locally installed MSFS 2024 SDK/EFB sample and build Flight Deck with that exact Microsoft template.
+- **Official Package Tool path:** the builder invokes the user's installed `fspackagetool.exe` to compile the Community package; Microsoft SDK/template files are not distributed with Flight Deck.
+- **Community2024 detection:** Flight Deck reads the existing `InstalledPackagesPath` from `UserCfg.opt` and targets `Community2024`. It never changes `UserCfg.opt`.
+- **Explicit install only:** **PAKET BAUEN** creates a reusable local package/ZIP; **BAUEN & INSTALLIEREN** additionally copies the finished package into Community2024 after an explicit confirmation.
+- **Private local paths:** full SDK/Community/build paths remain inside the Windows host and are not exposed to paired tablets or support exports.
 
 ## 1.7.0 highlights
 
@@ -58,7 +66,7 @@ It never sends a simulator command by itself.
 
 ## Install / update Windows
 
-1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.0.exe`**.
+1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.1.exe`**.
 2. Windows SmartScreen can warn because the current build is not code-signed. Review the source/publisher before running it.
 3. Start **Flight Deck EFB**. The Windows app starts the local host used by the desktop UI and second screens.
 4. Allow private-network firewall access only when you want tablet/second-screen LAN access.
@@ -67,6 +75,17 @@ It never sends a simulator command by itself.
 The per-user installer upgrades the existing installation in place and retains normal local settings, paired-device tokens, cached airports and flight archive. The installed app uses the GitHub Release channel through `electron-updater`; `latest.yml` and the NSIS blockmap are published with every release.
 
 ## Native MSFS 2024 EFB app
+
+### Recommended: build from Flight Deck
+
+1. Install the MSFS 2024 SDK from Developer Mode if it is not already installed.
+2. Open **Settings → System → Native EFB Package Builder**.
+3. Select **SDK PRÜFEN**. Flight Deck checks the installed EFB sample and `fspackagetool.exe` and reads the existing `InstalledPackagesPath` from `UserCfg.opt` to locate `Community2024`.
+4. Select **PAKET BAUEN** to create a reusable Community package plus ZIP, or **BAUEN & INSTALLIEREN** to additionally copy the finished package into `Community2024`.
+5. Restart/reload the simulator package list and open **Flight Deck EFB** in the simulator EFB.
+
+The builder copies the Microsoft sample only into an isolated local workspace for the build. Microsoft SDK files are never shipped with Flight Deck or uploaded anywhere. Manual path overrides remain available for non-standard SDK/Community installations.
+
 
 Source for the optional in-simulator adapter is in `MSFS-2024-EFB-App/`. Microsoft SDK template/build files are intentionally not redistributed. Build that source against the EFB template installed with your own current MSFS 2024 SDK; detailed steps and route-API safety limits are in `MSFS-2024-EFB-App/README.md`.
 
