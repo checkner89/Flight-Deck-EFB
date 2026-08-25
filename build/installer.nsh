@@ -10,26 +10,19 @@ Var DesktopShortcutCheckbox
 Var DesktopShortcutSelection
 
 !macro customInit
-  ; Keep the current electron-builder default: a normal interactive first install
-  ; creates a desktop shortcut unless the user explicitly opts out below.
+  ; Interactive installs default to creating a desktop shortcut. Silent
+  ; auto-updates do not render wizard pages and therefore keep this default.
   StrCpy $DesktopShortcutSelection ${BST_CHECKED}
 !macroend
 
 !macro customPageAfterChangeDir
-  ; electron-builder inserts this hook after the install-directory page and
-  ; before files are installed. Updated/silent installs skip both custom pages.
+  ; These pages are part of the assisted installer. NSIS automatically skips
+  ; wizard pages when the updater launches the installer silently (/S).
   Page custom ThirdPartyPageCreate
   Page custom AdditionalTasksPageCreate AdditionalTasksPageLeave
 !macroend
 
 Function ThirdPartyPageCreate
-  ${If} ${isUpdated}
-    Abort
-  ${EndIf}
-  ${If} ${Silent}
-    Abort
-  ${EndIf}
-
   !insertmacro MUI_HEADER_TEXT "Third-party notices" "Open-source software, data sources and optional compatibility services"
 
   nsDialogs::Create 1018
@@ -63,13 +56,6 @@ Function ThirdPartyPageCreate
 FunctionEnd
 
 Function AdditionalTasksPageCreate
-  ${If} ${isUpdated}
-    Abort
-  ${EndIf}
-  ${If} ${Silent}
-    Abort
-  ${EndIf}
-
   !insertmacro MUI_HEADER_TEXT "Additional Tasks" "Select the additional tasks you would like Setup to perform."
 
   nsDialogs::Create 1018
@@ -85,7 +71,7 @@ Function AdditionalTasksPageCreate
   Pop $DesktopShortcutCheckbox
   ${NSD_Check} $DesktopShortcutCheckbox
 
-  ${NSD_CreateLabel} 0 58u 100% 38u "A Start Menu shortcut is always created. Updates preserve your existing application data and shortcut choices whenever possible."
+  ${NSD_CreateLabel} 0 58u 100% 38u "A Start Menu shortcut is always created. Updates preserve your local Flight Deck EFB data."
   Pop $1
 
   nsDialogs::Show
@@ -96,14 +82,11 @@ Function AdditionalTasksPageLeave
 FunctionEnd
 
 !macro customInstall
-  ; electron-builder creates the normal shortcut first. On a fresh interactive
-  ; install we remove only the desktop link if the user explicitly opted out.
-  ; Update installs do not run the opt-out path, so an existing user choice is
-  ; not intentionally changed by this custom page.
-  ${IfNot} ${isUpdated}
-    ${If} $DesktopShortcutSelection != ${BST_CHECKED}
-      Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
-    ${EndIf}
+  ; electron-builder creates its configured desktop shortcut during install.
+  ; Remove it only when the interactive Additional Tasks page was explicitly
+  ; unchecked. Silent updates keep the initialized checked state.
+  ${If} $DesktopShortcutSelection != ${BST_CHECKED}
+    Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
   ${EndIf}
 !macroend
 
