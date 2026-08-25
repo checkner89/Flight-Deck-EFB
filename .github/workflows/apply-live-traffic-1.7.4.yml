@@ -25,6 +25,18 @@ jobs:
         with:
           node-version: 24
 
+      - name: Correct migration anchor
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply-live-traffic-1.7.4.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('data-page=\\"online\\"', 'data-page=\\"charts\\"')
+          text = text.replace('data-page="online"', 'data-page="charts"')
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply 1.7.4 migration
         run: python scripts/apply-live-traffic-1.7.4.py
 
