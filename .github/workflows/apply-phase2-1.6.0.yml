@@ -1,0 +1,112 @@
+name: Apply Phase 2 1.6.0
+
+on:
+  push:
+    branches:
+      - phase2-aircraft-ground-1.6.0
+    paths:
+      - '.github/workflows/apply-phase2-1.6.0.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Phase 2 branch
+        uses: actions/checkout@v5
+        with:
+          ref: phase2-aircraft-ground-1.6.0
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Apply Phase 2 migration
+        run: python scripts/apply-phase2-1.6.0.py
+
+      - name: Synchronize package lock and dependencies
+        run: npm install
+
+      - name: Syntax checks
+        run: |
+          node --check src/aircraft-adapter-manager.mjs
+          node --check src/ground-safety-engine.mjs
+          node --check src/gsx-client.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/server.mjs
+          node --check src/state-engine.mjs
+          node --check src/electron-main.mjs
+          node --check public/app.js
+          node --check public/service-worker.js
+
+      - name: Phase 2 behavior checks
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { parsePmdgSdkHeader } from './src/aircraft-adapter-manager.mjs';
+          import { evaluateGroundSafety } from './src/ground-safety-engine.mjs';
+
+          const sdk = parsePmdgSdkHeader(`
+          #define THIRD_PARTY_EVENT_ID_MIN 0x00011000
+          #define EVT_TEST_SWITCH (THIRD_PARTY_EVENT_ID_MIN + 25)
+          #define EVT_SECOND_SWITCH (THIRD_PARTY_EVENT_ID_MIN + 42)
+          `, { family: 'PMDG Test' });
+          assert.equal(sdk.baseEventId, 69632);
+          assert.equal(sdk.controls.length, 2);
+          assert.equal(sdk.controls[0].eventNumber, 69657);
+
+          const baseState = {
+            aircraft: { lat: 50, lon: 8, onGround: true, groundSpeed: 12 },
+            flight: { clearedForTakeoff: false },
+            taxi: { clearance: { text: 'Taxi via A, hold short runway 25C' }, holdShorts: [{ lat: 50.0002, lon: 8, index: 2, label: 'HOLD SHORT RWY 25C' }] },
+            guidance: { available: true, closestSegment: 1, warning: false, remainingMeters: 500 },
+            integrations: { flightOperations: { phaseOverride: 'taxi-out' }, simTraffic: { aircraft: [] } },
+          };
+          const hold = evaluateGroundSafety(baseState);
+          assert.equal(hold.alerts[0].id, 'hold-short');
+          assert.ok(['warning', 'critical'].includes(hold.alerts[0].severity));
+
+          const speed = evaluateGroundSafety({ ...baseState, aircraft: { ...baseState.aircraft, groundSpeed: 34 }, taxi: { clearance: { text: 'Taxi via A' }, holdShorts: [] } });
+          assert.equal(speed.alerts[0].id, 'taxi-speed');
+          assert.equal(speed.alerts[0].severity, 'critical');
+          console.log('Phase 2 behavior checks passed.');
+          NODE
+
+      - name: Smoke test demo host
+        shell: bash
+        run: |
+          node src/server.mjs --demo --port 8746 >/tmp/efb-phase2.out 2>/tmp/efb-phase2.err &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8746/ | grep -q 'Flight Deck EFB'; then
+              echo 'Flight Deck EFB 1.6.0 demo host passed.'
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/efb-phase2.out || true
+          cat /tmp/efb-phase2.err || true
+          exit 1
+
+      - name: Verify version/text sweep
+        shell: bash
+        run: |
+          test "$(node -p "require('./package.json').version")" = "1.6.0"
+          grep -q 'data-app-version="1.6.0"' public/index.html
+          grep -q 'v1.6.0' public/index.html
+          grep -q 'flight-deck-efb-v160' public/service-worker.js
+          ! grep -R --exclude-dir=.git --exclude='apply-phase2-1.6.0.py' -nE 'Flight Deck EFB 1\.5\.0|v1\.4\.4|Setup-1\.2\.0' README.md public src package.json CHANGELOG.md
+
+      - name: Commit Phase 2 implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md CHANGELOG.md package.json package-lock.json public src .github/workflows/release.yml
+          git commit -m 'Implement Phase 2 aircraft and ground intelligence'
+          git push origin HEAD:phase2-aircraft-ground-1.6.0
