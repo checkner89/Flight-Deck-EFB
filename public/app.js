@@ -3001,7 +3001,7 @@ function trafficMatchesView(entry, airport) {
   const state = normalizedTrafficState(entry.state);
   if (trafficBoardView === 'departures') {
     return String(entry.origin || '').toUpperCase() === airport
-      || (entry.onGround && String(entry.currentAirport || '').toUpperCase() === airport && !/landing|rollout|taxi in/.test(state))
+      || (entry.onGround && !/landing|rollout|taxi in/.test(state))
       || /startup|preflight|clearance|push|taxi out|takeoff|depart/.test(state);
   }
   return String(entry.destination || '').toUpperCase() === airport
@@ -3044,14 +3044,16 @@ function trafficAirlineLogo(entry = {}) {
   return `<span class="traffic-airline-logo" title="${escapeHtml(name)}">${image}<b>${escapeHtml(fallback)}</b></span>`;
 }
 
-function trafficRouteFields(entry = {}) {
+function trafficRouteFields(entry = {}, boardAirport = '') {
   const state = normalizedTrafficState(entry.state);
+  const airport = String(boardAirport || '').toUpperCase();
   const current = String(entry.currentAirport || '').toUpperCase();
   let origin = String(entry.origin || '').toUpperCase();
   let destination = String(entry.destination || '').toUpperCase();
-  if (!origin && current && /startup|preflight|clearance|push|taxi out|takeoff|depart|taxi/.test(state)) origin = current;
-  if (!destination && current && /landing|approach|rollout|taxi in/.test(state)) destination = current;
-  if (!origin && entry.onGround && current) origin = current;
+  const knownAirport = current || airport;
+  const arrivalState = /landing|approach|rollout|taxi in/.test(state);
+  if (!origin && knownAirport && !arrivalState && (entry.onGround || /startup|preflight|clearance|push|taxi out|takeoff|depart|taxi/.test(state))) origin = knownAirport;
+  if (!destination && knownAirport && arrivalState) destination = knownAirport;
   return { origin: origin || '—', destination: destination || '—' };
 }
 
@@ -3061,7 +3063,7 @@ function renderFlightboard(state) {
   const airport = currentFlightboardAirport(state);
   const all = enrichTrafficFromKnownFlightPlans(Array.isArray(integration.aircraft) ? integration.aircraft : [], state);
   const airportTraffic = airport ? all.filter((entry) => trafficMatchesAirport(entry, airport)) : all;
-  const candidates = trafficBoardView === 'all' || !airport ? all : airportTraffic;
+  const candidates = trafficBoardView === 'all' ? all : (airportTraffic.length ? [...new Map([...airportTraffic, ...all].map((entry) => [entry.objectId ?? entry.callsign, entry])).values()] : all);
   const visible = candidates.filter((entry) => trafficMatchesView(entry, airport));
 
   elements.flightboardStatusPill.className = `module-status ${simulatorOnline ? 'connected' : 'waiting'}`;
@@ -3079,7 +3081,7 @@ function renderFlightboard(state) {
   elements.flightboardList.replaceChildren();
   for (const entry of sorted) {
     const status = trafficStateInfo(entry.state);
-    const route = trafficRouteFields(entry);
+    const route = trafficRouteFields(entry, airport);
     const row = document.createElement('div');
     row.className = 'flightboard-row';
     row.setAttribute('role', 'row');

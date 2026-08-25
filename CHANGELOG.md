@@ -7,6 +7,8 @@
 - Fixed stretched/offset ATC and SayIntentions cards plus oversized Phase-2/3 empty-state cards.
 - Improved Flightboard route/schedule enrichment with optional official MSFS AI Traffic fields and online-pilot fallback.
 - Improved Departures / Arrivals classification when schedule data is incomplete.
+- Uses the active Flightboard airport as a known-side fallback for schedule-less nearby ground traffic, without inventing an unknown destination.
+- Fixed SayIntentions Messages tab alignment so it uses the full ATC workspace width instead of inheriting the clearance two-column offset.
 - Added airline identity badges/icons and kept common aviation terms such as Taxi, Enroute, Parking and Boarding in English in the German UI.
 - Added an in-app update changelog and retained GitHub/electron-updater release notes in update state.
 - Fixed a critical builder-state regression where **Build Package** / **Build & Install** could report the SDK as unavailable immediately after successful detection.

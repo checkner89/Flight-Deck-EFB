@@ -5477,3 +5477,15 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
   .fenix-connect-actions .inline-form { min-width:0; width:100%; }
   .fenix-efb-view { grid-template-rows:auto minmax(440px,65vh); }
 }
+
+
+/* 1.7.2 SI alignment */
+.atc-messages-card { grid-column: 1 / -1 !important; width: 100%; max-width: none; }
+.atc-messages-card .section-title { align-items: flex-start; flex-wrap: wrap; }
+.atc-messages-card .message-view-selector { margin-left: auto; flex: 0 0 auto; }
+.atc-message-list { width: 100%; }
+.atc-message-list > * { box-sizing: border-box; width: 100%; max-width: 100%; }
+@media (max-width: 760px) {
+  .atc-messages-card .message-view-selector { width: 100%; margin-left: 0; }
+  .atc-messages-card .message-view-selector button { flex: 1 1 0; }
+}
