@@ -52,7 +52,7 @@ jobs:
           node --check src/electron-main.mjs
           node --check src/server.mjs
           node --check src/simconnect-client.mjs
-          node --check src/traffic-diagnostic.mjs
+          node --check src/injected-traffic-client.mjs
           node --check src/state-engine.mjs
           node --check public/app.js
           node --check public/i18n.js
@@ -178,7 +178,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Uploading release assets failed.' }
             gh release edit $tag --repo $repo --draft=false --prerelease=false --title "Flight Deck EFB $version"
           } else {
-            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. Improved third-party injected traffic detection plus independent raw SimConnect AIRCRAFT/ALL object diagnostics. Flight simulation use only — not for real-world navigation." --verify-tag
+            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. Third-party injected traffic fallback now discovers all AI-controlled SimObjects, filters real aircraft by CATEGORY, reads their live aircraft data by Object ID, and merges them directly into Flightboard and Tracking traffic. Flight simulation use only — not for real-world navigation." --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing GitHub release failed.' }
 
