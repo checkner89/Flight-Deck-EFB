@@ -1,6 +1,6 @@
 # Flight Deck EFB — Privacy and data flow
 
-Effective for version 1.7.3 (25 August 2026)
+Effective for version 1.7.6 (25 August 2026)
 
 Flight Deck EFB is a local companion for flight simulation. The Windows host stores settings, paired-device tokens, cached airport data, automation rules, flight recordings and the optional SimBrief identifier in the current Windows user's application-data folder. Normal application updates keep this data. **New Flight** resets the current operational session but does not delete the archive or application preferences.
 
@@ -46,7 +46,9 @@ iPad, iPhone, Android and second-monitor browsers connect directly to the Window
 
 ## Exports and deletion
 
-Flight GPX/JSON exports and user-created backups are written only after an explicit action. The support export intentionally omits API keys, login tokens, ATC message content, flight notes, PMDG SDK source and full local file paths. Paired devices can be revoked in Settings. Local application data can be removed using in-app controls where available or by uninstalling Flight Deck and deleting its application-data folder.
+Flight GPX/JSON exports and user-created backups are written only after an explicit action. The support export intentionally omits API keys, login tokens, ATC message content, flight notes, PMDG SDK source and full local file paths. Paired devices can be revoked in Settings.
+
+The Windows uninstaller removes the application but **does not automatically delete the Flight Deck EFB application-data folder**. This intentionally preserves local settings, caches and flight history across uninstall/reinstall. To remove the remaining local data completely, delete the Flight Deck EFB application-data folder after uninstalling.
 
 Third-party providers process optional requests under their own privacy notices and terms. See `THIRD_PARTY_NOTICES.md` for licensing and compatibility notices.
 

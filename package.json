@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "description": "Flight Deck EFB for MSFS with honest local Live Traffic, taxi guidance, native EFB bridging, flight intelligence, aircraft adapters, GSX and guarded simulator integrations.",
   "author": "checkner89",
   "license": "MIT",
@@ -58,6 +58,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "license": "build/license.txt",
+      "include": "build/installer.nsh",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Flight Deck EFB",

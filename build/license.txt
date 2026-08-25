@@ -1,0 +1,87 @@
+Flight Deck EFB Installer Agreement
+Version 1.0 - August 25, 2026
+
+Copyright (c) 2026 Christoph Heckner
+
+IMPORTANT: PLEASE READ THIS AGREEMENT BEFORE INSTALLING OR USING FLIGHT DECK EFB.
+
+This installer agreement presents the MIT software license together with simulation-only safety limitations, privacy/data-flow information and third-party notices relevant to installing Flight Deck EFB. Nothing in this installer agreement replaces, removes, reduces or contradicts rights granted by the MIT License.
+
+1. MIT LICENSE
+
+MIT License
+
+Copyright (c) 2026 Christoph Heckner
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+NOTHING IN THE FOLLOWING INSTALLER ACKNOWLEDGEMENTS REMOVES, REDUCES OR CONTRADICTS THESE MIT-LICENSE RIGHTS.
+
+2. FLIGHT SIMULATION ONLY
+
+Flight Deck EFB is intended solely as a companion for consumer flight simulation.
+
+Flight Deck EFB is NOT certified, approved, validated or intended for:
+- real-world aviation or navigation;
+- operation of a real aircraft;
+- operational flight planning;
+- safety-critical decision making; or
+- certified pilot or crew training.
+
+Simulator, airport, traffic, weather, route and map data may be incomplete, delayed, unavailable or inaccurate. Never rely on Flight Deck EFB for real-world aircraft operation.
+
+3. THIRD-PARTY SOFTWARE, DATA AND SERVICES
+
+Flight Deck EFB uses or can connect to third-party software, data and services. Those materials remain governed by their own licenses, terms, trademarks and privacy policies.
+
+Examples include Microsoft Flight Simulator / SimConnect, OpenStreetMap, OurAirports, Electron, Leaflet, SayIntentions.AI, SimBrief, VATSIM, IVAO, Little Navmap, Fenix, PMDG and GSX/FSDreamTeam.
+
+Installing Flight Deck EFB does not grant any additional rights to third-party products, SDKs, data, maps, trademarks or online services.
+
+A dedicated Third-party notices page is shown during Setup. The complete THIRD_PARTY_NOTICES.md file is also installed with Flight Deck EFB.
+
+4. LOCAL NETWORK AND CONNECTOR ACCESS
+
+Flight Deck EFB runs a local Windows host to communicate with Microsoft Flight Simulator and optional local integrations. If LAN sharing is enabled, paired devices on the same trusted private network can access a sanitized EFB interface.
+
+Do not expose the Flight Deck EFB local host directly to the public internet. Use LAN sharing only on networks and devices you trust.
+
+Optional internet requests can be made to selected providers such as SimBrief, AviationWeather.gov, VATSIM, IVAO, OpenStreetMap/Overpass and GitHub Releases. Those providers process requests under their own policies.
+
+5. LOCAL DATA AND PRIVACY
+
+Flight Deck EFB can store settings, paired-device tokens, airport caches, automation rules, flight recordings, optional SimBrief identifiers and other application state in the current Windows user's application-data folder.
+
+Normal application updates preserve this local data. Uninstalling Flight Deck EFB does not automatically delete the application-data folder. This prevents an uninstall or reinstall from unexpectedly deleting user-created flight history and settings.
+
+The complete data-flow description is provided in PRIVACY.md and inside the application.
+
+6. INDEPENDENT PRODUCT
+
+Flight Deck EFB is an independent flight-simulation companion. Compatibility references to third-party products identify optional interoperability only and do not imply sponsorship, certification, endorsement or affiliation unless explicitly stated.
+
+7. ACCEPTANCE
+
+By selecting "I accept the agreement" and continuing with this installer, you acknowledge that you have read and understood:
+- the MIT License above;
+- that Flight Deck EFB is for flight simulation only and not for real-world navigation;
+- that optional third-party services/data have their own terms; and
+- that the application can store local data and optionally communicate on your private LAN and with selected internet services.
+
+If you do not accept these acknowledgements, cancel Setup. The source code and previously distributed MIT-licensed materials remain governed by the MIT License independently of this installer.

@@ -1,4 +1,4 @@
-# Third-party notices — Flight Deck EFB 1.7.3
+# Third-party notices — Flight Deck EFB 1.7.6
 
 Flight Deck EFB is an independent flight-simulation companion. It is not affiliated with or endorsed by Microsoft/Asobo Studio, SayIntentions.AI, BeyondATC, Navigraph, SimBrief, Fenix Simulations, PMDG, FSDreamTeam/GSX, Little Navmap, VATSIM, IVAO, OpenStreetMap, OurAirports or Esri unless explicitly stated otherwise.
 
