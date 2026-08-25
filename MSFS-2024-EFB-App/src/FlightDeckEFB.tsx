@@ -52,15 +52,14 @@ class FlightDeckEfbView extends AppView<RequiredProps<AppViewProps, "bus">> {
   private routeListener: PlannedRouteListener | null = null;
   private retryTimer: number | null = null;
 
-  public onAfterRender(): void {
+  public onAfterRender(_node: VNode): void {
     this.bindNativeRouteListener();
     this.bindSyncButton();
     this.discoverHost();
   }
 
-  public destroy(): void {
+  public onClose(): void {
     if (this.retryTimer !== null) window.clearTimeout(this.retryTimer);
-    super.destroy();
   }
 
   private setStatus(label: string, detail: string, state: "waiting" | "ready" | "attention" = "waiting"): void {
@@ -80,12 +79,11 @@ class FlightDeckEfbView extends AppView<RequiredProps<AppViewProps, "bus">> {
 
   private bindNativeRouteListener(): void {
     try {
-      this.routeListener = RegisterViewListener("JS_LISTENER_PLANNEDROUTE", () => {
-        this.routeListener?.on("AvionicsRouteSync", (route: unknown) => {
-          this.postToHost("/api/native/avionics-sync", { route }).catch(() => undefined);
-          this.setStatus("AVIONICS SYNC", "MSFS reports that the EFB route was synchronized to avionics.", "ready");
-        });
-      }, true);
+      this.routeListener = RegisterViewListener("JS_LISTENER_PLANNEDROUTE");
+      this.routeListener.on("AvionicsRouteSync", (route: unknown) => {
+        this.postToHost("/api/native/avionics-sync", { route }).catch(() => undefined);
+        this.setStatus("AVIONICS SYNC EVENT", "MSFS broadcast the EFB route after Sync Route To Avionics was selected.", "ready");
+      });
     } catch {
       this.setStatus("ROUTE LISTENER LIMITED", "MSFS Planned Route listener is not available in this SDK/runtime.", "attention");
     }
