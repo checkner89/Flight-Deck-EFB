@@ -483,6 +483,7 @@ const elements = {
   flightHubNavButtons: [...document.querySelectorAll('[data-flight-hub-tab]')],
   settingsTabButtons: [...document.querySelectorAll('[data-settings-tab]')],
   atcTabButtons: [...document.querySelectorAll('[data-atc-tab]')],
+  aircraftViewButtons: [...document.querySelectorAll('[data-aircraft-view-button]')],
 };
 
 const preferences = {
@@ -859,10 +860,18 @@ function switchModule(moduleName, preserveFlightHubTab = false) {
   }
   elements.planButton.hidden = !taxiActive;
   if (taxiActive) {
+    followAircraft = true;
+    syncFollowButton();
     setTimeout(() => {
       map.invalidateSize();
-      fitRoute();
-    }, 60);
+      const aircraft = latestState?.aircraft;
+      if (aircraft && Number.isFinite(aircraft.lat) && Number.isFinite(aircraft.lon)) {
+        map.setView([aircraft.lat, aircraft.lon], Math.max(map.getZoom(), 17.5), { animate: false });
+        renderAircraft(aircraft);
+      } else {
+        fitRoute({ disableFollow: false });
+      }
+    }, 100);
   }
   if (visiblePage === 'tracking') {
     ensureTrackingMap();
@@ -899,6 +908,12 @@ function setAtcTab(tab) {
   atcTab = ['clearance', 'messages', 'networks'].includes(tab) ? tab : 'clearance';
   for (const button of elements.atcTabButtons || []) button.classList.toggle('active', button.dataset.atcTab === atcTab);
   for (const panel of document.querySelectorAll('[data-atc-panel]')) panel.hidden = panel.dataset.atcPanel !== atcTab;
+}
+
+function setAircraftView(view = 'fenix') {
+  const selected = ['fenix', 'pmdg', 'status'].includes(view) ? view : 'fenix';
+  for (const button of elements.aircraftViewButtons || []) button.classList.toggle('active', button.dataset.aircraftViewButton === selected);
+  for (const panel of document.querySelectorAll('[data-aircraft-view]')) panel.hidden = panel.dataset.aircraftView !== selected;
 }
 
 function setFlightHubTab(tab) {
@@ -1542,7 +1557,7 @@ function renderPath(state) {
     L.marker([hold.lat, hold.lon], { icon, interactive: false }).addTo(layers.holds);
   }
 
-  fitRoute();
+  fitRoute({ disableFollow: false });
 }
 
 function escapeHtml(value) {
@@ -1621,16 +1636,20 @@ function renderAircraft(aircraft) {
   }
 }
 
-function fitRoute() {
+function fitRoute({ disableFollow = true } = {}) {
   const path = latestState?.taxi?.path ?? [];
   const coordinates = path.map((point) => [point.lat, point.lon]);
   if (latestState?.gate && Number.isFinite(latestState.gate.lat) && Number.isFinite(latestState.gate.lon)) {
     coordinates.push([latestState.gate.lat, latestState.gate.lon]);
   }
   if (coordinates.length >= 2) {
-    followAircraft = false;
-    syncFollowButton();
-    map.fitBounds(coordinates, { padding: [100, 100], maxZoom: 18.6, animate: true });
+    if (disableFollow) {
+      followAircraft = false;
+      syncFollowButton();
+    }
+    if (!followAircraft || !latestState?.aircraft || !Number.isFinite(latestState.aircraft.lat) || !Number.isFinite(latestState.aircraft.lon)) {
+      map.fitBounds(coordinates, { padding: [100, 100], maxZoom: 18.6, animate: true });
+    }
   } else if (latestState?.aircraft) {
     map.setView([latestState.aircraft.lat, latestState.aircraft.lon], 18);
   } else if (latestAirportBounds?.isValid()) {
@@ -2750,7 +2769,11 @@ function renderBriefing(state) {
 
 function renderAtcMessages(state) {
   if (!elements.atcSiMessageList) return;
-  for (const button of elements.siMessageViewButtons) {
+  for (const button of elements.aircraftViewButtons || []) {
+  button.addEventListener('click', () => setAircraftView(button.dataset.aircraftViewButton));
+}
+setAircraftView('fenix');
+for (const button of elements.siMessageViewButtons) {
     const active = button.dataset.siMessageView === siMessageView;
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
@@ -2894,6 +2917,26 @@ function renderCom(state) {
   if (!unique.length) elements.comFrequencyPresets.innerHTML = '<p class="empty-list">No frequencies available from ATC or online networks.</p>';
 }
 
+function normalizeFlightboardCallsign(value = '') {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function enrichTrafficFromKnownFlightPlans(entries, state) {
+  const onlinePilots = Array.isArray(state?.integrations?.onlineNetworks?.pilots) ? state.integrations.onlineNetworks.pilots : [];
+  const onlineByCallsign = new Map(onlinePilots.map((pilot) => [normalizeFlightboardCallsign(pilot.callsign), pilot]));
+  return entries.map((entry) => {
+    const pilot = onlineByCallsign.get(normalizeFlightboardCallsign(entry.callsign || entry.atcId));
+    if (!pilot) return entry;
+    return {
+      ...entry,
+      origin: entry.origin || pilot.departure || '',
+      destination: entry.destination || pilot.arrival || '',
+      airline: entry.airline || pilot.name || '',
+      route: entry.route || pilot.route || '',
+    };
+  });
+}
+
 function currentFlightboardAirport(state) {
   const flight = state.flight || {};
   const phase = resolveFlightPhase(state);
@@ -2958,40 +3001,47 @@ function trafficMatchesView(entry, airport) {
   const state = normalizedTrafficState(entry.state);
   if (trafficBoardView === 'departures') {
     return String(entry.origin || '').toUpperCase() === airport
+      || (entry.onGround && String(entry.currentAirport || '').toUpperCase() === airport && !/landing|rollout|taxi in/.test(state))
       || /startup|preflight|clearance|push|taxi out|takeoff|depart/.test(state);
   }
   return String(entry.destination || '').toUpperCase() === airport
+    || (!entry.onGround && /landing|approach/.test(state))
     || /landing|approach|rollout|taxi in/.test(state);
 }
 
-const AIRLINE_IATA_BY_ICAO = {
-  BTI: 'BT', DLH: 'LH', BAW: 'BA', RYR: 'FR', EZY: 'U2', KLM: 'KL', AFR: 'AF', TAP: 'TP', IBE: 'IB',
-  UAE: 'EK', QTR: 'QR', THY: 'TK', SWR: 'LX', AUA: 'OS', BEL: 'SN', SAS: 'SK', FIN: 'AY',
-  EIN: 'EI', WZZ: 'W6', VLG: 'VY', CFG: 'DE', EWG: 'EW', TUI: 'X3', AEE: 'A3', LOT: 'LO',
-  DAL: 'DL', UAL: 'UA', AAL: 'AA', ACA: 'AC', JBU: 'B6', VIR: 'VS', SIA: 'SQ', CPA: 'CX',
-  ANA: 'NH', JAL: 'JL', KAL: 'KE', ETD: 'EY', QFA: 'QF', ANZ: 'NZ', ICE: 'FI', NSZ: 'D8',
+const AIRLINE_META_BY_ICAO = {
+  BTI: ['BT', 'airBaltic', 'airbaltic.com'], DLH: ['LH', 'Lufthansa', 'lufthansa.com'], BAW: ['BA', 'British Airways', 'britishairways.com'],
+  RYR: ['FR', 'Ryanair', 'ryanair.com'], EZY: ['U2', 'easyJet', 'easyjet.com'], KLM: ['KL', 'KLM', 'klm.com'], AFR: ['AF', 'Air France', 'airfrance.com'],
+  TAP: ['TP', 'TAP Air Portugal', 'flytap.com'], IBE: ['IB', 'Iberia', 'iberia.com'], UAE: ['EK', 'Emirates', 'emirates.com'], QTR: ['QR', 'Qatar Airways', 'qatarairways.com'],
+  THY: ['TK', 'Turkish Airlines', 'turkishairlines.com'], SWR: ['LX', 'SWISS', 'swiss.com'], AUA: ['OS', 'Austrian', 'austrian.com'], BEL: ['SN', 'Brussels Airlines', 'brusselsairlines.com'],
+  SAS: ['SK', 'SAS', 'flysas.com'], FIN: ['AY', 'Finnair', 'finnair.com'], EIN: ['EI', 'Aer Lingus', 'aerlingus.com'], WZZ: ['W6', 'Wizz Air', 'wizzair.com'],
+  VLG: ['VY', 'Vueling', 'vueling.com'], CFG: ['DE', 'Condor', 'condor.com'], EWG: ['EW', 'Eurowings', 'eurowings.com'], TUI: ['X3', 'TUI fly', 'tuifly.com'],
+  AEE: ['A3', 'Aegean', 'aegeanair.com'], LOT: ['LO', 'LOT', 'lot.com'], DAL: ['DL', 'Delta', 'delta.com'], UAL: ['UA', 'United', 'united.com'],
+  AAL: ['AA', 'American', 'aa.com'], ACA: ['AC', 'Air Canada', 'aircanada.com'], JBU: ['B6', 'JetBlue', 'jetblue.com'], VIR: ['VS', 'Virgin Atlantic', 'virginatlantic.com'],
+  SIA: ['SQ', 'Singapore Airlines', 'singaporeair.com'], CPA: ['CX', 'Cathay Pacific', 'cathaypacific.com'], ANA: ['NH', 'ANA', 'ana.co.jp'], JAL: ['JL', 'Japan Airlines', 'jal.com'],
+  KAL: ['KE', 'Korean Air', 'koreanair.com'], ETD: ['EY', 'Etihad', 'etihad.com'], QFA: ['QF', 'Qantas', 'qantas.com'], ANZ: ['NZ', 'Air New Zealand', 'airnewzealand.com'], ICE: ['FI', 'Icelandair', 'icelandair.com'], NSZ: ['D8', 'Norwegian', 'norwegian.com'],
 };
-const AIRLINE_IATA_BY_NAME = [
-  [/air\s*baltic/i, 'BT'], [/lufthansa/i, 'LH'], [/speedbird|british airways/i, 'BA'], [/ryanair/i, 'FR'], [/easyjet/i, 'U2'],
-  [/klm/i, 'KL'], [/air france/i, 'AF'], [/\btap\b/i, 'TP'], [/iberia/i, 'IB'], [/emirates/i, 'EK'],
-  [/qatar/i, 'QR'], [/turkish/i, 'TK'], [/swiss/i, 'LX'], [/austrian/i, 'OS'], [/brussels/i, 'SN'],
-  [/sas|scandinavian/i, 'SK'], [/finnair/i, 'AY'], [/aer lingus/i, 'EI'], [/wizz/i, 'W6'],
-  [/vueling/i, 'VY'], [/condor/i, 'DE'], [/eurowings/i, 'EW'], [/tuifly|tui/i, 'X3'],
+const AIRLINE_META_BY_NAME = [
+  [/air\s*baltic/i, ['BT', 'airBaltic', 'airbaltic.com']], [/lufthansa/i, ['LH', 'Lufthansa', 'lufthansa.com']], [/speedbird|british airways/i, ['BA', 'British Airways', 'britishairways.com']],
+  [/ryanair/i, ['FR', 'Ryanair', 'ryanair.com']], [/easyjet/i, ['U2', 'easyJet', 'easyjet.com']], [/klm/i, ['KL', 'KLM', 'klm.com']], [/air france/i, ['AF', 'Air France', 'airfrance.com']],
+  [/condor/i, ['DE', 'Condor', 'condor.com']], [/eurowings/i, ['EW', 'Eurowings', 'eurowings.com']], [/wizz/i, ['W6', 'Wizz Air', 'wizzair.com']],
 ];
 
-function trafficAirlineIata(entry = {}) {
+function trafficAirlineMeta(entry = {}) {
   const callsign = String(entry.callsign || entry.atcId || '').trim().toUpperCase();
   const icao = callsign.match(/^([A-Z]{3})/)?.[1];
-  if (icao && AIRLINE_IATA_BY_ICAO[icao]) return AIRLINE_IATA_BY_ICAO[icao];
+  if (icao && AIRLINE_META_BY_ICAO[icao]) return AIRLINE_META_BY_ICAO[icao];
   const text = [entry.airline, entry.title, entry.callsign].filter(Boolean).join(' ');
-  return AIRLINE_IATA_BY_NAME.find(([pattern]) => pattern.test(text))?.[1] || null;
+  return AIRLINE_META_BY_NAME.find(([pattern]) => pattern.test(text))?.[1] || null;
 }
 
 function trafficAirlineLogo(entry = {}) {
-  const iata = trafficAirlineIata(entry);
-  const fallback = iata || String(entry.airline || entry.callsign || 'AI').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'AI';
-  const image = iata ? `<img src="https://images.kiwi.com/airlines/64/${encodeURIComponent(iata)}.png" alt="" loading="lazy">` : '';
-  return `<span class="traffic-airline-logo"><b>${escapeHtml(fallback)}</b>${image}</span>`;
+  const meta = trafficAirlineMeta(entry);
+  const fallback = meta?.[0] || String(entry.airline || entry.callsign || 'AI').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'AI';
+  const name = meta?.[1] || entry.airline || 'Airline';
+  const domain = meta?.[2];
+  const image = domain ? `<img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64" alt="${escapeHtml(name)}" loading="lazy" referrerpolicy="no-referrer">` : '';
+  return `<span class="traffic-airline-logo" title="${escapeHtml(name)}">${image}<b>${escapeHtml(fallback)}</b></span>`;
 }
 
 function trafficRouteFields(entry = {}) {
@@ -2999,8 +3049,9 @@ function trafficRouteFields(entry = {}) {
   const current = String(entry.currentAirport || '').toUpperCase();
   let origin = String(entry.origin || '').toUpperCase();
   let destination = String(entry.destination || '').toUpperCase();
-  if (!origin && current && /startup|preflight|clearance|push|taxi out|takeoff|depart/.test(state)) origin = current;
+  if (!origin && current && /startup|preflight|clearance|push|taxi out|takeoff|depart|taxi/.test(state)) origin = current;
   if (!destination && current && /landing|approach|rollout|taxi in/.test(state)) destination = current;
+  if (!origin && entry.onGround && current) origin = current;
   return { origin: origin || '—', destination: destination || '—' };
 }
 
@@ -3008,7 +3059,7 @@ function renderFlightboard(state) {
   const integration = state.integrations?.simTraffic || {};
   const simulatorOnline = ['connected', 'demo'].includes(state.connections?.simConnect?.status);
   const airport = currentFlightboardAirport(state);
-  const all = Array.isArray(integration.aircraft) ? integration.aircraft : [];
+  const all = enrichTrafficFromKnownFlightPlans(Array.isArray(integration.aircraft) ? integration.aircraft : [], state);
   const airportTraffic = airport ? all.filter((entry) => trafficMatchesAirport(entry, airport)) : all;
   const candidates = trafficBoardView === 'all' || !airport ? all : airportTraffic;
   const visible = candidates.filter((entry) => trafficMatchesView(entry, airport));
