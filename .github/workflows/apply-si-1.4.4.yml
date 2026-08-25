@@ -46,7 +46,8 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm .github/workflows/apply-si-1.4.4.yml scripts/apply-si-1.4.4.py
-          git add src/sayintentions-client.mjs src/server.mjs src/state-engine.mjs public/index.html public/app.js public/service-worker.js public/si-operations.js public/si-operations.css package.json package-lock.json CHANGELOG.md .github/workflows/release.yml
+          git checkout -- .github/workflows/release.yml
+          git rm scripts/apply-si-1.4.4.py
+          git add src/sayintentions-client.mjs src/server.mjs src/state-engine.mjs public/index.html public/app.js public/service-worker.js public/si-operations.js public/si-operations.css package.json package-lock.json CHANGELOG.md
           git commit -m 'Release 1.4.4 SayIntentions operations'
           git push origin HEAD:main
