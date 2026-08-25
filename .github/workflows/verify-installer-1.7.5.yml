@@ -6,6 +6,9 @@ on:
       - release/1.7.5-installer-legal
     paths:
       - '.github/workflows/verify-installer-1.7.5.yml'
+      - 'build/installer.nsh'
+      - 'build/license.txt'
+      - 'build/third-party-notices.txt'
 
 permissions:
   contents: write
@@ -94,5 +97,3 @@ jobs:
             git commit -m 'Finalize Flight Deck EFB 1.7.5 installer release'
             git push origin HEAD:release/1.7.5-installer-legal
           }
-
-# verification attempt 4
