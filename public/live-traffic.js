@@ -4,7 +4,7 @@ export const LIVE_TRAFFIC_LIMITS = Object.freeze({
   groundRadiusNm: 8,
   arrivingRadiusNm: 80,
   nearbyRadiusNm: 120,
-  maxRows: 40,
+  maxRows: 120,
 });
 
 function finite(value, fallback = null) {
@@ -103,6 +103,12 @@ export function buildLiveTrafficModel(entries = [], ownship = {}, view = 'nearby
 
 export function trafficAircraftLabel(entry = {}) {
   const raw = String(entry.aircraftType || entry.title || '').replace(/[_-]+/g, ' ').trim();
+  const airbus = raw.match(/\bAirbus\s+A?(319|320|321|330|340|350|380)\b/i);
+  if (airbus) return `A${airbus[1]}`;
+  const boeing = raw.match(/\bBoeing\s+(717|727|737|747|757|767|777|787)\b/i);
+  if (boeing) return `B${boeing[1]}`;
+  const embraer = raw.match(/\bEmbraer\s+E?(170|175|190|195)\b/i);
+  if (embraer) return `E${embraer[1]}`;
   const match = raw.match(/\b(A(?:319|320|321|330|340|350|380)|B(?:717|727|737|747|757|767|777|787)|E(?:170|175|190|195)|CRJ(?:2|5|7|9|100|200|550|700|900|1000)|ATR(?:42|72)|DH8[ABCD]?|C(?:172|208)|PC12)\b/i);
   if (match) return match[1].toUpperCase();
   return raw.slice(0, 28) || 'UNKNOWN';

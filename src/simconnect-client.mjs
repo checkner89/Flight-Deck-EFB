@@ -31,6 +31,32 @@ const AIRPORT_FACILITY_DEFINITION = 3_100;
 const INPUT_EVENTS_REQUEST = 3_200;
 const TRAFFIC_RADIUS_METERS = 200_000;
 
+function cleanTrafficText(value) {
+  return String(value || '').replace(/\0/g, '').trim();
+}
+
+function syntheticTrafficId(value = '') {
+  const id = cleanTrafficText(value).replace(/\s+/g, '').toUpperCase();
+  return /^(?:AIGAM|AIGAI|AIGAIMODELS|FSLTL)$/.test(id) || /^TRAFFIC-\d+$/.test(id) || /^AI-\d+$/.test(id);
+}
+
+function trafficAirlineFromTitle(value = '') {
+  const raw = cleanTrafficText(value).replace(/[_-]+/g, ' ');
+  const match = raw.match(/^(.+?)\s+(?:Airbus\s+A?\d{3}|Boeing\s+\d{3}|Embraer\s+E?\d{3}|A\d{3}|B\d{3}|E\d{3}|CRJ\d+)/i);
+  return match ? match[1].replace(/^(?:AIGAM|AIGAI|AIGAIMODELS|FSLTL)\s+/i, '').trim().slice(0, 32) : '';
+}
+
+function trafficCallsign(entry = {}) {
+  const atcId = cleanTrafficText(entry.atcId);
+  const airline = cleanTrafficText(entry.airline) || trafficAirlineFromTitle(entry.title);
+  const flightNumber = cleanTrafficText(entry.flightNumber);
+  if (airline && flightNumber) return `${airline} ${flightNumber}`;
+  if (atcId && !syntheticTrafficId(atcId)) return atcId;
+  if (flightNumber) return flightNumber;
+  if (airline) return airline;
+  return `TRAFFIC-${entry.objectId}`;
+}
+
 function decodeBco16(value) {
   const encoded = Math.max(0, Math.round(Number(value) || 0));
   const digits = [12, 8, 4, 0].map((shift) => (encoded >> shift) & 0xF);
@@ -767,7 +793,7 @@ export class SimConnectClient {
     const atcId = clean(entry.atcId);
     const airline = clean(entry.airline);
     const flightNumber = clean(entry.flightNumber);
-    const callsign = atcId || [airline, flightNumber].filter(Boolean).join(' ') || `AI-${entry.objectId}`;
+    const callsign = trafficCallsign({ ...entry, atcId, airline, flightNumber });
     const state = clean(entry.state).toLowerCase();
     const inferredState = state || (entry.onGround
       ? entry.groundSpeed > 3 ? 'taxi' : 'parked'
@@ -812,6 +838,7 @@ export class SimConnectClient {
           merged.scheduleEnriched = true;
           if (previous.state) merged.state = previous.state;
         }
+        merged.callsign = trafficCallsign(merged);
         return merged;
       })
       .slice(0, 300)

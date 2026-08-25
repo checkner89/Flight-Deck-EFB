@@ -1,5 +1,16 @@
 # Flight Deck EFB changelog
 
+## 1.7.8 — Traffic Identity & Complete Taxi Map
+
+- Live Traffic now shows up to **120 rows**, preventing nearby airborne traffic from being hidden by the first 40 ground objects at busy airports.
+- Added a separate generic **ATC AIRLINE / ATC FLIGHT NUMBER** identity read, so a flight number is shown when MSFS/the injector actually exposes one without making core traffic depend on optional schedule SimVars.
+- Internal injector IDs such as **AIGAM** are no longer preferred as the visible callsign; real airline/flight-number identity wins, with a clean title-derived airline fallback.
+- Aircraft strings such as **AIGAM SunExpress Boeing 737-800** are normalized to an aircraft family such as **B737** instead of leaking provider/livery text into the Aircraft column.
+- Detailed Taxi Navigation now waits for the complete OSM/Overpass map after the fast preview, restoring **taxiways, aprons, terminals and airport buildings** instead of getting stuck on runways.
+- Airport building download now includes buildings inside the ICAO aerodrome area, and schema-3 map caches are refreshed automatically while remaining usable as an offline fallback if the download fails.
+- MSFS facility geometry replaces an OSM feature class only when the facility response actually contains that class, preventing partial facility data from deleting valid OSM taxiways.
+- Removed the **Flight Assistant** card from Home; automatic flight-phase intelligence remains available to the Flight Journey features.
+
 ## 1.7.7 — Installer & Legal Transparency
 
 - Published the completed installer/legal work as **1.7.7**.

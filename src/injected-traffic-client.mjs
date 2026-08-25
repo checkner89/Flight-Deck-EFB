@@ -11,6 +11,7 @@ const DISCOVERY_DEFINITION = 90;
 const DISCOVERY_REQUEST = 90;
 const TRAFFIC_DEFINITION = 91;
 const TRAFFIC_PLAN_DEFINITION = 92;
+const TRAFFIC_IDENTITY_DEFINITION = 93;
 const TRAFFIC_RADIUS_METERS = 200_000;
 const AIRCRAFT_CATEGORIES = new Set([
   'airplane', 'airship', 'helicopter', 'hotairballoon',
@@ -19,6 +20,29 @@ const AIRCRAFT_CATEGORIES = new Set([
 
 function clean(value) {
   return String(value || '').replace(/\0/g, '').trim();
+}
+
+function syntheticTrafficId(value = '') {
+  const id = clean(value).replace(/\s+/g, '').toUpperCase();
+  return /^(?:AIGAM|AIGAI|AIGAIMODELS|FSLTL)$/.test(id) || /^TRAFFIC-\d+$/.test(id) || /^AI-\d+$/.test(id);
+}
+
+function airlineFromTitle(value = '') {
+  const raw = clean(value).replace(/[_-]+/g, ' ');
+  const match = raw.match(/^(.+?)\s+(?:Airbus\s+A?\d{3}|Boeing\s+\d{3}|Embraer\s+E?\d{3}|A\d{3}|B\d{3}|E\d{3}|CRJ\d+)/i);
+  if (!match) return '';
+  return match[1].replace(/^(?:AIGAM|AIGAI|AIGAIMODELS|FSLTL)\s+/i, '').trim().slice(0, 32);
+}
+
+function bestTrafficCallsign(entry = {}) {
+  const atcId = clean(entry.atcId);
+  const airline = clean(entry.airline) || airlineFromTitle(entry.title);
+  const flightNumber = clean(entry.flightNumber);
+  if (airline && flightNumber) return `${airline} ${flightNumber}`;
+  if (atcId && !syntheticTrafficId(atcId)) return atcId;
+  if (flightNumber) return flightNumber;
+  if (airline) return airline;
+  return `TRAFFIC-${entry.objectId}`;
 }
 
 
@@ -39,7 +63,7 @@ export function normalizeInjectedTrafficEntry(entry = {}) {
   const inferredState = suppliedState || (entry.onGround
     ? Number(entry.groundSpeed) > 3 ? 'taxi' : 'parked'
     : Number(entry.aglFeet) < 1_500 && Number(entry.verticalSpeedFpm) < -150 ? 'landing' : 'enroute');
-  const callsign = atcId || [airline, flightNumber].filter(Boolean).join(' ') || title || `AI-${entry.objectId}`;
+  const callsign = bestTrafficCallsign({ ...entry, atcId, title, airline, flightNumber });
   return {
     ...entry,
     title,
@@ -83,6 +107,7 @@ export function mergeTrafficSources(primary = [], fallback = []) {
     if (supplemental.scheduleEnriched && clean(supplemental.state)) combined.state = clean(supplemental.state).toLowerCase();
     combined.scheduleEnriched = Boolean(entry?.scheduleEnriched || supplemental.scheduleEnriched);
     combined.source = entry?.source || 'simconnect-primary';
+    combined.callsign = bestTrafficCallsign(combined);
     return combined;
   });
   for (const entry of Array.isArray(fallback) ? fallback : []) {
@@ -107,6 +132,7 @@ export class InjectedTrafficClient {
     this.detailBatch = null;
     this.pendingRequests = new Map();
     this.pendingPlanRequests = new Map();
+    this.pendingIdentityRequests = new Map();
     this.trafficPlanByObjectId = new Map();
     this.nextRequestId = 10_000;
     this.fallbackAircraft = [];
@@ -130,6 +156,7 @@ export class InjectedTrafficClient {
     this.detailBatch = null;
     this.pendingRequests.clear();
     this.pendingPlanRequests.clear();
+    this.pendingIdentityRequests.clear();
     this.trafficPlanByObjectId.clear();
     this.fallbackAircraft = [];
     this.engine.off('change', this.onEngineChange);
@@ -162,7 +189,7 @@ export class InjectedTrafficClient {
       this.protocol = opened.protocol;
       this.#registerDefinitions(this.handle);
       this.handle.on('simObjectDataByType', (received) => this.#handleDiscovery(received));
-      this.handle.on('simObjectData', (received) => { this.#handleDetail(received); this.#handlePlanDetail(received); });
+      this.handle.on('simObjectData', (received) => { this.#handleDetail(received); this.#handleIdentityDetail(received); this.#handlePlanDetail(received); });
 
       let reconnectScheduled = false;
       const reconnect = () => {
@@ -233,6 +260,9 @@ export class InjectedTrafficClient {
     addFloat('VERTICAL SPEED', 'feet per minute');
     addString('TITLE', SimConnectDataType.STRING128);
     addString('ATC ID', SimConnectDataType.STRING32);
+
+    handle.addToDataDefinition(TRAFFIC_IDENTITY_DEFINITION, 'ATC AIRLINE', null, SimConnectDataType.STRING64, 0, SimConnectConstants.UNUSED);
+    handle.addToDataDefinition(TRAFFIC_IDENTITY_DEFINITION, 'ATC FLIGHT NUMBER', null, SimConnectDataType.STRING32, 0, SimConnectConstants.UNUSED);
 
     const addPlanString = (name, type = SimConnectDataType.STRING32) => handle.addToDataDefinition(
       TRAFFIC_PLAN_DEFINITION, name, null, type, 0, SimConnectConstants.UNUSED,
@@ -308,7 +338,7 @@ export class InjectedTrafficClient {
     this.discoveryBatch = null;
     if (!batch || !this.handle) return;
 
-    const objectIds = [...batch.objectIds].slice(0, 300);
+    const objectIds = [...batch.objectIds].slice(0, 600);
     if (objectIds.length === 0) {
       this.fallbackAircraft = [];
       this.#publishMergedTraffic();
@@ -398,14 +428,50 @@ export class InjectedTrafficClient {
 
     this.fallbackAircraft = batch.aircraft
       .sort((left, right) => left.callsign.localeCompare(right.callsign, 'en', { numeric: true }))
-      .slice(0, 300);
+      .slice(0, 600);
+    this.#requestIdentityEnrichment(this.fallbackAircraft);
     this.#requestPlanEnrichment(this.fallbackAircraft);
     this.#publishMergedTraffic();
   }
 
+  #requestIdentityEnrichment(aircraft = []) {
+    if (!this.handle) return;
+    for (const entry of aircraft.slice(0, 300)) {
+      const objectId = Number(entry.objectId);
+      if (!Number.isInteger(objectId) || [...this.pendingIdentityRequests.values()].includes(objectId)) continue;
+      const requestId = this.#nextDetailRequestId();
+      this.pendingIdentityRequests.set(requestId, objectId);
+      try {
+        this.handle.requestDataOnSimObject(requestId, TRAFFIC_IDENTITY_DEFINITION, objectId, SimConnectPeriod.ONCE, 0, 0, 0, 0);
+        setTimeout(() => this.pendingIdentityRequests.delete(requestId), 3_000);
+      } catch {
+        this.pendingIdentityRequests.delete(requestId);
+      }
+    }
+  }
+
+  #handleIdentityDetail(received) {
+    const objectId = this.pendingIdentityRequests.get(received.requestID);
+    if (!objectId) return;
+    this.pendingIdentityRequests.delete(received.requestID);
+    try {
+      const data = received.data;
+      const identity = {
+        airline: clean(data.readString64()),
+        flightNumber: clean(data.readString32()),
+      };
+      if (!identity.airline && !identity.flightNumber) return;
+      this.fallbackAircraft = this.fallbackAircraft.map((entry) => Number(entry.objectId) === Number(objectId)
+        ? this.#normalizeTrafficEntry({ ...entry, ...identity }) : entry);
+      this.#publishMergedTraffic();
+    } catch {
+      // Some injector objects expose no generic ATC identity fields.
+    }
+  }
+
   #requestPlanEnrichment(aircraft = []) {
     if (!this.handle) return;
-    for (const entry of aircraft.slice(0, 120)) {
+    for (const entry of aircraft.slice(0, 240)) {
       const objectId = Number(entry.objectId);
       if (!Number.isInteger(objectId) || [...this.pendingPlanRequests.values()].includes(objectId)) continue;
       const requestId = this.#nextDetailRequestId();
@@ -458,7 +524,7 @@ export class InjectedTrafficClient {
     const fallbackOnlyCount = this.fallbackAircraft.filter((entry) => !primaryIds.has(Number(entry.objectId))).length;
     const aircraft = mergeTrafficSources(primary, this.fallbackAircraft)
       .filter((entry) => Number.isFinite(entry.lat) && Number.isFinite(entry.lon))
-      .slice(0, 300)
+      .slice(0, 600)
       .sort((left, right) => String(left.callsign || '').localeCompare(String(right.callsign || ''), 'en', { numeric: true }));
 
     this.engine.setIntegration('simTraffic', {

@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.7.7",
+  "version": "1.7.8",
   "description": "Flight Deck EFB for MSFS with honest local Live Traffic, taxi guidance, native EFB bridging, flight intelligence, aircraft adapters, GSX and guarded simulator integrations.",
   "author": "Christoph Heckner",
   "license": "MIT",

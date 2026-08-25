@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.7';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.8';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,8 +6,8 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.7';
-import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.7';
+} from './flight-phases.js?v=1.7.8';
+import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.8';
 
 const $ = (selector) => document.querySelector(selector);
 

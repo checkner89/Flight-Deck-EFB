@@ -19,10 +19,12 @@ assert.equal(classifyLiveTraffic(cruise, ownship).label, 'ENROUTE');
 assert.equal(classifyLiveTraffic(cruise, ownship).inferred, true, 'reader-synthesized state must remain marked inferred');
 assert.equal(classifyLiveTraffic(reportedApproach, ownship).inferred, false, 'AI traffic-plan state should be marked reported');
 assert.equal(trafficAircraftLabel(ground), 'A320');
+assert.equal(trafficAircraftLabel({ title: 'AIGAM SunExpress Boeing 737-800' }), 'B737');
 
 const model = buildLiveTrafficModel([ground, taxi, arriving, cruise, longApproach, regional, farAway], ownship, 'nearby');
 assert.equal(model.limits.arrivingRadiusNm, 80);
 assert.equal(model.limits.nearbyRadiusNm, 120);
+assert.equal(model.limits.maxRows, 120);
 assert.equal(model.counts.ground, 2, 'far-away parked traffic must not pollute the airport ground view');
 assert.equal(model.counts.arriving, 2, 'Arriving should include plausible descending traffic out to 80 NM');
 assert.equal(model.counts.nearby, 6, 'Nearby should include regional traffic out to 120 NM');

@@ -211,7 +211,8 @@ export function convertMsfsAirportFacility(rawFacility, { downloadedAt = new Dat
 export function mergeMsfsFacilityMap(baseMap, facilityMap) {
   if (!facilityMap?.features?.length) return baseMap;
   const replaceKinds = new Set(['taxiway', 'parking_position', 'gate', 'holding_position', 'closed_taxiway', 'painted_line']);
-  const retained = (baseMap?.features || []).filter((entry) => !replaceKinds.has(entry.kind));
+  const facilityKinds = new Set((facilityMap.features || []).map((entry) => entry.kind));
+  const retained = (baseMap?.features || []).filter((entry) => !replaceKinds.has(entry.kind) || !facilityKinds.has(entry.kind));
   const features = [...retained, ...facilityMap.features];
   const counts = {};
   for (const entry of features) counts[entry.kind] = (counts[entry.kind] || 0) + 1;

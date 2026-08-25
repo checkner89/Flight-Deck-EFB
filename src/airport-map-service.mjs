@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const DEFAULT_RADIUS_METERS = 7_000;
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_ENDPOINTS = [
@@ -97,9 +97,10 @@ export function resolveAirportMapReference(state) {
     : { icao, lat: null, lon: null };
 }
 
-export function buildOverpassQuery({ lat, lon, radiusMeters = DEFAULT_RADIUS_METERS }) {
+export function buildOverpassQuery({ icao, lat, lon, radiusMeters = DEFAULT_RADIUS_METERS }) {
   const center = pointFromPair(lat, lon);
   if (!center) throw new TypeError('Valid airport coordinates are required');
+  const normalizedIcao = normalizeIcao(icao);
   const radius = Math.max(2_000, Math.min(18_000, Math.round(radiusMeters)));
   const latitudeDelta = radius / 111_320;
   const longitudeDelta = radius / (111_320 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
@@ -110,10 +111,16 @@ export function buildOverpassQuery({ lat, lon, radiusMeters = DEFAULT_RADIUS_MET
     center.lon + longitudeDelta,
   ].map((value) => value.toFixed(7)).join(',');
   const aeroways = [...SUPPORTED_AEROWAYS].join('|');
+  const areaPrelude = normalizedIcao
+    ? `area["aeroway"="aerodrome"]["icao"="${normalizedIcao}"]->.flightDeckAirportArea;`
+    : '';
+  const areaBuildings = normalizedIcao ? 'nwr(area.flightDeckAirportArea)["building"];' : '';
   return `[out:json][timeout:40];
+${areaPrelude}
 (
   nwr(${bbox})["aeroway"~"^(${aeroways})$"];
-  nwr(${bbox})["building"~"^(terminal|hangar)$"];
+  nwr(${bbox})["building"~"^(terminal|hangar|transportation)$"];
+  ${areaBuildings}
 );
 out center geom qt;`;
 }
@@ -128,6 +135,7 @@ function classify(tags = {}) {
   }
   if (building === 'terminal') return 'terminal';
   if (building === 'hangar') return 'building';
+  if (building && building !== 'no') return 'building';
   return null;
 }
 
@@ -353,7 +361,7 @@ export class AirportMapService {
     if (this.memoryCache.has(icao)) return this.memoryCache.get(icao);
     try {
       const parsed = JSON.parse(await fs.readFile(this.#cachePath(icao), 'utf8'));
-      if (![2, SCHEMA_VERSION].includes(parsed.schemaVersion) || parsed.icao !== icao || !Array.isArray(parsed.features)) return null;
+      if (![2, 3, SCHEMA_VERSION].includes(parsed.schemaVersion) || parsed.icao !== icao || !Array.isArray(parsed.features)) return null;
       if (parsed.schemaVersion === 2) {
         const features = keepAirportRunways(parsed.features, airportMetadata);
         const counts = {};
@@ -392,7 +400,7 @@ export class AirportMapService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'User-Agent': 'Flight-Deck-EFB/1.3.2 (flight simulation companion)',
+          'User-Agent': 'Flight-Deck-EFB/1.7.8 (flight simulation companion)',
           },
           body: new URLSearchParams({ data: query }),
           signal: AbortSignal.timeout(this.timeoutMs),
@@ -415,7 +423,8 @@ export class AirportMapService {
     if (!icao || !center) throw new TypeError('A valid airport reference is required');
     const normalized = { icao, ...center, airport: reference.airport ?? null };
     const cached = await this.#readCache(icao, normalized.airport);
-    if (cached && !forceRefresh) {
+    const staleSchema = Boolean(cached && cached.schemaVersion !== SCHEMA_VERSION);
+    if (cached && !forceRefresh && !staleSchema) {
       return { ...cached, cache: { status: 'cached', offlineReady: true } };
     }
 

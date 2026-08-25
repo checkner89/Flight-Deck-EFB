@@ -34,4 +34,11 @@ const withFallback = mergeTrafficSources(primary, [enriched, fallbackOnly]);
 assert.equal(withFallback.length, 2);
 assert.equal(withFallback.find((entry) => entry.objectId === 99)?.destination, 'EDDL');
 
+
+const synthetic = normalizeInjectedTrafficEntry({
+  objectId: 123, lat: 51.2, lon: 6.7, onGround: true, title: 'AIGAM SunExpress Boeing 737-800',
+  atcId: 'AIGAM', airline: 'SunExpress', flightNumber: '1234',
+});
+assert.equal(synthetic.callsign, 'SunExpress 1234', 'real airline/flight number must beat synthetic AIGAM id');
+
 console.log('Traffic merge regression OK');

@@ -40,7 +40,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.7.7';
+const APP_VERSION = '1.7.8';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -400,7 +400,9 @@ export async function createTaxiServer({
       facilityMap = (await Promise.race([facilityPromise, wait(facilityWaitMs, { map: null })])).map;
     } else if (first.map) {
       facilityMap = first.map;
-      baseMap = (await Promise.race([basePromise, wait(8_000, { map: null })])).map;
+      // A fast preview is already rendered by the browser. Wait for the detailed OSM map here
+      // so /current does not silently degrade into another runway-only preview.
+      baseMap = (await basePromise).map;
     } else {
       baseMap = (await basePromise).map;
     }
