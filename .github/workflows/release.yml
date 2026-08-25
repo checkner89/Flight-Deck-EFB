@@ -65,8 +65,8 @@ jobs:
           node --check public/app.js
           node --check public/si-operations.js
           node --check public/i18n.js
+          node scripts/verify-msfs-efb-builder.mjs
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
-          node --input-type=module -e "import { parseInstalledPackagesPath, isCommunityDirectory, transformTemplateText } from './src/msfs-efb-package-builder.mjs'; if (parseInstalledPackagesPath('InstalledPackagesPath \"D:\\\\MSFS Packages\"') !== 'D:\\MSFS Packages') throw new Error('UserCfg InstalledPackagesPath parser failed'); if (!isCommunityDirectory('D:\\MSFS Packages\\Community2024')) throw new Error('Community2024 validator failed'); if (!transformTemplateText('EFBTemplateAppProject efb_apps_template TemplateApp').includes('FlightDeckEFBProject flightdeck-efb-native FlightDeckEFB')) throw new Error('EFB template transformer failed'); console.log('MSFS EFB builder contract OK');"
           $builder = Get-Content 'src/msfs-efb-package-builder.mjs' -Raw
           if ($builder -notmatch 'fspackagetool\.exe' -or $builder -notmatch 'Community2024' -or $builder -notmatch 'InstalledPackagesPath') {
             throw 'MSFS EFB Community package builder contract is incomplete.'
