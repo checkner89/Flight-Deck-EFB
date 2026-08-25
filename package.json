@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Flight Deck EFB for MSFS with integrated flight operations, tracking, traffic, taxi planning, ATC and guarded simulator integrations.",
   "author": "checkner89",
   "license": "MIT",
