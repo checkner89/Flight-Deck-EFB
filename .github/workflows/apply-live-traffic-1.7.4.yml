@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Correct migration anchor
+      - name: Correct migration helpers
         shell: bash
         run: |
           python - <<'PY'
@@ -34,6 +34,7 @@ jobs:
           text = path.read_text(encoding='utf-8')
           text = text.replace('data-page=\\"online\\"', 'data-page=\\"charts\\"')
           text = text.replace('data-page="online"', 'data-page="charts"')
+          text = text.replace('new, count = re.subn(pattern, replacement, text, count=1, flags=flags)', 'new, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=flags)')
           path.write_text(text, encoding='utf-8')
           PY
 
