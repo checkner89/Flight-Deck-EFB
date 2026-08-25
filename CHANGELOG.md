@@ -1,6 +1,14 @@
 # Flight Deck EFB changelog
 
-## 1.7.5 — Traffic, Taxi & Installer Legal
+## 1.7.6 — Installer & Legal Transparency
+
+- Added a proper assisted Windows Setup **License Agreement** page containing the complete MIT License plus simulation-only Safety, Privacy/LAN and Third-Party acknowledgements. The installer agreement explicitly does not remove, reduce or contradict MIT rights.
+- Added a dedicated scrollable **Third-party notices** Setup page for the open-source components, data sources and optional compatibility services actually used by Flight Deck EFB.
+- Added an **Additional Tasks** Setup page with a user-selectable **Create a Desktop Shortcut** option while retaining the Start Menu shortcut.
+- Confirmed non-destructive uninstall behavior: uninstall/reinstall does not silently delete local settings, caches or flight history.
+- Added permanent installer regression checks to the Windows release workflow so future releases cannot silently drop the MIT agreement, legal pages, shortcut selection or non-destructive uninstall behavior.
+
+## 1.7.5 — Traffic & Taxi Recovery
 
 - Expanded Live Traffic to **Arriving 80 NM** and **Nearby 120 NM** while Ground remains 8 NM; the active tab now shows its actual scope.
 - Restored the documented maximum SimConnect discovery radius of **200 km (~108 NM)**. The 120 NM Nearby filter is retained as the UI target, while direct SimConnect visibility remains capped by the simulator API.
@@ -8,12 +16,6 @@
 - Fixed Taxi Navigation getting stuck on a **runway-only preview**: preview maps are no longer persisted as complete browser maps, existing poisoned preview caches self-heal, and the host waits longer for OSM/Overpass geometry when MSFS facility data arrives first.
 - Fixed **New Flight** immediately re-importing the just-finished taxi route/session, which could make the red ROUTE / POSITION warning reappear and leave guidance unusable.
 - Taxi/map fixes are implemented independently with documented MSFS facility data, OpenStreetMap/Overpass and OurAirports; no TaxiNow code, assets or protected implementation were reused.
-- Added a proper assisted Windows Setup **License Agreement** page containing the complete MIT License plus simulation-only Safety, Privacy/LAN and Third-Party acknowledgements. The installer agreement explicitly does not remove, reduce or contradict MIT rights.
-- Added a dedicated scrollable **Third-party notices** Setup page for the open-source components, data sources and optional compatibility services actually used by Flight Deck EFB.
-- Added an **Additional Tasks** Setup page with a user-selectable **Create a Desktop Shortcut** option while retaining the Start Menu shortcut.
-- Confirmed non-destructive uninstall behavior: uninstall/reinstall does not silently delete local settings, caches or flight history.
-- Added permanent installer regression checks to the Windows release workflow so future releases cannot silently drop the MIT agreement, legal pages, shortcut selection or non-destructive uninstall behavior.
-
 ## 1.7.4 — Honest Live Traffic
 
 - Replaced the airport-style Flightboard with an honest **Live Traffic** workspace: **Ground / Arriving / Nearby**.
