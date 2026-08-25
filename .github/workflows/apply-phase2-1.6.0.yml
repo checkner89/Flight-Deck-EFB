@@ -25,6 +25,21 @@ jobs:
         with:
           node-version: 24
 
+      - name: Normalize release check anchor
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/release.yml')
+          text = path.read_text(encoding='utf-8')
+          anchor = '          node --check src/injected-traffic-client.mjs\n'
+          if 'node --check src/littlenavmap-client.mjs' not in text:
+              if anchor not in text:
+                  raise SystemExit('release workflow source-check anchor missing')
+              text = text.replace(anchor, anchor + '          node --check src/littlenavmap-client.mjs\n', 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply Phase 2 migration
         run: python scripts/apply-phase2-1.6.0.py
 
