@@ -22,9 +22,7 @@ jobs:
         with:
           node-version: 24
       - name: Apply corrective patch
-        run: |
-          python scripts/patch-1.7.3.py
-          python scripts/patch-release-ci-1.7.3.py
+        run: python scripts/patch-1.7.3.py
       - name: Install dependencies
         run: npm install
       - name: Verify JavaScript and traffic regression
@@ -52,7 +50,6 @@ jobs:
           grep -q '.combined-atc-layout .atc-messages-card { grid-column: 1 / -1 !important; width: 100%; }' public/styles.css
           grep -q '.home-launcher > .efb-card { width: 100%; max-width: none; align-self: stretch; }' public/styles.css
           ! grep -q '.efb-pages .efb-card { min-width: 0; min-height: 0; height: auto; align-self: start; }' public/styles.css
-          grep -q 'node scripts/verify-traffic-merge.mjs' .github/workflows/release.yml
       - name: Demo host smoke test
         shell: bash
         run: |
@@ -69,6 +66,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+checkner89@users.noreply.github.com'
-          git add CHANGELOG.md README.md PRIVACY.md THIRD_PARTY_NOTICES.md MSFS-2024-EFB-App/README.md package.json package-lock.json public src scripts/verify-traffic-merge.mjs scripts/verify-msfs-efb-builder.mjs .github/workflows/release.yml
+          git add CHANGELOG.md README.md PRIVACY.md THIRD_PARTY_NOTICES.md MSFS-2024-EFB-App/README.md package.json package-lock.json public src scripts/verify-traffic-merge.mjs scripts/verify-msfs-efb-builder.mjs
           git commit -m 'Fix 1.7.3 traffic enrichment layout and updater dialog'
           git push origin HEAD:fix/1.7.3-ui-traffic-updater
