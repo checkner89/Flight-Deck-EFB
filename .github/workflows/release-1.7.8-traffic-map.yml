@@ -1,0 +1,379 @@
+name: Prepare 1.7.8 Traffic Map Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/release-1.7.8-traffic-map.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: "github.event.head_commit.message == 'chore: prepare 1.7.8 traffic map release'"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Apply 1.7.8 changes
+        run: |
+          python <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'missing patch target: {label}')
+              return text.replace(old, new, 1)
+
+          # ---- Live Traffic: more rows and clean aircraft labels ----
+          p = Path('public/live-traffic.js')
+          text = read(p)
+          text = replace_once(text, '  maxRows: 40,', '  maxRows: 120,', 'live traffic row limit')
+          old = '''export function trafficAircraftLabel(entry = {}) {
+            const raw = String(entry.aircraftType || entry.title || '').replace(/[_-]+/g, ' ').trim();
+            const match = raw.match(/\\b(A(?:319|320|321|330|340|350|380)|B(?:717|727|737|747|757|767|777|787)|E(?:170|175|190|195)|CRJ(?:2|5|7|9|100|200|550|700|900|1000)|ATR(?:42|72)|DH8[ABCD]?|C(?:172|208)|PC12)\\b/i);
+            if (match) return match[1].toUpperCase();
+            return raw.slice(0, 28) || 'UNKNOWN';
+          }'''
+          new = '''export function trafficAircraftLabel(entry = {}) {
+            const raw = String(entry.aircraftType || entry.title || '').replace(/[_-]+/g, ' ').trim();
+            const airbus = raw.match(/\\bAirbus\\s+A?(319|320|321|330|340|350|380)\\b/i);
+            if (airbus) return `A${airbus[1]}`;
+            const boeing = raw.match(/\\bBoeing\\s+(717|727|737|747|757|767|777|787)\\b/i);
+            if (boeing) return `B${boeing[1]}`;
+            const embraer = raw.match(/\\bEmbraer\\s+E?(170|175|190|195)\\b/i);
+            if (embraer) return `E${embraer[1]}`;
+            const match = raw.match(/\\b(A(?:319|320|321|330|340|350|380)|B(?:717|727|737|747|757|767|777|787)|E(?:170|175|190|195)|CRJ(?:2|5|7|9|100|200|550|700|900|1000)|ATR(?:42|72)|DH8[ABCD]?|C(?:172|208)|PC12)\\b/i);
+            if (match) return match[1].toUpperCase();
+            return raw.slice(0, 28) || 'UNKNOWN';
+          }'''
+          text = replace_once(text, old, new, 'aircraft label cleanup')
+          write(p, text)
+
+          # ---- Injected traffic: do not display AIGAM-style internal IDs and read flight numbers independently ----
+          p = Path('src/injected-traffic-client.mjs')
+          text = read(p)
+          text = replace_once(text, 'const TRAFFIC_PLAN_DEFINITION = 92;\n', 'const TRAFFIC_PLAN_DEFINITION = 92;\nconst TRAFFIC_IDENTITY_DEFINITION = 93;\n', 'identity definition id')
+          anchor = '''function clean(value) {
+            return String(value || '').replace(/\\0/g, '').trim();
+          }
+
+          '''
+          helper = '''function clean(value) {
+            return String(value || '').replace(/\\0/g, '').trim();
+          }
+
+          function syntheticTrafficId(value = '') {
+            const id = clean(value).replace(/\\s+/g, '').toUpperCase();
+            return /^AI[A-Z0-9]{3,}$/.test(id) || /^AIG[A-Z0-9]+$/.test(id);
+          }
+
+          function airlineFromTitle(value = '') {
+            const raw = clean(value).replace(/[_-]+/g, ' ');
+            const match = raw.match(/^(.+?)\\s+(?:Airbus\\s+A?\\d{3}|Boeing\\s+\\d{3}|Embraer\\s+E?\\d{3}|A\\d{3}|B\\d{3}|E\\d{3}|CRJ\\d+)/i);
+            if (!match) return '';
+            return match[1].replace(/^(?:AIGAI|FSLTL|AIGAIMODELS)\\s+/i, '').trim().slice(0, 32);
+          }
+
+          function bestTrafficCallsign(entry = {}) {
+            const atcId = clean(entry.atcId);
+            const airline = clean(entry.airline) || airlineFromTitle(entry.title);
+            const flightNumber = clean(entry.flightNumber);
+            const service = [airline, flightNumber].filter(Boolean).join(' ').trim();
+            if (flightNumber && service) return service;
+            if (atcId && !syntheticTrafficId(atcId)) return atcId;
+            if (service) return service;
+            return airline || `TRAFFIC-${entry.objectId}`;
+          }
+
+          '''
+          text = replace_once(text, anchor, helper, 'traffic callsign helpers')
+          text = replace_once(text, "  const callsign = atcId || [airline, flightNumber].filter(Boolean).join(' ') || title || `AI-${entry.objectId}`;", "  const callsign = bestTrafficCallsign({ ...entry, atcId, title, airline, flightNumber });", 'normalize injected callsign')
+          text = replace_once(text, "    combined.source = entry?.source || 'simconnect-primary';\n    return combined;", "    combined.source = entry?.source || 'simconnect-primary';\n    combined.callsign = bestTrafficCallsign(combined);\n    return combined;", 'recompute merged callsign')
+          text = replace_once(text, '    this.pendingPlanRequests = new Map();\n', '    this.pendingPlanRequests = new Map();\n    this.pendingIdentityRequests = new Map();\n', 'identity pending map')
+          text = text.replace('    this.pendingPlanRequests.clear();\n    this.trafficPlanByObjectId.clear();', '    this.pendingPlanRequests.clear();\n    this.pendingIdentityRequests.clear();\n    this.trafficPlanByObjectId.clear();')
+          text = replace_once(text, "      this.handle.on('simObjectData', (received) => { this.#handleDetail(received); this.#handlePlanDetail(received); });", "      this.handle.on('simObjectData', (received) => { this.#handleDetail(received); this.#handleIdentityDetail(received); this.#handlePlanDetail(received); });", 'identity data handler')
+          identity_def_anchor = "    addString('ATC ID', SimConnectDataType.STRING32);\n\n    const addPlanString"
+          identity_def = "    addString('ATC ID', SimConnectDataType.STRING32);\n\n    handle.addToDataDefinition(TRAFFIC_IDENTITY_DEFINITION, 'ATC AIRLINE', null, SimConnectDataType.STRING64, 0, SimConnectConstants.UNUSED);\n    handle.addToDataDefinition(TRAFFIC_IDENTITY_DEFINITION, 'ATC FLIGHT NUMBER', null, SimConnectDataType.STRING32, 0, SimConnectConstants.UNUSED);\n\n    const addPlanString"
+          text = replace_once(text, identity_def_anchor, identity_def, 'identity SimVars')
+          text = text.replace('const objectIds = [...batch.objectIds].slice(0, 300);', 'const objectIds = [...batch.objectIds].slice(0, 600);')
+          text = text.replace('      .slice(0, 300);\n    this.#requestPlanEnrichment(this.fallbackAircraft);', '      .slice(0, 600);\n    this.#requestIdentityEnrichment(this.fallbackAircraft);\n    this.#requestPlanEnrichment(this.fallbackAircraft);')
+          request_anchor = '''  #requestPlanEnrichment(aircraft = []) {
+            if (!this.handle) return;
+          '''
+          identity_methods = '''  #requestIdentityEnrichment(aircraft = []) {
+            if (!this.handle) return;
+            for (const entry of aircraft.slice(0, 300)) {
+              const objectId = Number(entry.objectId);
+              if (!Number.isInteger(objectId) || [...this.pendingIdentityRequests.values()].includes(objectId)) continue;
+              const requestId = this.#nextDetailRequestId();
+              this.pendingIdentityRequests.set(requestId, objectId);
+              try {
+                this.handle.requestDataOnSimObject(requestId, TRAFFIC_IDENTITY_DEFINITION, objectId, SimConnectPeriod.ONCE, 0, 0, 0, 0);
+                setTimeout(() => this.pendingIdentityRequests.delete(requestId), 3_000);
+              } catch {
+                this.pendingIdentityRequests.delete(requestId);
+              }
+            }
+          }
+
+          #handleIdentityDetail(received) {
+            const objectId = this.pendingIdentityRequests.get(received.requestID);
+            if (!objectId) return;
+            this.pendingIdentityRequests.delete(received.requestID);
+            try {
+              const data = received.data;
+              const identity = {
+                airline: clean(data.readString64()),
+                flightNumber: clean(data.readString32()),
+              };
+              if (!identity.airline && !identity.flightNumber) return;
+              this.fallbackAircraft = this.fallbackAircraft.map((entry) => Number(entry.objectId) === Number(objectId)
+                ? this.#normalizeTrafficEntry({ ...entry, ...identity }) : entry);
+              this.#publishMergedTraffic();
+            } catch {
+              // Some injector objects expose no generic ATC identity fields.
+            }
+          }
+
+          #requestPlanEnrichment(aircraft = []) {
+            if (!this.handle) return;
+          '''
+          text = replace_once(text, request_anchor, identity_methods, 'identity enrichment methods')
+          text = text.replace('for (const entry of aircraft.slice(0, 120)) {', 'for (const entry of aircraft.slice(0, 240)) {', 1)
+          text = text.replace('      .slice(0, 300)\n      .sort', '      .slice(0, 600)\n      .sort')
+          write(p, text)
+
+          # ---- Primary traffic: same callsign cleanup after fallback metadata merges ----
+          p = Path('src/simconnect-client.mjs')
+          text = read(p)
+          helper_anchor = '''function decodeBco16(value) {
+          '''
+          helper = '''function cleanTrafficText(value) {
+            return String(value || '').replace(/\\0/g, '').trim();
+          }
+
+          function syntheticTrafficId(value = '') {
+            const id = cleanTrafficText(value).replace(/\\s+/g, '').toUpperCase();
+            return /^AI[A-Z0-9]{3,}$/.test(id) || /^AIG[A-Z0-9]+$/.test(id);
+          }
+
+          function trafficAirlineFromTitle(value = '') {
+            const raw = cleanTrafficText(value).replace(/[_-]+/g, ' ');
+            const match = raw.match(/^(.+?)\\s+(?:Airbus\\s+A?\\d{3}|Boeing\\s+\\d{3}|Embraer\\s+E?\\d{3}|A\\d{3}|B\\d{3}|E\\d{3}|CRJ\\d+)/i);
+            return match ? match[1].replace(/^(?:AIGAI|FSLTL|AIGAIMODELS)\\s+/i, '').trim().slice(0, 32) : '';
+          }
+
+          function trafficCallsign(entry = {}) {
+            const atcId = cleanTrafficText(entry.atcId);
+            const airline = cleanTrafficText(entry.airline) || trafficAirlineFromTitle(entry.title);
+            const flightNumber = cleanTrafficText(entry.flightNumber);
+            const service = [airline, flightNumber].filter(Boolean).join(' ').trim();
+            if (flightNumber && service) return service;
+            if (atcId && !syntheticTrafficId(atcId)) return atcId;
+            return service || airline || `TRAFFIC-${entry.objectId}`;
+          }
+
+          function decodeBco16(value) {
+          '''
+          text = replace_once(text, helper_anchor, helper, 'primary callsign helpers')
+          text = replace_once(text, "    const callsign = atcId || [airline, flightNumber].filter(Boolean).join(' ') || `AI-${entry.objectId}`;", "    const callsign = trafficCallsign({ ...entry, atcId, airline, flightNumber });", 'primary normalize callsign')
+          text = replace_once(text, "        if (previous.scheduleEnriched) {\n          merged.scheduleEnriched = true;\n          if (previous.state) merged.state = previous.state;\n        }\n        return merged;", "        if (previous.scheduleEnriched) {\n          merged.scheduleEnriched = true;\n          if (previous.state) merged.state = previous.state;\n        }\n        merged.callsign = trafficCallsign(merged);\n        return merged;", 'primary merged callsign')
+          write(p, text)
+
+          # ---- Airport map: wait for the full OSM map and include airport-area buildings ----
+          p = Path('src/airport-map-service.mjs')
+          text = read(p)
+          text = replace_once(text, 'const SCHEMA_VERSION = 3;', 'const SCHEMA_VERSION = 4;', 'airport map schema')
+          old_query = '''export function buildOverpassQuery({ lat, lon, radiusMeters = DEFAULT_RADIUS_METERS }) {
+            const center = pointFromPair(lat, lon);
+            if (!center) throw new TypeError('Valid airport coordinates are required');
+            const radius = Math.max(2_000, Math.min(18_000, Math.round(radiusMeters)));
+            const latitudeDelta = radius / 111_320;
+            const longitudeDelta = radius / (111_320 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
+            const bbox = [
+              center.lat - latitudeDelta,
+              center.lon - longitudeDelta,
+              center.lat + latitudeDelta,
+              center.lon + longitudeDelta,
+            ].map((value) => value.toFixed(7)).join(',');
+            const aeroways = [...SUPPORTED_AEROWAYS].join('|');
+            return `[out:json][timeout:40];
+          (
+            nwr(${bbox})["aeroway"~"^(${aeroways})$"];
+            nwr(${bbox})["building"~"^(terminal|hangar)$"];
+          );
+          out center geom qt;`;
+          }'''
+          new_query = '''export function buildOverpassQuery({ icao, lat, lon, radiusMeters = DEFAULT_RADIUS_METERS }) {
+            const center = pointFromPair(lat, lon);
+            if (!center) throw new TypeError('Valid airport coordinates are required');
+            const normalizedIcao = normalizeIcao(icao);
+            const radius = Math.max(2_000, Math.min(18_000, Math.round(radiusMeters)));
+            const latitudeDelta = radius / 111_320;
+            const longitudeDelta = radius / (111_320 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
+            const bbox = [
+              center.lat - latitudeDelta,
+              center.lon - longitudeDelta,
+              center.lat + latitudeDelta,
+              center.lon + longitudeDelta,
+            ].map((value) => value.toFixed(7)).join(',');
+            const aeroways = [...SUPPORTED_AEROWAYS].join('|');
+            const areaPrelude = normalizedIcao
+              ? `area["aeroway"="aerodrome"]["icao"="${normalizedIcao}"]->.flightDeckAirportArea;`
+              : '';
+            const areaBuildings = normalizedIcao ? 'nwr(area.flightDeckAirportArea)["building"];' : '';
+            return `[out:json][timeout:40];
+          ${areaPrelude}
+          (
+            nwr(${bbox})["aeroway"~"^(${aeroways})$"];
+            nwr(${bbox})["building"~"^(terminal|hangar|transportation)$"];
+            ${areaBuildings}
+          );
+          out center geom qt;`;
+          }'''
+          text = replace_once(text, old_query, new_query, 'overpass airport area buildings')
+          text = replace_once(text, "  if (building === 'hangar') return 'building';\n  return null;", "  if (building === 'hangar') return 'building';\n  if (building && building !== 'no') return 'building';\n  return null;", 'generic airport building classification')
+          text = replace_once(text, "      if (![2, SCHEMA_VERSION].includes(parsed.schemaVersion) || parsed.icao !== icao || !Array.isArray(parsed.features)) return null;", "      if (![2, 3, SCHEMA_VERSION].includes(parsed.schemaVersion) || parsed.icao !== icao || !Array.isArray(parsed.features)) return null;", 'legacy map cache compatibility')
+          text = replace_once(text, "    if (cached && !forceRefresh) {\n      return { ...cached, cache: { status: 'cached', offlineReady: true } };\n    }", "    const staleSchema = Boolean(cached && cached.schemaVersion !== SCHEMA_VERSION);\n    if (cached && !forceRefresh && !staleSchema) {\n      return { ...cached, cache: { status: 'cached', offlineReady: true } };\n    }", 'refresh old airport caches')
+          text = text.replace("'User-Agent': 'Flight-Deck-EFB/1.3.2 (flight simulation companion)'", "'User-Agent': 'Flight-Deck-EFB/1.7.8 (flight simulation companion)'")
+          write(p, text)
+
+          p = Path('src/msfs-airport-facility.mjs')
+          text = read(p)
+          text = replace_once(text,
+              "  const replaceKinds = new Set(['taxiway', 'parking_position', 'gate', 'holding_position', 'closed_taxiway', 'painted_line']);\n  const retained = (baseMap?.features || []).filter((entry) => !replaceKinds.has(entry.kind));",
+              "  const replaceKinds = new Set(['taxiway', 'parking_position', 'gate', 'holding_position', 'closed_taxiway', 'painted_line']);\n  const facilityKinds = new Set((facilityMap.features || []).map((entry) => entry.kind));\n  const retained = (baseMap?.features || []).filter((entry) => !replaceKinds.has(entry.kind) || !facilityKinds.has(entry.kind));",
+              'conditional facility replacement')
+          write(p, text)
+
+          p = Path('src/server.mjs')
+          text = read(p)
+          text = replace_once(text,
+              "      baseMap = (await Promise.race([basePromise, wait(8_000, { map: null })])).map;",
+              "      // The browser already renders a fast facility/runway preview. Keep this detailed request\n      // open until Overpass completes so the final response contains aprons, buildings and OSM context.\n      baseMap = (await basePromise).map;",
+              'wait for detailed airport map')
+          text = text.replace("const APP_VERSION = '1.7.7';", "const APP_VERSION = '1.7.8';")
+          write(p, text)
+
+          # ---- Remove Flight Assistant card from Home (flight-phase intelligence remains) ----
+          p = Path('public/index.html')
+          text = read(p)
+          pattern = re.compile(r'\n\s*<article class="home-assistant-card efb-card">.*?</article>\n', re.S)
+          text, count = pattern.subn('\n', text, count=1)
+          if count != 1:
+              raise SystemExit('Flight Assistant home card not found exactly once')
+          text = text.replace('data-app-version="1.7.7"', 'data-app-version="1.7.8"')
+          text = text.replace('?v=1.7.7', '?v=1.7.8')
+          text = text.replace('id="update-version">v1.7.7', 'id="update-version">v1.7.8')
+          text = text.replace('<span>CURRENT v1.7.7</span>', '<span>CURRENT v1.7.8</span>', 1)
+          text = text.replace('<div class="update-changelog">', '<div class="update-changelog"><section><b>1.7.8</b><div><strong>Traffic identity & complete taxi map</strong><ul><li>Suppresses internal AIGAM-style traffic IDs and prefers real ATC airline/flight-number identity when MSFS exposes it.</li><li>Shows up to 120 nearby traffic rows so airborne aircraft are not hidden behind a busy apron.</li><li>Waits for the complete airport vector map and restores taxiways, aprons and airport buildings instead of stopping at the runway preview.</li><li>Flight Assistant card removed from Home.</li></ul></div></section>', 1)
+          write(p, text)
+
+          p = Path('public/app.js')
+          text = read(p).replace('?v=1.7.7', '?v=1.7.8')
+          write(p, text)
+          p = Path('public/service-worker.js')
+          text = read(p).replace('1.7.7', '1.7.8')
+          write(p, text)
+
+          # ---- Regression tests ----
+          p = Path('scripts/test-live-traffic.mjs')
+          text = read(p)
+          text = replace_once(text, "assert.equal(trafficAircraftLabel(ground), 'A320');", "assert.equal(trafficAircraftLabel(ground), 'A320');\nassert.equal(trafficAircraftLabel({ title: 'AIGAM SunExpress Boeing 737-800' }), 'B737');", 'traffic label test')
+          text = replace_once(text, "assert.equal(model.limits.nearbyRadiusNm, 120);", "assert.equal(model.limits.nearbyRadiusNm, 120);\nassert.equal(model.limits.maxRows, 120);", 'traffic row test')
+          write(p, text)
+
+          p = Path('scripts/verify-traffic-merge.mjs')
+          text = read(p)
+          insert = '''
+          const synthetic = normalizeInjectedTrafficEntry({
+            objectId: 123, lat: 51.2, lon: 6.7, onGround: true, title: 'SunExpress Boeing 737-800',
+            atcId: 'AIGAM', airline: 'SunExpress', flightNumber: '1234',
+          });
+          assert.equal(synthetic.callsign, 'SunExpress 1234', 'real airline/flight number must beat synthetic AIGAM id');
+          '''
+          text = replace_once(text, "console.log('Traffic merge regression OK');", insert + "\nconsole.log('Traffic merge regression OK');", 'synthetic callsign regression')
+          write(p, text)
+
+          # ---- Versioned docs ----
+          p = Path('README.md')
+          text = read(p)
+          text = re.sub(r'\*\*Current release: 1\.7\.7 — [^*]+\*\*', '**Current release: 1.7.8 — Traffic Identity & Complete Taxi Map**', text, count=1)
+          text = text.replace('## 1.7.7 highlights', '## 1.7.8 highlights', 1)
+          text = text.replace('Flight-Deck-EFB-Setup-1.7.7.exe', 'Flight-Deck-EFB-Setup-1.7.8.exe')
+          write(p, text)
+
+          p = Path('THIRD_PARTY_NOTICES.md')
+          text = read(p).replace('# Third-party notices — Flight Deck EFB 1.7.7', '# Third-party notices — Flight Deck EFB 1.7.8', 1)
+          write(p, text)
+
+          p = Path('CHANGELOG.md')
+          text = read(p)
+          marker = '# Flight Deck EFB changelog\n\n'
+          section = '''## 1.7.8 — Traffic Identity & Complete Taxi Map\n\n- Live Traffic now shows up to **120 rows**, preventing nearby airborne traffic from being hidden by the first 40 ground objects at busy airports.\n- Added a separate generic **ATC AIRLINE / ATC FLIGHT NUMBER** identity read so a flight number can be displayed when MSFS/the injector actually exposes one, without making the core traffic read dependent on optional AI schedule variables.\n- Internal injector-style IDs such as **AIGAM** are no longer preferred as the visible callsign; real airline/flight-number identity wins, with a clean title-derived airline fallback when necessary.\n- Aircraft labels now normalize strings such as **SunExpress Boeing 737-800** to **B737** instead of showing livery/provider text as the aircraft type.\n- Detailed Taxi Navigation now waits for the complete OSM/Overpass airport map after showing the fast preview, restoring **taxiways, aprons, terminals and airport buildings** instead of getting stuck on runways.\n- Airport building download now includes buildings inside the ICAO aerodrome area, and old map schema caches are automatically refreshed while remaining usable as an offline fallback.\n- MSFS facility geometry only replaces an OSM feature class when the facility response actually contains that class, preventing incomplete facility data from deleting valid OSM taxiways.\n- Removed the **Flight Assistant** card from Home; automatic flight-phase intelligence remains available to the Flight Journey features.\n\n'''
+          if marker not in text:
+              raise SystemExit('CHANGELOG header missing')
+          if '## 1.7.8 — Traffic Identity & Complete Taxi Map' not in text:
+              text = text.replace(marker, marker + section, 1)
+          write(p, text)
+          PY
+
+          npm version 1.7.8 --no-git-tag-version
+
+      - name: Verify 1.7.8 source
+        run: |
+          npm install
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/injected-traffic-client.mjs
+          node --check src/airport-map-service.mjs
+          node --check src/msfs-airport-facility.mjs
+          node --check public/live-traffic.js
+          node --check public/app.js
+          node scripts/test-live-traffic.mjs
+          node scripts/verify-traffic-merge.mjs
+          node scripts/verify-installer-legal.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { buildOverpassQuery, convertOverpassPayload } from './src/airport-map-service.mjs';
+          import { mergeMsfsFacilityMap } from './src/msfs-airport-facility.mjs';
+          const query = buildOverpassQuery({ icao: 'EDDL', lat: 51.2895, lon: 6.7668 });
+          assert.match(query, /flightDeckAirportArea/);
+          assert.match(query, /\["building"\]/);
+          const converted = convertOverpassPayload({ elements: [{ type: 'way', id: 1, tags: { building: 'yes', name: 'Airport Building' }, geometry: [
+            { lat: 51.28, lon: 6.76 }, { lat: 51.281, lon: 6.76 }, { lat: 51.281, lon: 6.761 }, { lat: 51.28, lon: 6.76 },
+          ] }] }, { icao: 'EDDL', lat: 51.2895, lon: 6.7668 });
+          assert.equal(converted.features[0]?.kind, 'building');
+          const base = { schemaVersion: 4, icao: 'EDDL', center: { lat: 51.28, lon: 6.76 }, bounds: [[51.2, 6.7], [51.3, 6.8]], features: [{ id: 'osm/twy', kind: 'taxiway', geometry: 'line', coordinates: [[51.28, 6.76], [51.281, 6.761]] }] };
+          const facility = { schemaVersion: 4, icao: 'EDDL', center: base.center, bounds: base.bounds, features: [{ id: 'msfs/stand', kind: 'parking_position', geometry: 'point', coordinates: [[51.28, 6.76]] }], facility: {} };
+          const merged = mergeMsfsFacilityMap(base, facility);
+          assert.ok(merged.features.some((entry) => entry.id === 'osm/twy'), 'OSM taxiway must survive when facility has no taxiways');
+          console.log('Airport map regression OK');
+          NODE
+          node -e "const p=require('./package.json'); if(p.version!=='1.7.8') throw new Error('version'); if(p.author!=='Christoph Heckner') throw new Error('author');"
+          if grep -q 'class="home-assistant-card efb-card"' public/index.html; then echo 'Flight Assistant card still present' >&2; exit 1; fi
+
+      - name: Commit release source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/release-1.7.8-traffic-map.yml
+          git add -A
+          git commit -m 'Release 1.7.8 Traffic Identity and Complete Taxi Map'
+          git push origin HEAD:main
