@@ -40,7 +40,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.7.8';
+const APP_VERSION = '1.7.9';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],

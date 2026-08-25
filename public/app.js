@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.8';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.9';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,8 +6,8 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.8';
-import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.8';
+} from './flight-phases.js?v=1.7.9';
+import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.9';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -609,6 +609,17 @@ const map = L.map('map', {
   zoomSnap: 0.25,
 }).setView([51.2895, 6.7668], 16);
 
+// Always show a real airport basemap, even when MSFS/SimConnect is not running.
+// Operational vector geometry is drawn on top when available and remains the routing source.
+const taxiBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  subdomains: 'abc',
+  updateWhenIdle: true,
+  keepBuffer: 3,
+  opacity: 0.78,
+  attribution: '&copy; OpenStreetMap contributors',
+}).addTo(map);
+
 for (const [name, zIndex] of [
   ['airportBoundary', 210],
   ['airportAreas', 220],
@@ -676,7 +687,7 @@ let airportLabelMarkers = [];
 let dynamicAirportLayers = [];
 let mapRequestSerial = 0;
 let loadedAirportMapData = null;
-const CLIENT_MAP_CACHE = 'flight-deck-airport-maps-v2';
+const CLIENT_MAP_CACHE = 'flight-deck-airport-maps-v3';
 let deviceManagementAvailable = null;
 let autoImportAttempted = false;
 let plannerSearchTimer = null;
@@ -4309,6 +4320,8 @@ function syncPlannerFromMap(mapData) {
 
 function updatePlannerControls() {
   const mapReady = loadedAirportMapData
+    && loadedAirportMapData.cache?.status !== 'preview'
+    && Number(loadedAirportMapData.counts?.taxiway || 0) > 0
     && (!plannerState.selectedAirport || loadedAirportMapData.icao === plannerState.selectedAirport.icao);
   const planning = mapReady ? loadedAirportMapData.planning ?? { runways: [], stands: [] } : { runways: [], stands: [] };
   const runways = planning.runways.map((runway) => ({ value: runway, label: `RWY ${runway}` }));
@@ -4354,8 +4367,11 @@ function updatePlannerControls() {
   elements.customFields.hidden = mode !== 'custom';
   elements.findRoutes.disabled = !mapReady;
   if (!mapReady && plannerState.selectedAirport) {
-    elements.plannerMessage.textContent = `Karte für ${plannerState.selectedAirport.icao} wird geladen …`;
-  } else if (mapReady && elements.plannerMessage.textContent.includes('wird geladen')) {
+    const preview = loadedAirportMapData?.cache?.status === 'preview';
+    elements.plannerMessage.textContent = preview
+      ? `Basiskarte für ${plannerState.selectedAirport.icao} ist sichtbar. Taxiway-Routingdaten werden geladen …`
+      : `Karte für ${plannerState.selectedAirport.icao} wird geladen …`;
+  } else if (mapReady && (elements.plannerMessage.textContent.includes('wird geladen') || elements.plannerMessage.textContent.includes('Basiskarte'))) {
     elements.plannerMessage.textContent = '';
   }
 }
@@ -4859,7 +4875,7 @@ async function start() {
   }
 
   if ('serviceWorker' in navigator && !/Electron\//i.test(navigator.userAgent)) {
-    navigator.serviceWorker.register('/service-worker.js?v=1.4.1', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/service-worker.js?v=1.7.9', { updateViaCache: 'none' })
       .then((registration) => registration.update())
       .catch(() => {});
   }

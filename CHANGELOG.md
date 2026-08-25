@@ -1,5 +1,15 @@
 # Flight Deck EFB changelog
 
+## 1.7.9 — Real Airport Map & Standalone Taxi Planning
+
+- Taxi Navigation now always has an **OpenStreetMap basemap**, so taxiways, roads, terminal context and buildings remain visible even with MSFS/SimConnect offline.
+- **Standalone taxi planning** is explicitly supported: select any airport from the bundled OurAirports catalog and plan without a running simulator.
+- Operational airport vectors now use a simpler bbox-based Overpass query with a longer timeout; large and medium airports reject incomplete runway-only responses and automatically try the next endpoint.
+- Airport vector schema was bumped to **5** and the browser map cache to **v3**, forcing old runway-only caches to refresh while preserving them only as an emergency offline fallback.
+- The planner no longer treats a runway-only preview as route-ready; it waits for an actual taxiway graph while the visual OSM basemap remains usable.
+- Fixed stale HTML script references (`app.js?v=1.7.2`, `si-operations.js?v=1.7.2`) and the old service-worker registration URL, which could leave an outdated Taxi implementation active after an update.
+- Taxi empty-state copy now makes it clear that planning works without SayIntentions, BeyondATC or MSFS.
+
 ## 1.7.8 — Traffic Identity & Complete Taxi Map
 
 - Live Traffic now shows up to **120 rows**, preventing nearby airborne traffic from being hidden by the first 40 ground objects at busy airports.

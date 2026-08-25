@@ -1,12 +1,12 @@
 # Flight Deck EFB
 
-**Current release: 1.7.8 — Traffic Identity & Complete Taxi Map**
+**Current release: 1.7.9 — Real Airport Map & Standalone Taxi Planning**
 
 Flight Deck EFB is a Windows companion and responsive Electronic Flight Bag for Microsoft Flight Simulator 2020/2024. The Windows host owns SimConnect, local data and guarded integrations; the same Flight Deck interface can be used in the desktop app, a browser, an iPad/iPhone, Android device and — with the optional SDK-built adapter — directly inside the native MSFS 2024 EFB.
 
 > **Flight simulation use only — not for real-world navigation.**
 
-## 1.7.8 highlights
+## 1.7.9 highlights
 
 - **Installer license page:** assisted Windows Setup shows the MIT License together with simulation-only, privacy/LAN and third-party acknowledgements before installation.
 - **Third-party notices in Setup:** the installer contains a dedicated scrollable notices page and still installs the complete `THIRD_PARTY_NOTICES.md` file.
@@ -68,7 +68,7 @@ It never sends a simulator command by itself.
 
 ## Install / update Windows
 
-1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.8.exe`**.
+1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.9.exe`**.
 2. Windows SmartScreen can warn because the current build is not code-signed. Review the source/publisher before running it.
 3. Start **Flight Deck EFB**. The Windows app starts the local host used by the desktop UI and second screens.
 4. Allow private-network firewall access only when you want tablet/second-screen LAN access.
