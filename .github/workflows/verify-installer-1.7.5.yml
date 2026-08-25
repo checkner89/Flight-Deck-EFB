@@ -95,4 +95,4 @@ jobs:
             git push origin HEAD:release/1.7.5-installer-legal
           }
 
-# verification attempt 2
+# verification attempt 3
