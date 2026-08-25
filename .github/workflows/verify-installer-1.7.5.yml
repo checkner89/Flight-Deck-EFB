@@ -94,3 +94,5 @@ jobs:
             git commit -m 'Finalize Flight Deck EFB 1.7.5 installer release'
             git push origin HEAD:release/1.7.5-installer-legal
           }
+
+# verification attempt 2
