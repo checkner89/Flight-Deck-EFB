@@ -1,0 +1,68 @@
+name: Finalize Live Traffic 1.7.4
+
+on:
+  push:
+    branches:
+      - release/1.7.4-live-traffic
+    paths:
+      - '.github/workflows/finalize-live-traffic-1.7.4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: release/1.7.4-live-traffic
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Apply final UI hardening
+        run: python scripts/finalize-live-traffic-1.7.4.py
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify Live Traffic
+        shell: bash
+        run: |
+          node --check public/live-traffic.js
+          node --check public/app.js
+          node scripts/test-live-traffic.mjs
+          if [ -f scripts/test-traffic-merge.mjs ]; then node scripts/test-traffic-merge.mjs; fi
+          ! grep -q 'google.com/s2/favicons' public/app.js
+          ! grep -q 'data-traffic-view="departures"' public/index.html
+          ! grep -q 'data-traffic-view="arrivals"' public/index.html
+          grep -q 'INFERRED' public/app.js
+          grep -q 'REPORTED' public/app.js
+          grep -q 'status.distanceNm === null' public/app.js
+          grep -q 'scheduleEnriched && state' public/live-traffic.js
+
+      - name: Smoke test host
+        shell: bash
+        run: |
+          node src/server.mjs --demo --port 8755 >/tmp/efb174-final.out 2>/tmp/efb174-final.err &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8755/ | grep -q 'Flight Deck EFB'; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/efb174-final.err || true
+          exit 1
+
+      - name: Commit final hardening
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/app.js
+          git commit -m 'Finalize 1.7.4 Live Traffic rendering'
+          git push origin HEAD:release/1.7.4-live-traffic
