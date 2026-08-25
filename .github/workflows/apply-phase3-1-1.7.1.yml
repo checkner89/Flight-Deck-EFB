@@ -1,0 +1,180 @@
+name: Apply Phase 3.1 1.7.1
+
+on:
+  push:
+    branches:
+      - phase3-1-community-builder-1.7.1
+    paths:
+      - '.github/workflows/apply-phase3-1-1.7.1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Phase 3.1 branch
+        uses: actions/checkout@v5
+        with:
+          ref: phase3-1-community-builder-1.7.1
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Apply 1.7.1 migration
+        run: python scripts/apply-phase3-1-1.7.1.py
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Syntax checks
+        shell: pwsh
+        run: |
+          node --check src/msfs-efb-package-builder.mjs
+          node --check src/server.mjs
+          node --check src/electron-main.mjs
+          node --check src/state-engine.mjs
+          node --check src/route-sync-service.mjs
+          node --check src/flight-intelligence-engine.mjs
+          node --check public/app.js
+          node --check public/service-worker.js
+
+      - name: Verify builder parsing and SDK detection
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs/promises';
+          import os from 'node:os';
+          import path from 'node:path';
+          import {
+            MsfsEfbPackageBuilder,
+            parseInstalledPackagesPath,
+            isCommunityDirectory,
+            transformTemplateText,
+          } from './src/msfs-efb-package-builder.mjs';
+
+          assert.equal(parseInstalledPackagesPath('InstalledPackagesPath "D:\\\\MSFS Packages"\r\n'), 'D:\\MSFS Packages');
+          assert.equal(isCommunityDirectory('D:\\MSFS Packages\\Community2024'), true);
+          assert.equal(isCommunityDirectory('D:\\MSFS Packages\\Official2024'), false);
+          const transformed = transformTemplateText('EFBTemplateAppProject efb_apps_template TemplateApp templateapp');
+          assert.match(transformed, /FlightDeckEFBProject/);
+          assert.match(transformed, /flightdeck-efb-native/);
+          assert.doesNotMatch(transformed, /EFBTemplateAppProject|efb_apps_template/);
+
+          const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'efb-builder-test-'));
+          const sdk = path.join(temp, 'SDK');
+          await fs.mkdir(path.join(sdk, 'Tools', 'bin'), { recursive: true });
+          await fs.writeFile(path.join(sdk, 'Tools', 'bin', 'fspackagetool.exe'), 'placeholder');
+          const efb = path.join(sdk, 'Samples', 'DevmodeProjects', 'EFB');
+          await fs.mkdir(path.join(efb, 'PackageSources', 'TemplateApp'), { recursive: true });
+          await fs.mkdir(path.join(efb, 'PackageSources', 'efb_api'), { recursive: true });
+          await fs.writeFile(path.join(efb, 'EFBTemplateAppProject.xml'), '<Project/>');
+          await fs.writeFile(path.join(efb, 'PackageSources', 'TemplateApp', 'package.json'), '{}');
+          await fs.writeFile(path.join(efb, 'PackageSources', 'efb_api', 'package.json'), '{}');
+          const builder = new MsfsEfbPackageBuilder(null, {
+            sourceDirectory: path.resolve('MSFS-2024-EFB-App'),
+            storageDirectory: path.join(temp, 'data'),
+            appVersion: '1.7.1',
+            platform: 'win32',
+            env: { SystemDrive: 'Z:' },
+          });
+          const status = await builder.detect({ sdkRoot: sdk });
+          assert.equal(status.canBuild, true);
+          assert.equal(status.sdkDetected, true);
+          assert.equal(builder.detailedStatus().sdk.ready, true);
+          assert.equal('sdkRoot' in status, false, 'public status must not expose full SDK path');
+          await fs.rm(temp, { recursive: true, force: true });
+          console.log('Builder parsing/detection contract passed.');
+          NODE
+
+      - name: Verify UI builder contract
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const html = fs.readFileSync('public/index.html', 'utf8');
+          const app = fs.readFileSync('public/app.js', 'utf8');
+          for (const id of [
+            'settings-efb-builder-dot','settings-efb-builder','msfs-efb-builder-status','msfs-efb-builder-detail',
+            'msfs-efb-builder-sdk','msfs-efb-builder-community','msfs-efb-builder-last','msfs-efb-builder-progress',
+            'msfs-efb-builder-sdk-path','msfs-efb-builder-community-path','msfs-efb-builder-detect',
+            'msfs-efb-builder-build','msfs-efb-builder-install','msfs-efb-builder-open','msfs-efb-builder-message'
+          ]) {
+            assert.ok(html.includes(`id="${id}"`), `HTML id missing: ${id}`);
+            assert.ok(app.includes(`$('#${id}')`), `app binding missing: ${id}`);
+          }
+          assert.ok(app.includes("/api/msfs-efb-builder/build"));
+          assert.ok(app.includes('renderMsfsEfbBuilder(state)'));
+          console.log('Builder UI contract passed.');
+          NODE
+
+      - name: Smoke test host and host-only builder API
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs/promises';
+          import os from 'node:os';
+          import path from 'node:path';
+          import { createTaxiServer } from './src/server.mjs';
+          const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'efb-host-builder-'));
+          const app = await createTaxiServer({
+            demo: true,
+            host: '127.0.0.1',
+            port: 8751,
+            mapCacheDirectory: path.join(temp, 'maps'),
+            flightStorageDirectory: path.join(temp, 'flights'),
+            automationStorageDirectory: path.join(temp, 'automations'),
+            accessStorageDirectory: path.join(temp, 'access'),
+            msfsEfbBuilderStorageDirectory: path.join(temp, 'builder'),
+          });
+          try {
+            const base = `http://127.0.0.1:${app.port}`;
+            const unauthorized = await fetch(`${base}/api/msfs-efb-builder/status`);
+            assert.equal(unauthorized.status, 403);
+            const authorized = await fetch(`${base}/api/msfs-efb-builder/status?token=${encodeURIComponent(app.token)}`);
+            assert.equal(authorized.status, 200);
+            const data = await authorized.json();
+            assert.ok(data.builder);
+            assert.equal(data.builder.public.sdkRoot, undefined);
+            const native = await fetch(`${base}/api/native/health`);
+            assert.equal(native.status, 200);
+            assert.equal((await native.json()).version, '1.7.1');
+          } finally {
+            await app.close();
+            await fs.rm(temp, { recursive: true, force: true });
+          }
+          console.log('Host + builder API smoke test passed.');
+          NODE
+
+      - name: Verify version and documentation
+        shell: bash
+        run: |
+          test "$(node -p "require('./package.json').version")" = '1.7.1'
+          grep -q 'data-app-version="1.7.1"' public/index.html
+          grep -q 'flight-deck-efb-v171' public/service-worker.js
+          grep -q 'Current release: 1.7.1' README.md
+          grep -q 'Effective for version 1.7.1' PRIVACY.md
+          grep -q 'Third-party notices — Flight Deck EFB 1.7.1' THIRD_PARTY_NOTICES.md
+          grep -q '## 1.7.1 — Native EFB Community Package Builder' CHANGELOG.md
+          grep -q 'fspackagetool.exe' src/msfs-efb-package-builder.mjs
+          grep -q 'Community2024' src/msfs-efb-package-builder.mjs
+          ! grep -R --exclude-dir=.git --exclude='apply-phase3-1-1.7.1.py' -nE 'data-app-version="1\.7\.0"|Setup-1\.7\.0|flight-deck-efb-v170|"version"\s*:\s*"1\.7\.0"' package.json package-lock.json public src
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Commit 1.7.1 implementation
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md CHANGELOG.md PRIVACY.md THIRD_PARTY_NOTICES.md package.json package-lock.json public src MSFS-2024-EFB-App
+          git commit -m 'Implement MSFS EFB Community package builder'
+          git push origin HEAD:phase3-1-community-builder-1.7.1
