@@ -5435,3 +5435,57 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
 .builder-actions { flex-wrap:wrap; }
 .msfs-efb-builder-card .safety-note { display:block; margin-top:10px; }
 @media (max-width:900px) { .builder-path-grid { grid-template-columns:1fr; } }
+
+
+/* 1.7.2 compact UI */
+.efb-pages .efb-card { min-width: 0; min-height: 0; height: auto; align-self: start; }
+.ground-layout,.automation-layout,.settings-grid,.flight-page-layout,.briefing-layout,.atc-layout,.combined-atc-layout { align-items: start !important; grid-auto-rows: max-content !important; }
+.atc-layout > *, .combined-atc-layout > * { min-width: 0; align-self: start; }
+.atc-messages-card,.manual-clearance,.network-selector-card,.online-controllers-card,.online-atis-card { height: auto !important; min-height: 0 !important; }
+.atc-message-list,.comms-list { min-width: 0; overflow-x: hidden; }
+.atc-message-list article,.comms-list article { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.atc-message-list article p,.comms-list article p { white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.section-title,.ground-brand,.fenix-connect-main { min-width: 0; }
+.section-title > div,.ground-brand > div,.fenix-connect-main > div { min-width: 0; }
+.section-title span,.section-title b,.bridge-facts b,.bridge-facts small,.integration-list small,.integration-list strong { overflow-wrap: anywhere; }
+.bridge-facts { grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); }
+.bridge-facts > span { min-width: 0; }
+.turnaround-card,.ground-safety-card,.gsx-payload-card,.service-panel,.automation-master-card,.automation-variable-card,.automation-rule-builder,.automation-rules-card,.automation-log-card { height: auto !important; min-height: 0 !important; }
+.aircraft-view-stack { display:block; }
+.aircraft-view[hidden] { display:none !important; }
+.aircraft-subnav { margin-bottom:12px; }
+.fenix-efb-view { display:grid; gap:12px; grid-template-rows:auto minmax(520px,calc(100vh - 260px)); }
+.fenix-connect-strip { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:16px; align-items:center; padding:14px 16px; }
+.fenix-connect-main { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.fenix-connect-main p { margin:4px 0 0; }
+.fenix-connect-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
+.fenix-connect-actions .inline-form { min-width:min(430px,100%); }
+.fenix-frame-full { width:100%; min-height:520px !important; padding:0; overflow:hidden; }
+.fenix-frame-full iframe,.fenix-frame-full .fenix-frame-placeholder { width:100%; height:100%; min-height:520px; }
+.update-changelog { display:grid; gap:0; }
+.update-changelog section { display:grid; grid-template-columns:68px minmax(0,1fr); gap:14px; padding:12px 0; border-top:1px solid var(--line); }
+.update-changelog section:first-child { border-top:0; }
+.update-changelog p,.update-changelog ul { margin:0; color:var(--muted); line-height:1.45; }
+.update-changelog ul { padding-left:18px; }
+.traffic-airline-logo { position:relative; display:grid; place-items:center; width:38px; height:38px; flex:0 0 38px; border-radius:50%; border:1px solid var(--line); background:var(--panel-soft); overflow:hidden; }
+.traffic-airline-logo img { position:absolute; inset:5px; width:28px; height:28px; object-fit:contain; border-radius:6px; background:#fff; }
+.traffic-airline-logo b { font-size:10px; letter-spacing:.03em; z-index:0; }
+.traffic-airline-logo img + b { opacity:0; }
+@media (max-width:920px) {
+  .fenix-connect-strip { grid-template-columns:1fr; }
+  .fenix-connect-actions { justify-content:flex-start; }
+  .fenix-connect-actions .inline-form { min-width:0; width:100%; }
+  .fenix-efb-view { grid-template-rows:auto minmax(440px,65vh); }
+}
+
+
+/* 1.7.2 SI alignment */
+.atc-messages-card { grid-column: 1 / -1 !important; width: 100%; max-width: none; }
+.atc-messages-card .section-title { align-items: flex-start; flex-wrap: wrap; }
+.atc-messages-card .message-view-selector { margin-left: auto; flex: 0 0 auto; }
+.atc-message-list { width: 100%; }
+.atc-message-list > * { box-sizing: border-box; width: 100%; max-width: 100%; }
+@media (max-width: 760px) {
+  .atc-messages-card .message-view-selector { width: 100%; margin-left: 0; }
+  .atc-messages-card .message-view-selector button { flex: 1 1 0; }
+}

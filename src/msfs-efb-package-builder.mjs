@@ -603,7 +603,8 @@ export class MsfsEfbPackageBuilder {
   async build({ install = false, sdkRoot, communityDirectory } = {}) {
     if (this.building) throw new Error('An MSFS EFB package build is already running.');
     if (sdkRoot !== undefined || communityDirectory !== undefined) await this.configure({ sdkRoot, communityDirectory });
-    const detected = await this.detect();
+    await this.detect();
+    const detected = this.current;
     if (!detected.canBuild || !detected.sdk?.ready) throw new Error(detected.detail || 'MSFS 2024 SDK is not ready.');
     if (install && !detected.communityDirectory) {
       throw new Error('Community2024 was not detected. Set the Community2024 path before using Build & Install.');

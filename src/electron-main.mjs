@@ -14,6 +14,12 @@ let shutdownStarted = false;
 let isQuitting = false;
 let updateService;
 
+function normalizeReleaseNotes(value) {
+  if (typeof value === 'string') return value.slice(0, 12000);
+  if (Array.isArray(value)) return value.map((entry) => typeof entry === 'string' ? entry : entry?.note || '').filter(Boolean).join('\n').slice(0, 12000);
+  return '';
+}
+
 function createUpdateService() {
   const currentVersion = app.getVersion();
   let value = app.isPackaged && process.platform === 'win32'
@@ -25,10 +31,10 @@ function createUpdateService() {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.on('checking-for-update', () => set({ state: 'checking', percent: 0, detail: 'GitHub Release wird geprüft.' }));
-    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\s+/g, ' ').trim() }));
+    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, releaseNotes: normalizeReleaseNotes(info?.releaseNotes), detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\s+/g, ' ').trim() }));
     autoUpdater.on('update-not-available', (info) => set({ state: 'current', percent: 0, releaseName: info?.version || currentVersion, detail: 'Flight Deck EFB ist aktuell.' }));
     autoUpdater.on('download-progress', (progress) => set({ state: 'downloading', percent: Math.round(progress.percent || 0), detail: `Update wird heruntergeladen: ${Math.round(progress.percent || 0)} %` }));
-    autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', percent: 100, releaseName: info?.version || null, detail: `Version ${info?.version || ''} ist bereit. Neustart zum Installieren.`.replace(/\s+/g, ' ').trim() }));
+    autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', percent: 100, releaseName: info?.version || null, releaseNotes: normalizeReleaseNotes(info?.releaseNotes), detail: `Version ${info?.version || ''} ist bereit. Neustart zum Installieren.`.replace(/\s+/g, ' ').trim() }));
     autoUpdater.on('error', (error) => set({ state: 'error', percent: 0, detail: `Update-Prüfung fehlgeschlagen: ${error.message}` }));
   }
 

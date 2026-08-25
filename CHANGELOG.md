@@ -1,5 +1,20 @@
 # Flight Deck EFB changelog
 
+## 1.7.2 — Native EFB Builder Hotfix
+
+- Fixed Taxi Navigation auto-follow so the aircraft stays centered on module open and route refresh.
+- Reworked Aircraft & EFB into a full-width Fenix workspace with Fenix / PMDG / Adapter Status tabs.
+- Fixed stretched/offset ATC and SayIntentions cards plus oversized Phase-2/3 empty-state cards.
+- Improved Flightboard route/schedule enrichment with optional official MSFS AI Traffic fields and online-pilot fallback.
+- Improved Departures / Arrivals classification when schedule data is incomplete.
+- Uses the active Flightboard airport as a known-side fallback for schedule-less nearby ground traffic, without inventing an unknown destination.
+- Fixed SayIntentions Messages tab alignment so it uses the full ATC workspace width instead of inheriting the clearance two-column offset.
+- Added airline identity badges/icons and kept common aviation terms such as Taxi, Enroute, Parking and Boarding in English in the German UI.
+- Added an in-app update changelog and retained GitHub/electron-updater release notes in update state.
+- Fixed a critical builder-state regression where **Build Package** / **Build & Install** could report the SDK as unavailable immediately after successful detection.
+- Added a regression check that verifies the build path uses the trusted internal detected SDK state rather than the sanitized public status object.
+- No changes to the Phase-3 route bridge, Flight Intelligence, Turnaround Coordinator or Flight Assistant behavior.
+
 ## 1.7.1 — Native EFB Community Package Builder
 
 - Added a Windows-hosted MSFS 2024 EFB Package Builder that detects the locally installed SDK/EFB template and uses the installed `fspackagetool.exe` instead of redistributing Microsoft SDK files.

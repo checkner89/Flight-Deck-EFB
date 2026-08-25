@@ -1,6 +1,6 @@
 # Flight Deck EFB — Privacy and data flow
 
-Effective for version 1.7.1 (25 August 2026)
+Effective for version 1.7.2 (25 August 2026)
 
 Flight Deck EFB is a local companion for flight simulation. The Windows host stores settings, paired-device tokens, cached airport data, automation rules, flight recordings and the optional SimBrief identifier in the current Windows user's application-data folder. Normal application updates keep this data. **New Flight** resets the current operational session but does not delete the archive or application preferences.
 

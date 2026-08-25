@@ -10,6 +10,7 @@ import {
 const DISCOVERY_DEFINITION = 90;
 const DISCOVERY_REQUEST = 90;
 const TRAFFIC_DEFINITION = 91;
+const TRAFFIC_PLAN_DEFINITION = 92;
 const TRAFFIC_RADIUS_METERS = 200_000;
 const AIRCRAFT_CATEGORIES = new Set(['airplane', 'airship', 'helicopter', 'hotairballoon']);
 
@@ -30,6 +31,8 @@ export class InjectedTrafficClient {
     this.discoveryBatch = null;
     this.detailBatch = null;
     this.pendingRequests = new Map();
+    this.pendingPlanRequests = new Map();
+    this.trafficPlanByObjectId = new Map();
     this.nextRequestId = 10_000;
     this.fallbackAircraft = [];
     this.onEngineChange = () => this.#restoreMergedTrafficIfNeeded();
@@ -51,6 +54,8 @@ export class InjectedTrafficClient {
     this.discoveryBatch = null;
     this.detailBatch = null;
     this.pendingRequests.clear();
+    this.pendingPlanRequests.clear();
+    this.trafficPlanByObjectId.clear();
     this.fallbackAircraft = [];
     this.engine.off('change', this.onEngineChange);
     try {
@@ -82,7 +87,7 @@ export class InjectedTrafficClient {
       this.protocol = opened.protocol;
       this.#registerDefinitions(this.handle);
       this.handle.on('simObjectDataByType', (received) => this.#handleDiscovery(received));
-      this.handle.on('simObjectData', (received) => this.#handleDetail(received));
+      this.handle.on('simObjectData', (received) => { this.#handleDetail(received); this.#handlePlanDetail(received); });
 
       let reconnectScheduled = false;
       const reconnect = () => {
@@ -95,6 +100,8 @@ export class InjectedTrafficClient {
         this.discoveryBatch = null;
         this.detailBatch = null;
         this.pendingRequests.clear();
+        this.pendingPlanRequests.clear();
+        this.trafficPlanByObjectId.clear();
         this.retryTimer = setTimeout(() => this.#connect(), this.retryMs);
       };
       this.handle.on('quit', reconnect);
@@ -151,6 +158,23 @@ export class InjectedTrafficClient {
     addFloat('VERTICAL SPEED', 'feet per minute');
     addString('TITLE', SimConnectDataType.STRING128);
     addString('ATC ID', SimConnectDataType.STRING32);
+
+    const addPlanString = (name, type = SimConnectDataType.STRING32) => handle.addToDataDefinition(
+      TRAFFIC_PLAN_DEFINITION, name, null, type, 0, SimConnectConstants.UNUSED,
+    );
+    const addPlanFloat = (name, unit) => handle.addToDataDefinition(
+      TRAFFIC_PLAN_DEFINITION, name, unit, SimConnectDataType.FLOAT64, 0, SimConnectConstants.UNUSED,
+    );
+    addPlanString('ATC AIRLINE', SimConnectDataType.STRING64);
+    addPlanString('ATC FLIGHT NUMBER', SimConnectDataType.STRING32);
+    addPlanString('AI TRAFFIC STATE', SimConnectDataType.STRING64);
+    addPlanString('AI TRAFFIC CURRENT AIRPORT', SimConnectDataType.STRING32);
+    addPlanString('AI TRAFFIC ASSIGNED RUNWAY', SimConnectDataType.STRING32);
+    addPlanString('AI TRAFFIC ASSIGNED PARKING', SimConnectDataType.STRING64);
+    addPlanString('AI TRAFFIC FROMAIRPORT', SimConnectDataType.STRING32);
+    addPlanString('AI TRAFFIC TOAIRPORT', SimConnectDataType.STRING32);
+    addPlanFloat('AI TRAFFIC ETD', 'seconds');
+    addPlanFloat('AI TRAFFIC ETA', 'seconds');
   }
 
   #poll() {
@@ -296,7 +320,50 @@ export class InjectedTrafficClient {
     this.fallbackAircraft = batch.aircraft
       .sort((left, right) => left.callsign.localeCompare(right.callsign, 'en', { numeric: true }))
       .slice(0, 300);
+    this.#requestPlanEnrichment(this.fallbackAircraft);
     this.#publishMergedTraffic();
+  }
+
+  #requestPlanEnrichment(aircraft = []) {
+    if (!this.handle) return;
+    for (const entry of aircraft.slice(0, 120)) {
+      const objectId = Number(entry.objectId);
+      if (!Number.isInteger(objectId) || this.pendingPlanRequests.has(objectId)) continue;
+      const requestId = this.#nextDetailRequestId();
+      this.pendingPlanRequests.set(requestId, objectId);
+      try {
+        this.handle.requestDataOnSimObject(requestId, TRAFFIC_PLAN_DEFINITION, objectId, SimConnectPeriod.ONCE, 0, 0, 0, 0);
+      } catch {
+        this.pendingPlanRequests.delete(requestId);
+      }
+    }
+  }
+
+  #handlePlanDetail(received) {
+    const objectId = this.pendingPlanRequests.get(received.requestID);
+    if (!objectId) return;
+    this.pendingPlanRequests.delete(received.requestID);
+    try {
+      const data = received.data;
+      const plan = {
+        airline: clean(data.readString64()),
+        flightNumber: clean(data.readString32()),
+        state: clean(data.readString64()),
+        currentAirport: clean(data.readString32()).toUpperCase(),
+        runway: clean(data.readString32()).toUpperCase(),
+        parking: clean(data.readString64()),
+        origin: clean(data.readString32()).toUpperCase(),
+        destination: clean(data.readString32()).toUpperCase(),
+        etdSeconds: data.readFloat64(),
+        etaSeconds: data.readFloat64(),
+      };
+      this.trafficPlanByObjectId.set(Number(objectId), plan);
+      this.fallbackAircraft = this.fallbackAircraft.map((entry) => Number(entry.objectId) === Number(objectId)
+        ? this.#normalizeTrafficEntry({ ...entry, ...plan }) : entry);
+      this.#publishMergedTraffic();
+    } catch {
+      // Optional AI schedule fields are not available for every PassiveAircraft/injector object.
+    }
   }
 
   #normalizeTrafficEntry(entry) {
