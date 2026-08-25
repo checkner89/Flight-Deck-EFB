@@ -298,7 +298,11 @@ export class AircraftAdapterManager {
       return this.simConnect.setInputEvent(id, value);
     }
     if (adapter.startsWith('pmdg')) {
-      const control = this.listControls('', { limit: 500 }).find((entry) => entry.id === id);
+      const family = adapter === 'pmdg-737' ? 'PMDG 737' : adapter === 'pmdg-777' ? 'PMDG 777' : null;
+      const control = this.pmdgPackages
+        .filter((entry) => !family || entry.family === family)
+        .flatMap((entry) => entry.controls)
+        .find((entry) => entry.id === id);
       if (!control) throw new Error('PMDG-Steuerbefehl ist nicht im lokal installierten SDK freigegeben.');
       const numeric = Number(value);
       if (!Number.isFinite(numeric) || numeric < 0 || numeric > 0xFFFFFFFF) throw new Error('PMDG-Steuerwert ist ungültig.');
@@ -325,8 +329,9 @@ export class AircraftAdapterManager {
       ? (this.simConnect?.listInputEvents('', { limit: 500 }).length || 0)
       : matchingPackages.reduce((sum, entry) => sum + entry.controlCount, 0);
     const pmdgDetected = this.pmdgPackages.length > 0;
-    const pmdgBroadcast = matchingPackages.length
-      ? matchingPackages.some((entry) => entry.broadcastEnabled === true)
+    const knownBroadcastPackages = matchingPackages.filter((entry) => entry.broadcastEnabled !== null);
+    const pmdgBroadcast = knownBroadcastPackages.length
+      ? knownBroadcastPackages.some((entry) => entry.broadcastEnabled === true)
       : null;
     const status = active === 'fenix'
       ? (this.fenixReachable ? 'ready' : 'attention')
