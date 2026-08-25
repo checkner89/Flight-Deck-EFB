@@ -1,0 +1,48 @@
+name: Run 1.7.5 Hotfix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/run-1.7.5-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: "github.event.head_commit.message == 'chore: run 1.7.5 hotfix'"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Apply patch
+        run: |
+          python scripts/apply-1.7.5-hotfix.py
+          npm version 1.7.5 --no-git-tag-version
+      - name: Verify source
+        run: |
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/injected-traffic-client.mjs
+          node --check src/state-engine.mjs
+          node --check src/ground-safety-engine.mjs
+          node --check public/live-traffic.js
+          node --check public/app.js
+          node scripts/test-live-traffic.mjs
+          node scripts/verify-traffic-merge.mjs
+      - name: Commit release source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/run-1.7.5-hotfix.yml
+          git rm .github/workflows/apply-1.7.5-traffic-taxi-hotfix.yml
+          git rm scripts/apply-1.7.5-hotfix.py
+          git add -A
+          git commit -m 'Release 1.7.5'
+          git push origin HEAD:main
