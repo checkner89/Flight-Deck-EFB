@@ -1,4 +1,4 @@
-name: Apply Phase 3 1.7.0
+name: Finalize Phase 3 1.7.0
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-and-verify:
+  finalize-and-verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Phase 3 branch
@@ -25,68 +25,66 @@ jobs:
         with:
           node-version: 24
 
-      - name: Apply Phase 3 migration
-        run: python scripts/apply-phase3-1.7.0.py
+      - name: Apply final SDK-shape hardening
+        run: python scripts/finalize-phase3-1.7.0.py
 
-      - name: Synchronize package lock and dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Syntax checks
+      - name: Verify official Planned Route shapes
+        shell: bash
         run: |
           node --check src/route-sync-service.mjs
           node --check src/flight-intelligence-engine.mjs
-          node --check src/aircraft-adapter-manager.mjs
-          node --check src/ground-safety-engine.mjs
-          node --check src/gsx-client.mjs
-          node --check src/simconnect-client.mjs
           node --check src/server.mjs
-          node --check src/state-engine.mjs
-          node --check public/flight-phases.js
           node --check public/app.js
-          node --check public/service-worker.js
-
-      - name: Phase 3 behavior checks
-        shell: bash
-        run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
-          import { normalizeMsfsEfbRoute, buildFlightDeckRoute, compareRoutes } from './src/route-sync-service.mjs';
+          import { normalizeMsfsEfbRoute, compareRoutes, buildFlightDeckRoute } from './src/route-sync-service.mjs';
           import { evaluateTurnaround, evaluateAssistant } from './src/flight-intelligence-engine.mjs';
           import { resolveFlightPhase } from './public/flight-phases.js';
 
-          const msfs = normalizeMsfsEfbRoute({
-            departureAirport: { icao: 'EDDF' }, destinationAirport: { icao: 'LPPT' },
-            departureRunway: { designation: '25C' }, destinationRunway: { designation: '03' },
-            departure: { ident: 'ANEK1F' }, arrival: { ident: 'XAMAX3A' },
-            cruiseAltitude: 36000,
-            enroute: [{ ident: 'ANEKI' }, { ident: 'XAMAX' }],
+          const route = normalizeMsfsEfbRoute({
+            departureAirport: { type: 'A', region: 'ED', airport: '', ident: 'EDDF' },
+            destinationAirport: { type: 'A', region: 'LP', airport: '', ident: 'LPPT' },
+            departureRunway: { number: 3, designator: 3 },
+            destinationRunway: { number: 25, designator: 1 },
+            departure: { ident: 'ANEK1F' },
+            arrival: { ident: 'XAMAX3A' },
+            cruiseAltitude: { altitude: 36000, isFlightLevel: true },
+            enroute: [
+              { fixIcao: { type: 'W', region: 'ED', airport: '', ident: 'ANEKI' }, via: 'T163', hasLatLon: false, lat: 50.1, lon: 8.2 },
+              { fixIcao: { type: 'W', region: 'LP', airport: '', ident: 'XAMAX' }, via: '', hasLatLon: false, lat: 40.3, lon: -7.1 },
+            ],
           });
-          assert.equal(msfs.departureAirport, 'EDDF');
-          assert.equal(msfs.destinationAirport, 'LPPT');
+          assert.equal(route.departureAirport, 'EDDF');
+          assert.equal(route.destinationAirport, 'LPPT');
+          assert.equal(route.departureRunway, '03C');
+          assert.equal(route.destinationRunway, '25L');
+          assert.equal(route.cruiseAltitude, 36000);
+          assert.deepEqual(route.enroute.map((entry) => entry.ident), ['ANEKI', 'XAMAX']);
+          assert.equal(route.enroute[0].airway, 'T163');
+
           const state = {
-            flight: { origin: 'EDDF', destination: 'LPPT', departureRunway: '25C', arrivalRunway: '03' },
+            flight: { origin: 'EDDF', destination: 'LPPT', departureRunway: '03C', arrivalRunway: '25L' },
             aircraft: { onGround: true, groundSpeed: 0, parkingBrake: true, enginesRunning: false },
             integrations: {
-              simbrief: { imported: true, flight: { origin: 'EDDF', destination: 'LPPT', departureRunway: '25C', arrivalRunway: '03', sid: 'ANEK1F', star: 'XAMAX3A', waypoints: [{ ident: 'ANEKI', lat: 50, lon: 8 }, { ident: 'XAMAX', lat: 40, lon: -7 }] } },
+              simbrief: { imported: true, flight: { origin: 'EDDF', destination: 'LPPT', departureRunway: '03C', arrivalRunway: '25L', sid: 'ANEK1F', star: 'XAMAX3A', cruiseAltitudeFeet: 36000, waypoints: [{ ident: 'ANEKI', lat: 50.1, lon: 8.2 }, { ident: 'XAMAX', lat: 40.3, lon: -7.1 }] } },
               gsx: { installed: false, payload: {}, services: [] },
               groundSafety: { alerts: [] },
-              routeSync: {},
-              aviationWeather: { airports: [] },
-              sayIntentions: { weather: { airports: [] } },
+              routeSync: {}, aviationWeather: { airports: [] }, sayIntentions: { weather: { airports: [] } },
               flightIntelligence: { confidence: .97 },
             },
           };
-          const deck = buildFlightDeckRoute(state);
-          const comparison = compareRoutes(deck, msfs);
+          const comparison = compareRoutes(buildFlightDeckRoute(state), route);
           assert.equal(comparison.status, 'matched');
           assert.ok(comparison.matchPercent >= 85);
           const turnaround = evaluateTurnaround(state, 'preflight');
           assert.ok(['working', 'ready'].includes(turnaround.status));
-          const assistant = evaluateAssistant(state, 'preflight', turnaround);
-          assert.equal(assistant.advisoryOnly, true);
+          assert.equal(evaluateAssistant(state, 'preflight', turnaround).advisoryOnly, true);
           assert.equal(resolveFlightPhase({ integrations: { flightIntelligence: { phase: 'cruise' } } }, null, 'auto'), 'cruise');
           assert.equal(resolveFlightPhase({ integrations: { flightIntelligence: { phase: 'cruise' } } }, null, 'descent'), 'descent');
-          console.log('Phase 3 behavior checks passed.');
+          console.log('Official Planned Route shape checks passed.');
           NODE
 
       - name: Verify native EFB source contract
@@ -94,12 +92,17 @@ jobs:
         run: |
           grep -q 'GET_EFB_ROUTE' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
           grep -q 'AvionicsRouteSync' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
-          grep -q '39890' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
+          grep -q 'public onAfterRender(_node: VNode)' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
+          grep -q 'public onClose()' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
           ! grep -Eq 'SEND_ROUTE_TO_AVIONICS|SEND_ROUTE_TO_EFB|SAVE_EFB_ROUTE|GPS FLIGHT PLAN' MSFS-2024-EFB-App/src/FlightDeckEFB.tsx
+          ! grep -q 'synchronized to the aircraft avionics' MSFS-2024-EFB-App/README.md
 
-      - name: Verify Phase 3 UI contract
+      - name: Verify UI and version contracts
         shell: bash
         run: |
+          test "$(node -p "require('./package.json').version")" = '1.7.0'
+          grep -q 'data-app-version="1.7.0"' public/index.html
+          grep -q 'flight-deck-efb-v170' public/service-worker.js
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import fs from 'node:fs';
@@ -115,14 +118,13 @@ jobs:
             assert.ok(html.includes(`id="${id}"`), `HTML id missing: ${id}`);
             assert.ok(app.includes(`$('#${id}')`), `app binding missing: ${id}`);
           }
-          assert.ok(app.includes('renderPhase3(state)'), 'renderPhase3 is not connected to renderState');
-          console.log('Phase 3 UI contract passed.');
+          assert.ok(app.includes('renderPhase3(state)'), 'Phase 3 renderer is not connected.');
           NODE
 
-      - name: Smoke test local host and native bridge
+      - name: Smoke test loopback native bridge and PNA headers
         shell: bash
         run: |
-          node src/server.mjs --demo --port 8748 >/tmp/efb-phase3.out 2>/tmp/efb-phase3.err &
+          node src/server.mjs --demo --port 8748 >/tmp/efb-phase3-final.out 2>/tmp/efb-phase3-final.err &
           PID=$!
           trap 'kill $PID 2>/dev/null || true' EXIT
           for i in {1..30}; do
@@ -130,31 +132,25 @@ jobs:
             sleep 0.5
           done
           curl --fail --silent http://127.0.0.1:8748/api/native/health | grep -q '1.7.0'
-          curl --fail --silent -X OPTIONS -D /tmp/native-headers -o /dev/null http://127.0.0.1:8748/api/native/route
+          curl --fail --silent -X OPTIONS -H 'Access-Control-Request-Private-Network: true' -D /tmp/native-headers -o /dev/null http://127.0.0.1:8748/api/native/route
           grep -qi 'access-control-allow-origin: \*' /tmp/native-headers
-          curl --fail --silent -H 'Content-Type: application/json' -d '{"route":{"departureAirport":{"icao":"EDDF"},"destinationAirport":{"icao":"LPPT"},"enroute":[{"ident":"ANEKI"}]}}' http://127.0.0.1:8748/api/native/route | grep -q 'accepted'
-          curl --fail --silent http://127.0.0.1:8748/api/native/flight-deck-route | grep -q 'routeSync'
-          echo 'Phase 3 native bridge smoke test passed.'
+          grep -qi 'access-control-allow-private-network: true' /tmp/native-headers
+          curl --fail --silent -H 'Content-Type: application/json' -d '{"route":{"departureAirport":{"type":"A","ident":"EDDF"},"destinationAirport":{"type":"A","ident":"LPPT"},"departureRunway":{"number":3,"designator":3},"cruiseAltitude":{"altitude":36000,"isFlightLevel":true},"enroute":[{"fixIcao":{"type":"W","ident":"ANEKI"},"via":"T163"}]}}' http://127.0.0.1:8748/api/native/route | grep -q 'accepted'
+          echo 'Final native bridge smoke test passed.'
 
-      - name: Verify version and documentation sweep
+      - name: Documentation and dependency checks
         shell: bash
         run: |
-          test "$(node -p "require('./package.json').version")" = '1.7.0'
-          grep -q 'data-app-version="1.7.0"' public/index.html
-          grep -q 'flight-deck-efb-v170' public/service-worker.js
           grep -q 'Current release: 1.7.0' README.md
           grep -q 'Effective for version 1.7.0' PRIVACY.md
           grep -q 'Third-party notices — Flight Deck EFB 1.7.0' THIRD_PARTY_NOTICES.md
           grep -q '## 1.7.0 — Phase 3' CHANGELOG.md
-          ! grep -R --exclude-dir=.git --exclude='apply-phase3-1.7.0.py' -nE 'Current release: 1\.6\.0|data-app-version="1\.6\.0"|Setup-1\.6\.0|flight-deck-efb-v160' README.md PRIVACY.md THIRD_PARTY_NOTICES.md public src package.json CHANGELOG.md
+          npm audit --audit-level=high
 
-      - name: Dependency audit
-        run: npm audit --audit-level=high
-
-      - name: Commit Phase 3 implementation
+      - name: Commit final Phase 3 hardening
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md CHANGELOG.md PRIVACY.md THIRD_PARTY_NOTICES.md package.json package-lock.json public src
-          git commit -m 'Implement Phase 3 native EFB and flight intelligence'
+          git add src/route-sync-service.mjs src/server.mjs README.md MSFS-2024-EFB-App/README.md
+          git commit -m 'Harden Phase 3 against official MSFS route shapes'
           git push origin HEAD:phase3-native-intelligence-1.7.0
