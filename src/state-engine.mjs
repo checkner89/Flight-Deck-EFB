@@ -414,6 +414,21 @@ export class StateEngine extends EventEmitter {
           url: null,
           detail: 'Fenix Remote EFB wird bei Bedarf verbunden',
         },
+        aircraftAdapter: {
+          status: 'idle',
+          active: 'generic',
+          title: null,
+          controlCount: 0,
+          detail: 'Warte auf geladenes Flugzeug',
+          fenix: { detected: false, reachable: false, url: null, inputEventCount: 0 },
+          pmdg: { detected: false, activeFamily: null, broadcastEnabled: null, packages: [], controlCount: 0 },
+        },
+        groundSafety: {
+          status: 'clear',
+          highestSeverity: null,
+          alerts: [],
+          detail: 'Keine aktiven Ground-Safety-Warnungen',
+        },
         com: {
           status: 'waiting',
           source: 'SimConnect',
@@ -1066,6 +1081,7 @@ export class StateEngine extends EventEmitter {
       .map((point) => ({
         lat: point.lat,
         lon: point.lon,
+        index: point.index,
         label: runway ? `HOLD SHORT RWY ${runway}` : 'HOLD SHORT',
         taxiway: point.label || null,
       }));
@@ -1078,6 +1094,7 @@ export class StateEngine extends EventEmitter {
       explicit.push({
         lat: finalPoint.lat,
         lon: finalPoint.lon,
+        index: path.length - 1,
         label: runway ? `HOLD SHORT RWY ${runway}` : 'HOLD SHORT',
         inferred: true,
       });

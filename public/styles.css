@@ -5340,3 +5340,41 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(1){background:#dff7f3
 html[data-theme="light"] .home-flight-facts>span:nth-child(2){background:#e1f2fb;border-color:#82bddc}html[data-theme="light"] .home-flight-facts>span:nth-child(2) b{color:#15577a}
 html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf;border-color:#d4b55c}html[data-theme="light"] .home-flight-facts>span:nth-child(3) b{color:#735500}
 @media(max-width:1050px){.fenix-page .fenix-layout{grid-template-columns:1fr;min-height:auto}.fenix-page .fenix-frame-card{min-height:680px}.fenix-page .fenix-frame-card iframe,.fenix-page .fenix-frame-placeholder{min-height:660px}}
+
+
+/* Phase 2 · Aircraft adapters, GSX live status and ground safety */
+.adapter-overview-card,
+.pmdg-adapter-card,
+.ground-safety-card,
+.gsx-payload-card { min-width: 0; }
+
+.service-item.available { border-color: rgba(74, 242, 179, .28); }
+.service-item.requested,
+.service-item.active { border-color: rgba(255, 200, 87, .42); background: rgba(255, 200, 87, .06); }
+.service-item.completed { border-color: rgba(74, 242, 179, .32); background: rgba(74, 242, 179, .05); }
+.service-item.unavailable,
+.service-item.bypassed,
+.service-item.offline { opacity: .62; }
+.service-item.active i { color: var(--amber); text-shadow: 0 0 10px rgba(255, 200, 87, .45); }
+.service-item.completed i,
+.service-item.available i { color: var(--green); }
+
+.ground-safety-list { display: grid; gap: 8px; margin-top: 12px; }
+.ground-safety-alert { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); }
+.ground-safety-alert > i { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+.ground-safety-alert > span { display: grid; gap: 2px; }
+.ground-safety-alert strong { font-size: 11px; letter-spacing: .05em; }
+.ground-safety-alert small { color: var(--muted); line-height: 1.35; }
+.ground-safety-alert > b { font-size: 9px; letter-spacing: .08em; }
+.ground-safety-alert.warning { border-color: rgba(255, 200, 87, .38); }
+.ground-safety-alert.critical { border-color: rgba(255, 92, 108, .55); background: rgba(255, 92, 108, .08); }
+.ground-safety-alert.critical > i { background: var(--red); box-shadow: 0 0 10px rgba(255, 92, 108, .5); }
+
+.warning-banner.severity-caution { border-color: rgba(255, 200, 87, .5); }
+.warning-banner.severity-warning { border-color: rgba(255, 200, 87, .72); }
+.warning-banner.severity-critical { border-color: rgba(255, 92, 108, .82); background: rgba(76, 17, 27, .96); }
+
+@media (max-width: 900px) {
+  .adapter-layout,
+  .ground-layout { grid-template-columns: 1fr; }
+}

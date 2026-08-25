@@ -1,5 +1,18 @@
 # Flight Deck EFB changelog
 
+## 1.6.0 — Phase 2 Aircraft & Ground Intelligence
+
+- Added a central Aircraft Adapter Layer that automatically selects Fenix, PMDG or Generic SimConnect for the loaded aircraft.
+- Added a Fenix adapter that combines official Remote EFB health with only the MSFS Input Events actually enumerated for the active aircraft; no unofficial Fenix LVar catalog is bundled.
+- Added PMDG 737/777 local SDK discovery. Available control events are derived at runtime from the user's installed PMDG SDK header and Data Broadcast readiness is reported without rewriting PMDG configuration.
+- Upgraded GSX from installation-only detection to documented live service/passenger/cargo LVar monitoring. SimBrief passenger count can be explicitly synchronized to the documented GSX passenger target while service commands stay native to GSX/Fenix.
+- Added intelligent Ground / Taxi Safety advisories for route deviation, excessive taxi speed, hold-short approach without detected runway authorization, stand-approach speed and close moving ground traffic.
+- Integrated Ground Safety into the Taxi warning banner and Ground Services app with caution/warning/critical severity.
+- Added Aircraft Adapter, Ground Safety and enhanced GSX state to diagnostics/support metadata without exposing secrets or full local SDK paths.
+- Updated the Aircraft/Ground UI, legal compatibility names, settings integration overview and all visible application/cache version strings to 1.6.0.
+- Rewrote README setup/data-flow/safety documentation to match the current product and removed stale installer/updater statements.
+- GitHub Release notes are now generated from the matching CHANGELOG section instead of a hard-coded older release description.
+
 ## 1.5.0 — Phase 1 connectors
 
 - Hardened SimConnect health reporting with a telemetry watchdog while preserving transport connections on optional data errors.

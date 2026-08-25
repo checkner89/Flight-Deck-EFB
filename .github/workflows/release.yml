@@ -53,6 +53,10 @@ jobs:
           node --check src/server.mjs
           node --check src/simconnect-client.mjs
           node --check src/injected-traffic-client.mjs
+          node --check src/littlenavmap-client.mjs
+          node --check src/aircraft-adapter-manager.mjs
+          node --check src/ground-safety-engine.mjs
+          node --check src/gsx-client.mjs
           node --check src/state-engine.mjs
           node --check public/app.js
           node --check public/si-operations.js
@@ -75,7 +79,7 @@ jobs:
           }
           $size = (Get-Item 'data/ourairports.min.json.gz').Length
           if ($size -lt 100000) {
-            throw "OurAirports offline catalog is unexpectedly small: $size bytes"
+            throw "OurAirports catalog is unexpectedly small: $size bytes"
           }
           Write-Host "OurAirports catalog: $size bytes"
 
@@ -173,13 +177,19 @@ jobs:
             "dist/Flight-Deck-EFB-Setup-$version.exe.blockmap",
             'dist/latest.yml'
           )
+          $changelog = Get-Content 'CHANGELOG.md' -Raw
+          $escaped = [regex]::Escape($version)
+          $match = [regex]::Match($changelog, "(?ms)^##\s+$escaped\b.*?(?=^##\s+|\z)")
+          if (!$match.Success) { throw "CHANGELOG section for $version is missing." }
+          $notesFile = Join-Path $env:RUNNER_TEMP "release-notes-$version.md"
+          Set-Content -Path $notesFile -Value ($match.Value.Trim() + "`n`n> Flight simulation use only — not for real-world navigation.`n") -Encoding UTF8
           gh release view $tag --repo $repo *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag @assets --repo $repo --clobber
             if ($LASTEXITCODE -ne 0) { throw 'Uploading release assets failed.' }
-            gh release edit $tag --repo $repo --draft=false --prerelease=false --title "Flight Deck EFB $version"
+            gh release edit $tag --repo $repo --draft=false --prerelease=false --title "Flight Deck EFB $version" --notes-file $notesFile
           } else {
-            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. SayIntentions operations update: selectable SI/AviationWeather weather source, continuous SI parking sync, explicit gate assignment, SI airport-data refresh, guarded ATC pause/resume and pilot COM1/COM2 text transmission. Flight simulation use only — not for real-world navigation." --verify-tag
+            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes-file $notesFile --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing GitHub release failed.' }
 

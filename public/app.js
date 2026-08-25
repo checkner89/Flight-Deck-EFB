@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.5.0';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.6.0';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.5.0';
+} from './flight-phases.js?v=1.6.0';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -140,11 +140,13 @@ const elements = {
   applyManualClearance: $('#apply-manual-clearance'),
   settingsMsfsDot: $('#settings-msfs-dot'),
   settingsLnmDot: $('#settings-lnm-dot'),
+  settingsAdapterDot: $('#settings-adapter-dot'),
   settingsAtcDot: $('#settings-atc-dot'),
   settingsNavDot: $('#settings-nav-dot'),
   settingsGsxDot: $('#settings-gsx-dot'),
   settingsMsfs: $('#settings-msfs'),
   settingsLnm: $('#settings-lnm'),
+  settingsAdapter: $('#settings-adapter'),
   settingsAtc: $('#settings-atc'),
   settingsNav: $('#settings-nav'),
   settingsGsx: $('#settings-gsx'),
@@ -300,6 +302,26 @@ const elements = {
   fenixFrame: $('#fenix-frame'),
   fenixPlaceholder: $('#fenix-placeholder'),
   homeFenixSummary: $('#home-fenix-summary'),
+  aircraftAdapterStatus: $('#aircraft-adapter-status'),
+  aircraftAdapterModel: $('#aircraft-adapter-model'),
+  aircraftAdapterSource: $('#aircraft-adapter-source'),
+  aircraftAdapterDetail: $('#aircraft-adapter-detail'),
+  aircraftAdapterControls: $('#aircraft-adapter-controls'),
+  aircraftAdapterRefresh: $('#aircraft-adapter-refresh'),
+  pmdgStatusPill: $('#pmdg-status-pill'),
+  pmdgFamily: $('#pmdg-family'),
+  pmdgSdk: $('#pmdg-sdk'),
+  pmdgBroadcast: $('#pmdg-broadcast'),
+  pmdgControls: $('#pmdg-controls'),
+  groundSafetyStatus: $('#ground-safety-status'),
+  groundSafetyDetail: $('#ground-safety-detail'),
+  groundSafetyList: $('#ground-safety-list'),
+  gsxPayloadStatus: $('#gsx-payload-status'),
+  gsxPaxTarget: $('#gsx-pax-target'),
+  gsxPaxProgress: $('#gsx-pax-progress'),
+  gsxCargoProgress: $('#gsx-cargo-progress'),
+  gsxPayloadSync: $('#gsx-payload-sync'),
+  gsxPayloadMessage: $('#gsx-payload-message'),
   automationStatusPill: $('#automation-status-pill'),
   automationMode: $('#automation-mode'),
   automationDetail: $('#automation-detail'),
@@ -1599,16 +1621,18 @@ function renderGuidance(state) {
     : '—';
   elements.gateName.textContent = state.gate?.name || state.taxi?.pathMetadata?.destination?.name || '—';
 
-  const warning = Boolean(guidance.warning);
+  const safetyAlert = state.integrations?.groundSafety?.alerts?.[0] || null;
+  const warning = Boolean(safetyAlert || guidance.warning);
   const mismatch = guidance.reason === 'route-position-mismatch';
   elements.warningBanner.hidden = !warning && !mismatch;
   elements.warningBanner.classList.toggle('route-mismatch', mismatch);
-  elements.warningBanner.querySelector('strong').textContent = mismatch ? 'ROUTE / POSITION UNPLAUSIBEL' : 'TAXIWEG VERLASSEN';
-  elements.warningDetail.textContent = mismatch
+  for (const level of ['caution', 'warning', 'critical']) elements.warningBanner.classList.toggle(`severity-${level}`, safetyAlert?.severity === level);
+  elements.warningBanner.querySelector('strong').textContent = safetyAlert?.title || (mismatch ? 'ROUTE / POSITION UNPLAUSIBEL' : 'TAXIWEG VERLASSEN');
+  elements.warningDetail.textContent = safetyAlert?.detail || (mismatch
     ? 'Alte Flugdaten erkannt. Die Abweichungswarnung wurde sicher deaktiviert.'
-    : `${Math.round(guidance.deviationMeters || 0)} m von der freigegebenen Route entfernt`;
+    : `${Math.round(guidance.deviationMeters || 0)} m von der freigegebenen Route entfernt`);
   elements.warningNewFlight.hidden = !mismatch;
-  if (warning && !previousWarning && navigator.vibrate) navigator.vibrate([180, 100, 180]);
+  if (warning && !previousWarning && navigator.vibrate) navigator.vibrate(safetyAlert?.severity === 'critical' ? [220, 80, 220, 80, 220] : [180, 100, 180]);
   previousWarning = warning;
 }
 
@@ -1661,19 +1685,15 @@ function renderGsxServices(gsx) {
   const fallback = [
     ['boarding', 'Boarding'], ['deboarding', 'Deboarding'], ['catering', 'Catering'],
     ['refueling', 'Refueling'], ['pushback', 'Pushback'], ['deicing', 'De-Icing'],
-  ].map(([id, label]) => ({ id, label, available: false }));
+  ].map(([id, label]) => ({ id, label, status: 'offline', statusLabel: 'OFFLINE', available: false }));
   const services = gsx?.services?.length ? gsx.services : fallback;
-  const fingerprint = JSON.stringify([services, Boolean(gsx?.controlEnabled)]);
-  if (fingerprint === renderedGsxServicesFingerprint) return;
-  renderedGsxServicesFingerprint = fingerprint;
   elements.gsxServices.replaceChildren();
   for (const service of services) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.disabled = !gsx?.controlEnabled || !service.available;
-    button.textContent = String(service.label || service.id || 'Service');
-    button.title = button.disabled ? 'GSX Control Bridge ist noch gesperrt.' : `${service.label} anfordern`;
-    elements.gsxServices.append(button);
+    const row = document.createElement('div');
+    const status = service.status || (service.available ? 'available' : 'offline');
+    row.className = `service-item ${status}`;
+    row.innerHTML = `<span><strong>${escapeHtml(service.label)}</strong><small>${escapeHtml(service.statusLabel || status.toUpperCase())}</small></span><i>${service.active ? '●' : service.completed ? '✓' : service.available ? '○' : '—'}</i>`;
+    elements.gsxServices.append(row);
   }
 }
 
@@ -3047,11 +3067,43 @@ function renderNavigraph(navigraph) {
 
 function renderFenix(state) {
   const fenix = state.integrations?.fenix || {};
+  const adapter = state.integrations?.aircraftAdapter || {};
+  const pmdg = adapter.pmdg || {};
+  const active = adapter.active || 'generic';
   elements.fenixStatusPill.className = `module-status ${fenix.reachable ? 'connected' : fenix.status === 'disconnected' ? 'attention' : 'waiting'}`;
   elements.fenixStatusPill.textContent = fenix.reachable ? 'CONNECTED' : (fenix.status || 'NOT CHECKED').toUpperCase();
   elements.fenixDetail.textContent = fenix.detail || 'Fenix Remote EFB has not been checked.';
   elements.fenixEmbed.disabled = !fenix.reachable;
-  elements.homeFenixSummary.textContent = fenix.detail || t('fenixSummary');
+  elements.aircraftAdapterStatus.className = `module-status ${adapter.status === 'ready' ? 'connected' : adapter.status === 'attention' ? 'attention' : 'waiting'}`;
+  elements.aircraftAdapterStatus.textContent = active === 'generic' ? 'GENERIC' : active.toUpperCase();
+  elements.aircraftAdapterModel.textContent = adapter.title || (active.startsWith('pmdg') ? pmdg.activeFamily || 'PMDG' : active === 'fenix' ? 'Fenix A32X' : 'Generic SimConnect');
+  elements.aircraftAdapterSource.textContent = active === 'fenix' ? 'MSFS INPUT EVENTS + EFB' : active.startsWith('pmdg') ? 'LOCAL PMDG SDK' : 'SIMCONNECT';
+  elements.aircraftAdapterDetail.textContent = adapter.detail || 'Warte auf geladenes Flugzeug.';
+  elements.aircraftAdapterControls.textContent = String(adapter.controlCount || 0);
+  const packageInfo = (pmdg.packages || []).find((entry) => !pmdg.activeFamily || entry.family === pmdg.activeFamily) || (pmdg.packages || [])[0];
+  elements.pmdgStatusPill.className = `module-status ${pmdg.detected ? 'connected' : 'waiting'}`;
+  elements.pmdgStatusPill.textContent = pmdg.detected ? 'SDK DETECTED' : 'NOT DETECTED';
+  elements.pmdgFamily.textContent = pmdg.activeFamily || packageInfo?.family || '—';
+  elements.pmdgSdk.textContent = packageInfo?.sdkHeader || '—';
+  elements.pmdgBroadcast.textContent = pmdg.broadcastEnabled === true ? 'ON' : pmdg.broadcastEnabled === false ? 'OFF' : '—';
+  elements.pmdgControls.textContent = String(pmdg.controlCount || 0);
+  elements.homeFenixSummary.textContent = adapter.detail || 'Fenix / PMDG adapter detection';
+}
+
+function renderGroundSafety(state) {
+  const safety = state.integrations?.groundSafety || {};
+  const severity = safety.highestSeverity || 'clear';
+  elements.groundSafetyStatus.className = `module-status ${severity === 'clear' ? 'connected' : severity === 'caution' ? 'waiting' : 'attention'}`;
+  elements.groundSafetyStatus.textContent = severity.toUpperCase();
+  elements.groundSafetyDetail.textContent = safety.detail || 'Keine aktiven Ground-Safety-Warnungen';
+  elements.groundSafetyList.replaceChildren();
+  for (const item of safety.alerts || []) {
+    const row = document.createElement('article');
+    row.className = `ground-safety-alert ${item.severity || 'caution'}`;
+    row.innerHTML = `<i></i><span><strong>${escapeHtml(item.title || 'GROUND ALERT')}</strong><small>${escapeHtml(item.detail || '')}</small></span><b>${escapeHtml(String(item.severity || '').toUpperCase())}</b>`;
+    elements.groundSafetyList.append(row);
+  }
+  if (!elements.groundSafetyList.childElementCount) elements.groundSafetyList.innerHTML = '<p class="empty-list">No active alerts.</p>';
 }
 
 function automationState(state = latestState) {
@@ -3369,8 +3421,15 @@ function renderEfb(state) {
   elements.gsxInstall.textContent = gsx.installed ? 'ERKANNT' : 'NICHT ERKANNT';
   elements.gsxSim.textContent = simulatorOnline ? 'ONLINE' : 'OFFLINE';
   elements.gsxControl.textContent = gsx.runtimeDetected ? 'RUNNING' : 'OFFLINE';
-  elements.gsxServiceStatus.textContent = 'NATIVE GSX MENU';
+  elements.gsxServiceStatus.textContent = gsx.liveData ? 'LIVE LVAR STATUS' : 'WAITING FOR LIVE DATA';
+  const payload = gsx.payload || {};
+  elements.gsxPayloadStatus.textContent = payload.sync?.syncedAt ? `SYNC ${formatTime(payload.sync.syncedAt)}` : 'EXPLICIT SYNC';
+  elements.gsxPaxTarget.textContent = Number.isFinite(Number(payload.passengerTarget)) ? String(Math.round(payload.passengerTarget)) : '—';
+  const boarded = Number.isFinite(Number(payload.boardingTotal)) ? payload.boardingTotal : payload.boardingPassengers;
+  elements.gsxPaxProgress.textContent = Number.isFinite(Number(boarded)) ? String(Math.round(boarded)) : '—';
+  elements.gsxCargoProgress.textContent = Number.isFinite(Number(payload.boardingCargoPercent)) ? `${Math.round(payload.boardingCargoPercent)} %` : '—';
   renderGsxServices(gsx);
+  renderGroundSafety(state);
   renderGsxSetup(gsx);
   renderNavigraph(navigraph);
   renderAutomation(state);
@@ -3394,13 +3453,16 @@ function renderEfb(state) {
   elements.atcClearanceTime.textContent = formatTime(clearance?.time);
 
   const littleNavmap = state.integrations?.littleNavmap || {};
+  const adapter = state.integrations?.aircraftAdapter || {};
   setStatusDot(elements.settingsMsfsDot, simConnection.status);
   setStatusDot(elements.settingsLnmDot, littleNavmap.status);
+  setStatusDot(elements.settingsAdapterDot, adapter.status);
   setStatusDot(elements.settingsAtcDot, atcConnection?.status);
   setStatusDot(elements.settingsNavDot, navStatus);
   setStatusDot(elements.settingsGsxDot, state.connections?.gsx?.status || gsxStatus);
   elements.settingsMsfs.textContent = simConnection.detail || 'Wird gesucht';
   elements.settingsLnm.textContent = littleNavmap.detail || 'WebAPI wird gesucht';
+  elements.settingsAdapter.textContent = adapter.detail || 'Fenix / PMDG wird erkannt';
   elements.settingsAtc.textContent = `${effectiveProvider === 'auto' ? 'AUTO' : atcProviderLabel(effectiveProvider)} · ${atcConnection?.detail || 'wartet'}`;
   elements.settingsNav.textContent = navigraph.detail || 'Setup erforderlich';
   elements.settingsGsx.textContent = gsx.detail || 'Wird gesucht';
@@ -3829,7 +3891,7 @@ async function afterAuthentication() {
 
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.4.1';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.6.0';
   elements.updateVersion.textContent = `v${currentVersion}`;
   const states = {
     manual: t('updateReadyManual'), idle: t('updateReady'), checking: t('checkingUpdates'),
@@ -3880,7 +3942,7 @@ async function checkForUpdate({ startup = false } = {}) {
   const existing = await refreshUpdateStatus().catch(() => null);
   if (existing?.canManage === false) return existing;
   if (elements.checkUpdate) elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', canManage: existing?.canManage });
+  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', canManage: existing?.canManage });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
@@ -3888,7 +3950,7 @@ async function checkForUpdate({ startup = false } = {}) {
     renderUpdateStatus(data);
     return data;
   } catch (error) {
-    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message, canManage: existing?.canManage };
+    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message, canManage: existing?.canManage };
     renderUpdateStatus(failed);
     if (!startup) throw error;
     return failed;
@@ -3905,7 +3967,7 @@ async function downloadAvailableUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message });
   } finally {
     elements.updateDialogDownload.disabled = false;
   }
@@ -3920,7 +3982,7 @@ async function installDownloadedUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.4.1', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.6.0', detail: error.message });
     if (elements.installUpdate) elements.installUpdate.disabled = false;
     if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = false;
   }
@@ -4054,6 +4116,38 @@ async function refreshGsx() {
     elements.gsxDetail.textContent = error.message;
   } finally {
     elements.gsxRefresh.disabled = false;
+  }
+}
+
+async function refreshAircraftAdapter() {
+  if (!elements.aircraftAdapterRefresh) return;
+  elements.aircraftAdapterRefresh.disabled = true;
+  try {
+    const response = await fetch(authenticatedUrl('/api/aircraft-adapter/refresh'), { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Aircraft Adapter check failed.');
+    if (data.state) renderState(data.state);
+  } catch (error) {
+    elements.aircraftAdapterDetail.textContent = error.message;
+  } finally {
+    elements.aircraftAdapterRefresh.disabled = false;
+  }
+}
+
+async function syncGsxPayload() {
+  if (!elements.gsxPayloadSync) return;
+  elements.gsxPayloadSync.disabled = true;
+  elements.gsxPayloadMessage.textContent = 'Syncing …';
+  try {
+    const response = await fetch(authenticatedUrl('/api/gsx/payload-sync'), { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'GSX payload sync failed.');
+    elements.gsxPayloadMessage.textContent = `${data.result.passengers} PAX an GSX übertragen.`;
+    if (latestState) { latestState.integrations.gsx = data.gsx; renderEfb(latestState); }
+  } catch (error) {
+    elements.gsxPayloadMessage.textContent = error.message;
+  } finally {
+    elements.gsxPayloadSync.disabled = false;
   }
 }
 
@@ -4768,6 +4862,8 @@ elements.flightboardRefresh.addEventListener('click', async () => {
 elements.navigraphLogin.addEventListener('click', beginNavigraphLogin);
 elements.navigraphLogout.addEventListener('click', logoutNavigraph);
 elements.gsxRefresh.addEventListener('click', refreshGsx);
+elements.gsxPayloadSync?.addEventListener('click', syncGsxPayload);
+elements.aircraftAdapterRefresh?.addEventListener('click', refreshAircraftAdapter);
 elements.runDiagnostics.addEventListener('click', () => runDiagnostics());
 elements.downloadSupport.addEventListener('click', async () => {
   elements.downloadSupport.disabled = true;
