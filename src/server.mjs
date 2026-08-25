@@ -12,6 +12,8 @@ import { BeyondAtcClient } from './beyondatc-client.mjs';
 import { SimConnectClient } from './simconnect-client.mjs';
 import { InjectedTrafficClient } from './injected-traffic-client.mjs';
 import { LittleNavmapClient } from './littlenavmap-client.mjs';
+import { AircraftAdapterManager } from './aircraft-adapter-manager.mjs';
+import { GroundSafetyEngine } from './ground-safety-engine.mjs';
 import { GsxClient } from './gsx-client.mjs';
 import { SimBriefClient } from './simbrief-client.mjs';
 import { OnlineNetworkClient } from './online-network-client.mjs';
@@ -35,7 +37,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -239,6 +241,8 @@ export async function createTaxiServer({
   const simConnect = demo ? null : new SimConnectClient(engine);
   const injectedTraffic = demo ? null : new InjectedTrafficClient(engine);
   const littleNavmap = demo ? null : new LittleNavmapClient(engine);
+  const aircraftAdapters = demo ? null : new AircraftAdapterManager(engine, { simConnect });
+  const groundSafety = new GroundSafetyEngine(engine);
   const facilityMapCache = new Map();
   const navigraph = {
     start() {
@@ -269,6 +273,7 @@ export async function createTaxiServer({
     for (const client of sseClients) sendEvent(client, state);
   });
   await automation.start();
+  groundSafety.start();
   const updater = updateService || {
     status: () => ({
       state: 'manual', currentVersion: APP_VERSION, configured: false,
@@ -298,6 +303,8 @@ export async function createTaxiServer({
       { id: 'simconnect-health', label: 'SimConnect data health', status: state.integrations.simConnectHealth?.status || 'waiting', detail: state.integrations.simConnectHealth?.detail || '' },
       { id: 'traffic', label: 'Simulator traffic', status: state.integrations.simTraffic?.status || 'waiting', detail: state.integrations.simTraffic?.detail || '' },
       { id: 'little-navmap', label: 'Little Navmap WebAPI', status: state.integrations.littleNavmap?.status || 'waiting', detail: state.integrations.littleNavmap?.detail || '' },
+      { id: 'aircraft-adapter', label: 'Aircraft Adapter (Fenix / PMDG)', status: state.integrations.aircraftAdapter?.status || 'idle', detail: state.integrations.aircraftAdapter?.detail || '' },
+      { id: 'ground-safety', label: 'Ground / Taxi Safety', status: state.integrations.groundSafety?.status === 'clear' ? 'ready' : state.integrations.groundSafety?.status || 'waiting', detail: state.integrations.groundSafety?.detail || '' },
       { id: 'atc', label: 'ATC source', status: activeConnectionStatus(state), detail: state.taxi?.clearance?.provider || state.atc?.selectedProvider || 'auto' },
       { id: 'gsx', label: 'GSX Pro readiness', status: state.integrations.gsx?.status || 'waiting', detail: state.integrations.gsx?.detail || '' },
       { id: 'navigraph', label: 'Navigraph account', status: state.integrations.navigraph?.status || 'configuration-required', detail: state.integrations.navigraph?.detail || '' },
@@ -310,7 +317,7 @@ export async function createTaxiServer({
       runtime: { platform: process.platform, architecture: process.arch, osRelease: os.release(), node: process.version },
       checks,
       data: { flightCount: flights.length, mapFiles, mapBytes, pairedDevices: accessManager.list().length, sharingEnabled: accessManager.sharingEnabled },
-      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, secretsIncluded: false },
+      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, adapterControlRequiresExplicitRequest: true, groundSafetyAdvisoryOnly: true, secretsIncluded: false },
     };
   };
 
@@ -600,6 +607,40 @@ export async function createTaxiServer({
           connected: Boolean(simConnect?.handle),
           events: simConnect?.listInputEvents(query, { limit: requestUrl.searchParams.get('limit') }) || [],
         });
+      }
+
+      if (pathname === '/api/aircraft-adapter/status' && request.method === 'GET') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        return json(response, 200, { adapter: engine.publicState().integrations.aircraftAdapter });
+      }
+
+      if (pathname === '/api/aircraft-adapter/refresh' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!aircraftAdapters) return json(response, 409, { error: 'Aircraft Adapter ist im Demo-Modus nicht aktiv.' });
+        try {
+          return json(response, 200, { adapter: await aircraftAdapters.refresh(), state: engine.publicState() });
+        } catch (error) {
+          return json(response, 502, { error: error.message });
+        }
+      }
+
+      if (pathname === '/api/aircraft-adapter/controls' && request.method === 'GET') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!aircraftAdapters) return json(response, 200, { controls: [] });
+        const query = requestUrl.searchParams.get('q') || '';
+        return json(response, 200, { controls: aircraftAdapters.listControls(query, { limit: requestUrl.searchParams.get('limit') }) });
+      }
+
+      if (pathname === '/api/aircraft-adapter/control' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!aircraftAdapters) return json(response, 409, { error: 'Aircraft Adapter ist im Demo-Modus nicht aktiv.' });
+        try {
+          const body = await readJsonBody(request);
+          const result = await aircraftAdapters.executeControl({ id: body.id, value: body.value });
+          return json(response, 200, { applied: true, result });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
       }
 
       if (pathname === '/api/automations' && request.method === 'PUT') {
@@ -932,6 +973,20 @@ export async function createTaxiServer({
         }
       }
 
+      if (pathname === '/api/gsx/payload-sync' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!gsx) return json(response, 409, { error: 'GSX-Connector ist im Demo-Modus nicht aktiv.' });
+        const state = engine.publicState();
+        const body = await readJsonBody(request);
+        const passengers = body.passengers ?? state.integrations?.simbrief?.flight?.passengers;
+        try {
+          const result = await gsx.syncPayload({ passengers });
+          return json(response, 200, { synced: true, result, gsx: engine.publicState().integrations.gsx });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
       if (pathname === '/api/gsx/refresh' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         if (!gsx) return json(response, 409, { error: 'GSX-Connector ist im Demo-Modus nicht aktiv.' });
@@ -941,32 +996,14 @@ export async function createTaxiServer({
 
       if (pathname === '/api/fenix/check' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!aircraftAdapters) return json(response, 409, { error: 'Fenix Adapter ist im Demo-Modus nicht aktiv.' });
         const body = await readJsonBody(request);
-        let fenixUrl;
         try {
-          fenixUrl = new URL(String(body.url || 'http://127.0.0.1:8083/'));
-          const privateHost = fenixUrl.hostname === 'localhost'
-            || fenixUrl.hostname === '127.0.0.1'
-            || fenixUrl.hostname.startsWith('10.')
-            || fenixUrl.hostname.startsWith('192.168.')
-            || /^172\.(1[6-9]|2\d|3[01])\./.test(fenixUrl.hostname);
-          if (fenixUrl.protocol !== 'http:' || String(fenixUrl.port || '80') !== '8083' || !privateHost) throw new Error();
-          fenixUrl.pathname = '/';
-          fenixUrl.search = '';
-          fenixUrl.hash = '';
-        } catch {
-          return json(response, 400, { error: 'Fenix Remote EFB muss eine lokale HTTP-Adresse auf Port 8083 sein.' });
-        }
-        try {
-          const check = await fetch(fenixUrl, { redirect: 'manual', signal: AbortSignal.timeout(2_500) });
-          const reachable = check.status >= 200 && check.status < 500;
-          const detail = reachable ? 'Fenix Remote EFB ist erreichbar' : `Fenix antwortet mit HTTP ${check.status}`;
-          engine.setIntegration('fenix', { status: reachable ? 'connected' : 'attention', reachable, url: fenixUrl.toString(), detail });
-          return json(response, reachable ? 200 : 502, { reachable, url: fenixUrl.toString(), detail });
-        } catch {
-          const detail = 'Fenix A32X ist nicht erreichbar · Flug laden und Fenix App starten';
-          engine.setIntegration('fenix', { status: 'disconnected', reachable: false, url: fenixUrl.toString(), detail });
-          return json(response, 502, { reachable: false, url: fenixUrl.toString(), detail });
+          return json(response, 200, await aircraftAdapters.checkFenixRemote(body.url));
+        } catch (error) {
+          const detail = error.message || 'Fenix A32X ist nicht erreichbar.';
+          engine.setIntegration('fenix', { status: 'disconnected', reachable: false, detail });
+          return json(response, 502, { reachable: false, detail });
         }
       }
 
@@ -1178,12 +1215,13 @@ export async function createTaxiServer({
   } else {
     sayIntentions = new SayIntentionsClient(engine);
     const beyondAtc = new BeyondAtcClient(engine);
-    gsx = new GsxClient(engine);
+    gsx = new GsxClient(engine, { simConnect });
     sayIntentions.start();
     beyondAtc.start();
     simConnect.start();
     injectedTraffic.start();
     littleNavmap.start();
+    aircraftAdapters.start();
     gsx.start();
     navigraph.start();
     aviationWeather.start();
@@ -1192,6 +1230,7 @@ export async function createTaxiServer({
       beyondAtc.stop();
       injectedTraffic.stop();
       littleNavmap.stop();
+      aircraftAdapters.stop();
       simConnect.stop();
       gsx.stop();
       navigraph.stop();
@@ -1220,6 +1259,7 @@ export async function createTaxiServer({
     async close() {
       clearInterval(keepAlive);
       stopDataSources();
+      groundSafety.stop();
       automation.stop();
       await recorder.stop();
       await accessManager.stop();

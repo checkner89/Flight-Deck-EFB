@@ -26,6 +26,7 @@ const TRANSPONDER_DATA_DEFINITION = 47;
 const TRANSPONDER_DATA_REQUEST = 47;
 const TRAFFIC_DATA_DEFINITION = 48;
 const TRAFFIC_DATA_REQUEST = 48;
+const TRUSTED_WRITE_DEFINITION = 49;
 const AIRPORT_FACILITY_DEFINITION = 3_100;
 const INPUT_EVENTS_REQUEST = 3_200;
 const TRAFFIC_RADIUS_METERS = 200_000;
@@ -61,6 +62,8 @@ export class SimConnectClient {
     this.retryTimer = null;
     this.lastEmitAt = 0;
     this.customVariables = [];
+    this.variableGroups = new Map();
+    this.nextVariableGroupDefinition = 5_000;
     this.eventIds = new Map();
     this.nextEventId = 1_000;
     this.protocol = null;
@@ -121,7 +124,9 @@ export class SimConnectClient {
       this.#registerTrafficData(handle);
       this.#registerSayIntentionsData(handle);
       this.#registerCustomVariableHandler(handle);
+      this.#registerVariableGroupHandler(handle);
       this.#registerCustomVariables(handle);
+      for (const group of this.variableGroups.values()) this.#registerVariableGroup(handle, group);
       this.#registerFacilityHandler(handle);
       this.#registerInputEventHandler(handle);
       this.#enumerateInputEvents();
@@ -245,6 +250,75 @@ export class SimConnectClient {
       unit: String(entry?.unit || 'number').trim().slice(0, 32),
     })).filter((entry) => /^(?:L:|Z:|[A-Z])[A-Z0-9_ .:@/-]{1,119}$/i.test(entry.name));
     if (this.handle) this.#registerCustomVariables(this.handle);
+  }
+
+  configureVariableGroup(name, variables = []) {
+    const groupName = String(name || '').trim().toLowerCase();
+    if (!/^[a-z][a-z0-9-]{1,30}$/.test(groupName)) throw new Error('Variable group name is invalid.');
+    const normalized = (Array.isArray(variables) ? variables : []).slice(0, 80).map((entry) => ({
+      name: String(entry?.name || '').trim().slice(0, 120),
+      unit: String(entry?.unit || 'number').trim().slice(0, 32),
+    })).filter((entry) => /^(?:L:|Z:|[A-Z])[A-Z0-9_ .:@/-]{1,119}$/i.test(entry.name));
+    let group = this.variableGroups.get(groupName);
+    if (!group) {
+      group = {
+        name: groupName,
+        definitionId: this.nextVariableGroupDefinition++,
+        requestId: this.nextVariableGroupDefinition++,
+        variables: [],
+      };
+    }
+    group.variables = normalized;
+    this.variableGroups.set(groupName, group);
+    if (this.handle) this.#registerVariableGroup(this.handle, group);
+    return { name: groupName, count: normalized.length };
+  }
+
+  async setTrustedVariable(name, value, unit = 'number') {
+    if (!this.handle) throw new Error('SimConnect ist nicht verbunden.');
+    const target = String(name || '').trim();
+    const numeric = Number(value);
+    if (!/^(?:L:|Z:)[A-Z0-9_ .:@/-]{1,119}$/i.test(target)) throw new Error('Interne Variable ist nicht freigegeben.');
+    if (!Number.isFinite(numeric)) throw new Error('Variablenwert ist ungültig.');
+    try { this.handle.clearDataDefinition(TRUSTED_WRITE_DEFINITION); } catch { /* Definition may not exist yet. */ }
+    this.handle.addToDataDefinition(
+      TRUSTED_WRITE_DEFINITION,
+      target,
+      String(unit || 'number'),
+      SimConnectDataType.FLOAT64,
+      0,
+      SimConnectConstants.UNUSED,
+    );
+    const buffer = new RawBuffer(16);
+    buffer.writeFloat64(numeric);
+    this.handle.setDataOnSimObject(TRUSTED_WRITE_DEFINITION, SimConnectConstants.OBJECT_ID_USER, {
+      buffer,
+      arrayCount: 0,
+      tagged: false,
+    });
+    return { target, value: numeric };
+  }
+
+  async transmitEventNumber(eventNumber, value = 0) {
+    if (!this.handle) throw new Error('SimConnect ist nicht verbunden.');
+    const numericEvent = Math.round(Number(eventNumber));
+    if (!Number.isInteger(numericEvent) || numericEvent <= 0 || numericEvent > 0x7FFFFFFF) throw new Error('Event-ID ist ungültig.');
+    const eventName = `#${numericEvent}`;
+    let eventId = this.eventIds.get(eventName);
+    if (!eventId) {
+      eventId = this.nextEventId++;
+      this.handle.mapClientEventToSimEvent(eventId, eventName);
+      this.eventIds.set(eventName, eventId);
+    }
+    const numericValue = Math.max(0, Math.min(0xFFFFFFFF, Math.round(Number(value) || 0)));
+    this.handle.transmitClientEvent(
+      SimConnectConstants.OBJECT_ID_USER,
+      eventId,
+      numericValue,
+      1,
+      EventFlag.EVENT_FLAG_GROUPID_IS_PRIORITY,
+    );
+    return { eventNumber: numericEvent, value: numericValue };
   }
 
   async setVariable(name, value, unit = 'number') {
@@ -872,6 +946,60 @@ export class SimConnectClient {
       this.handle.enumerateInputEvents(INPUT_EVENTS_REQUEST);
     } catch {
       this.inputEventEnumeration = null;
+    }
+  }
+
+  #registerVariableGroupHandler(handle) {
+    handle.on('simObjectData', (received) => {
+      const group = [...this.variableGroups.values()].find((entry) => entry.requestId === received.requestID);
+      if (!group) return;
+      try {
+        const values = {};
+        for (const variable of group.variables) values[variable.name] = received.data.readFloat64();
+        this.engine.setIntegration(`${group.name}Variables`, {
+          status: 'ready',
+          values,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.engine.setIntegration(`${group.name}Variables`, {
+          status: 'limited',
+          error: error.message,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  #registerVariableGroup(handle, group) {
+    try { handle.clearDataDefinition(group.definitionId); } catch { /* Definition may not exist yet. */ }
+    if (!group.variables.length) {
+      this.engine.setIntegration(`${group.name}Variables`, { status: 'idle', values: {}, updatedAt: null });
+      return;
+    }
+    try {
+      for (const variable of group.variables) {
+        this.#rememberOperation(handle.addToDataDefinition(
+          group.definitionId,
+          variable.name,
+          variable.unit,
+          SimConnectDataType.FLOAT64,
+          0,
+          SimConnectConstants.UNUSED,
+        ), `${group.name}: ${variable.name}`, { optional: true });
+      }
+      this.#rememberOperation(handle.requestDataOnSimObject(
+        group.requestId,
+        group.definitionId,
+        SimConnectConstants.OBJECT_ID_USER,
+        SimConnectPeriod.SECOND,
+        0,
+        0,
+        0,
+        0,
+      ), `${group.name}: Variablen anfordern`, { optional: true });
+    } catch (error) {
+      this.engine.setIntegration(`${group.name}Variables`, { status: 'limited', error: error.message });
     }
   }
 
