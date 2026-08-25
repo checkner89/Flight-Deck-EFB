@@ -1,0 +1,74 @@
+name: Apply 1.7.3 Corrective Hotfix
+
+on:
+  push:
+    branches:
+      - fix/1.7.3-ui-traffic-updater
+    paths:
+      - '.github/workflows/apply-1.7.3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/1.7.3-ui-traffic-updater
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Apply corrective patch
+        run: |
+          python scripts/patch-1.7.3.py
+          python scripts/patch-release-ci-1.7.3.py
+      - name: Install dependencies
+        run: npm install
+      - name: Verify JavaScript and traffic regression
+        run: |
+          node --check src/injected-traffic-client.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check public/app.js
+          node --check public/i18n.js
+          node --check public/flight-phases.js
+          node scripts/verify-msfs-efb-builder.mjs
+          node scripts/verify-traffic-merge.mjs
+          npm audit --audit-level=high
+      - name: Verify UI and updater contracts
+        shell: bash
+        run: |
+          test "$(node -p "require('./package.json').version")" = '1.7.3'
+          grep -q 'data-app-version="1.7.3"' public/index.html
+          grep -q 'id="update-dialog-notes"' public/index.html
+          grep -q 'id="update-dialog-current-version"' public/index.html
+          grep -q 'id="update-dialog-target-version"' public/index.html
+          grep -q 'renderUpdateDialogNotes' public/app.js
+          grep -q 'fetchGitHubReleaseNotes' src/electron-main.mjs
+          grep -q '.combined-atc-layout .atc-messages-card { grid-column: 1 / -1 !important; width: 100%; }' public/styles.css
+          grep -q '.home-launcher > .efb-card { width: 100%; max-width: none; align-self: stretch; }' public/styles.css
+          ! grep -q '.efb-pages .efb-card { min-width: 0; min-height: 0; height: auto; align-self: start; }' public/styles.css
+          grep -q 'node scripts/verify-traffic-merge.mjs' .github/workflows/release.yml
+      - name: Demo host smoke test
+        shell: bash
+        run: |
+          node src/server.mjs --demo --port 8745 > /tmp/fd-out.log 2>/tmp/fd-err.log &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:8745/ | grep -q 'Flight Deck EFB'; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/fd-out.log /tmp/fd-err.log || true
+          exit 1
+      - name: Commit verified product changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+checkner89@users.noreply.github.com'
+          git add CHANGELOG.md README.md PRIVACY.md THIRD_PARTY_NOTICES.md MSFS-2024-EFB-App/README.md package.json package-lock.json public src scripts/verify-traffic-merge.mjs scripts/verify-msfs-efb-builder.mjs .github/workflows/release.yml
+          git commit -m 'Fix 1.7.3 traffic enrichment layout and updater dialog'
+          git push origin HEAD:fix/1.7.3-ui-traffic-updater
