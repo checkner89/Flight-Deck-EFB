@@ -765,6 +765,70 @@ export async function createTaxiServer({
         }
       }
 
+      if (pathname === '/api/sayintentions/gate' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+        try {
+          const body = await readJsonBody(request);
+          const result = await sayIntentions.assignGate({ airport: body.airport, gate: body.gate });
+          return json(response, 200, {
+            applied: true,
+            assignedGate: result?.assigned_gate_name || body.gate || null,
+            result,
+            state: engine.publicState(),
+          });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
+      if (pathname === '/api/sayintentions/parking/refresh' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+        try {
+          const parking = await sayIntentions.refreshParking();
+          return json(response, 200, { parking, state: engine.publicState() });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
+      if (pathname === '/api/sayintentions/airport/refresh' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+        try {
+          const airport = await sayIntentions.refreshAirportData();
+          return json(response, 200, { airport, state: engine.publicState() });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
+      if (pathname === '/api/sayintentions/pause' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+        try {
+          const body = await readJsonBody(request);
+          const paused = Boolean(body.paused);
+          const result = await sayIntentions.setPaused(paused);
+          return json(response, 200, { paused, result, state: engine.publicState() });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
+      if (pathname === '/api/sayintentions/say' && request.method === 'POST') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+        try {
+          const body = await readJsonBody(request);
+          const result = await sayIntentions.sayAs({ channel: body.channel, message: body.message });
+          return json(response, 200, { sent: true, channel: String(body.channel || '').toUpperCase(), result });
+        } catch (error) {
+          return json(response, 422, { error: error.message });
+        }
+      }
+
       if (pathname === '/api/com' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         if (!simConnect?.handle) return json(response, 409, { error: 'SimConnect ist nicht verbunden.' });
@@ -810,9 +874,33 @@ export async function createTaxiServer({
       if (pathname === '/api/weather/refresh' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         const body = await readJsonBody(request);
+        const source = ['auto', 'sayintentions', 'aviationweather'].includes(String(body.source || '').toLowerCase())
+          ? String(body.source).toLowerCase() : 'auto';
         try {
-          const weather = await aviationWeather.refresh(body.airports, { force: true });
-          return json(response, 200, { weather, state: engine.publicState() });
+          if (source === 'sayintentions') {
+            if (!sayIntentions) return json(response, 409, { error: 'SayIntentions-Connector ist im Demo-Modus nicht aktiv.' });
+            const weather = await sayIntentions.refreshWeather(body.airports);
+            return json(response, 200, { source, weather, state: engine.publicState() });
+          }
+          if (source === 'aviationweather') {
+            const weather = await aviationWeather.refresh(body.airports, { force: true });
+            return json(response, 200, { source, weather, state: engine.publicState() });
+          }
+          const tasks = [aviationWeather.refresh(body.airports, { force: true })];
+          if (sayIntentions) tasks.push(sayIntentions.refreshWeather(body.airports));
+          const results = await Promise.allSettled(tasks);
+          if (!results.some((result) => result.status === 'fulfilled')) {
+            const reason = results.find((result) => result.status === 'rejected')?.reason;
+            throw reason || new Error('Keine Wetterquelle konnte aktualisiert werden.');
+          }
+          return json(response, 200, {
+            source: 'auto',
+            weather: {
+              aviationWeather: engine.publicState().integrations?.aviationWeather || null,
+              sayIntentions: engine.publicState().integrations?.sayIntentions?.weather || null,
+            },
+            state: engine.publicState(),
+          });
         } catch (error) {
           return json(response, 502, { error: error.message });
         }

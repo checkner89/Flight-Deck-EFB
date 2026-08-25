@@ -897,12 +897,14 @@ export class StateEngine extends EventEmitter {
     const value = parking?.parking ?? parking;
     const lat = numberOrNull(value?.lat);
     const lon = numberOrNull(value?.lon);
-    if (lat === null || lon === null) return;
+    const heading = numberOrNull(value?.heading);
+    const name = textOrEmpty(value?.name, value?.id, this.state.gate?.name) || null;
+    if (lat === null && lon === null && !name) return;
     this.state.gate = {
-      name: firstDefined(value.name, value.id, this.state.gate?.name, 'Gate'),
-      lat,
-      lon,
-      heading: numberOrNull(value.heading),
+      name: name || 'Gate',
+      lat: lat ?? this.state.gate?.lat ?? null,
+      lon: lon ?? this.state.gate?.lon ?? null,
+      heading: heading ?? this.state.gate?.heading ?? null,
     };
     this.#touch();
   }

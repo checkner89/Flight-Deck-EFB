@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.4.1';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.4.4';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.4.1';
+} from './flight-phases.js?v=1.4.4';
 
 const $ = (selector) => document.querySelector(selector);
 

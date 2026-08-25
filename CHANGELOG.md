@@ -1,5 +1,16 @@
 # Flight Deck EFB changelog
 
+## 1.4.4 — SayIntentions operations
+
+- Selectable weather source: Auto, SayIntentions or AviationWeather.gov.
+- Continuous SayIntentions parking synchronization, including assignments that appear after arrival.
+- Explicit gate assignment through the SI `assignGate` session endpoint with immediate parking refresh.
+- SI `getAirport` synchronization for active-flight airport operations data.
+- Guarded SI ATC pause/resume controls.
+- Explicit pilot text transmission to SI over COM1/COM2 via `sayAs`; inbound/spoofed channels are intentionally not exposed.
+- Existing SI comms history, frequencies and weather polling remain active.
+- VATSIM stays on the independent network connector; broad `setVar` access is intentionally not exposed.
+
 ## 1.4.1 — 24 August 2026
 
 - Flightboard ALL now shows all detected nearby simulator aircraft; From/To is retained where MSFS exposes a schedule and sensibly inferred from current-airport/state where possible. Raw generic states such as “simple flight” are normalized.
