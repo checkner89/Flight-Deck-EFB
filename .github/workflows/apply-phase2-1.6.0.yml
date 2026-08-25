@@ -118,10 +118,10 @@ jobs:
           grep -q 'flight-deck-efb-v160' public/service-worker.js
           ! grep -R --exclude-dir=.git --exclude='apply-phase2-1.6.0.py' -nE 'Flight Deck EFB 1\.5\.0|v1\.4\.4|Setup-1\.2\.0' README.md public src package.json CHANGELOG.md
 
-      - name: Commit Phase 2 implementation
+      - name: Commit Phase 2 application implementation
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md CHANGELOG.md package.json package-lock.json public src .github/workflows/release.yml
+          git add README.md CHANGELOG.md package.json package-lock.json public src
           git commit -m 'Implement Phase 2 aircraft and ground intelligence'
           git push origin HEAD:phase2-aircraft-ground-1.6.0
