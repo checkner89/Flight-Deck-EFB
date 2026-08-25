@@ -69,6 +69,7 @@ jobs:
           node scripts/verify-msfs-efb-builder.mjs
           node scripts/test-live-traffic.mjs
           if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
+          node scripts/verify-installer-legal.mjs
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
           $builder = Get-Content 'src/msfs-efb-package-builder.mjs' -Raw
           if ($builder -notmatch 'fspackagetool\.exe' -or $builder -notmatch 'Community2024' -or $builder -notmatch 'InstalledPackagesPath') {
