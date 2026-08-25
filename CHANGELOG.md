@@ -1,5 +1,14 @@
 # Flight Deck EFB changelog
 
+
+## 1.7.5 — Installer Agreement & Legal Transparency
+
+- Added a proper assisted Windows Setup **License Agreement** page. Flight Deck EFB remains MIT licensed; the installer acknowledgement explicitly does not remove, reduce or contradict MIT rights.
+- Added simulation-only, no-real-world-navigation, local-network, privacy and third-party acknowledgements to the installer agreement.
+- Added a dedicated scrollable **Third-party notices** Setup page containing only software, data sources and compatibility services actually relevant to Flight Deck EFB.
+- Added an **Additional Tasks** Setup page with a user-selectable **Create a Desktop Shortcut** option while keeping the Start Menu shortcut.
+- Uninstall behavior remains conservative: Flight Deck EFB user data is not silently deleted by uninstall/reinstall.
+- Added permanent installer regression checks so future Windows releases must retain MIT licensing, legal pages, shortcut selection and non-destructive uninstall behavior.
 ## 1.7.4 — Honest Live Traffic
 
 - Replaced the airport-style Flightboard with an honest **Live Traffic** workspace: **Ground / Arriving / Nearby**.
