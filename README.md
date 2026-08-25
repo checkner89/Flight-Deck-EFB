@@ -75,7 +75,7 @@ The native app:
 - embeds the same Flight Deck UI;
 - reads the current simulator EFB route through `GET_EFB_ROUTE`;
 - sends that sanitized route only to the loopback Flight Deck host for comparison; and
-- observes `AvionicsRouteSync` when MSFS reports the native EFB route was synchronized to avionics.
+- observes `AvionicsRouteSync` when MSFS broadcasts the native EFB route after **Sync Route To Avionics** is selected.
 
 Flight Deck does not use legacy GPS write variables and does not call MSFS Planned Route write operations while those SDK interfaces remain incompletely documented.
 

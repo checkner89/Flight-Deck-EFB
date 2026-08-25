@@ -7,7 +7,7 @@ This folder contains the native Microsoft Flight Simulator 2024 EFB surface for 
 - Automatically discovers the Windows Flight Deck host on `127.0.0.1` ports **39871–39890** instead of assuming a single fixed port.
 - Displays Flight Deck EFB directly in the simulator EFB once the host is found.
 - Reads the current MSFS EFB route through the documented Planned Route API call `GET_EFB_ROUTE` and sends a sanitized copy to the local Flight Deck host for comparison with the imported/known Flight Deck route.
-- Observes the documented `AvionicsRouteSync` event so Flight Deck can show when MSFS reports that the EFB route was synchronized to the aircraft avionics.
+- Observes the documented `AvionicsRouteSync` event so Flight Deck can show when MSFS broadcasts the EFB route after **Sync Route To Avionics** is selected.
 - Keeps route comparison, flight intelligence, turnaround coordination and Flight Assistant evaluation local to the PC.
 
 ## Deliberate route-sync limits
