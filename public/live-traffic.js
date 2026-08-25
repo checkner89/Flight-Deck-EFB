@@ -8,6 +8,7 @@ export const LIVE_TRAFFIC_LIMITS = Object.freeze({
 });
 
 function finite(value, fallback = null) {
+  if (value === null || value === undefined || value === '') return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
@@ -36,21 +37,24 @@ export function classifyLiveTraffic(entry = {}, ownship = {}) {
   const verticalSpeed = finite(entry.verticalSpeedFpm ?? entry.verticalSpeed, 0);
   const altitude = finite(entry.altitudeFeet, 0);
   const distanceNm = trafficDistanceNm(entry, ownship);
-  const reported = Boolean(state);
+  // The primary/fallback readers can synthesize state strings from movement. Only a state that
+  // arrived through the optional AI traffic-plan enrichment is treated as simulator-reported.
+  const reported = Boolean(entry.scheduleEnriched && state);
+  const provenance = { inferred: !reported, distanceNm };
 
   if (entry.onGround) {
-    if (/shutdown|sleep|parked|parking/.test(state)) return { kind: 'parking', label: 'PARKING', inferred: false, distanceNm };
-    if (/startup|preflight|clearance/.test(state)) return { kind: 'preflight', label: 'PREFLIGHT', inferred: false, distanceNm };
-    if (/push/.test(state)) return { kind: 'pushback', label: 'PUSHBACK', inferred: false, distanceNm };
-    if (/taxi|rollout/.test(state)) return { kind: 'taxi', label: 'TAXI', inferred: false, distanceNm };
+    if (/shutdown|sleep|parked|parking/.test(state)) return { kind: 'parking', label: 'PARKING', ...provenance };
+    if (/startup|preflight|clearance/.test(state)) return { kind: 'preflight', label: 'PREFLIGHT', ...provenance };
+    if (/push/.test(state)) return { kind: 'pushback', label: 'PUSHBACK', ...provenance };
+    if (/taxi|rollout/.test(state)) return { kind: 'taxi', label: 'TAXI', ...provenance };
     if (groundSpeed <= 2) return { kind: 'parking', label: 'PARKING', inferred: true, distanceNm };
     return { kind: 'taxi', label: 'TAXI', inferred: true, distanceNm };
   }
 
-  if (/landing/.test(state)) return { kind: 'landing', label: 'LANDING', inferred: false, distanceNm };
-  if (/approach/.test(state)) return { kind: 'arriving', label: 'ARRIVING', inferred: false, distanceNm };
-  if (/takeoff|depart|climb/.test(state)) return { kind: 'climb', label: 'CLIMB', inferred: false, distanceNm };
-  if (/enroute|cruise|simple flight|flt plan|waypoint|pattern/.test(state)) return { kind: 'enroute', label: 'ENROUTE', inferred: false, distanceNm };
+  if (/landing/.test(state)) return { kind: 'landing', label: 'LANDING', ...provenance };
+  if (/approach/.test(state)) return { kind: 'arriving', label: 'ARRIVING', ...provenance };
+  if (/takeoff|depart|climb/.test(state)) return { kind: 'climb', label: 'CLIMB', ...provenance };
+  if (/enroute|cruise|simple flight|flt plan|waypoint|pattern/.test(state)) return { kind: 'enroute', label: 'ENROUTE', ...provenance };
 
   const plausiblyArriving = Number.isFinite(distanceNm)
     && distanceNm <= LIVE_TRAFFIC_LIMITS.arrivingRadiusNm
@@ -59,7 +63,7 @@ export function classifyLiveTraffic(entry = {}, ownship = {}) {
     && altitude <= 12_000;
   if (plausiblyArriving) return { kind: 'arriving', label: 'ARRIVING', inferred: true, distanceNm };
   if (verticalSpeed >= 500 && altitude < 18_000) return { kind: 'climb', label: 'CLIMB', inferred: true, distanceNm };
-  return { kind: reported ? 'enroute' : 'airborne', label: reported ? 'ENROUTE' : 'AIRBORNE', inferred: true, distanceNm };
+  return { kind: 'airborne', label: 'AIRBORNE', inferred: true, distanceNm };
 }
 
 function within(distanceNm, radiusNm) {
