@@ -1,5 +1,16 @@
 # Flight Deck EFB changelog
 
+## 1.7.4 — Honest Live Traffic
+
+- Replaced the airport-style Flightboard with an honest **Live Traffic** workspace: **Ground / Arriving / Nearby**.
+- Removed FROM/TO, ETD/ETA and Departures/Arrivals presentation for simulator objects that do not publish a real schedule. Flight Deck no longer fills schedule gaps with airport heuristics.
+- Live Traffic now prioritizes directly observed data: callsign/operator identity, aircraft type, position, altitude, groundspeed, distance and simulator-reported traffic state.
+- When MSFS does not publish a traffic state, movement-based statuses such as Parking, Taxi and Arriving are explicitly marked **INFERRED** rather than presented as authoritative schedule data.
+- Reduced both SimConnect traffic discovery bubbles from 200 km to 60 km and limits the UI to the closest 40 relevant aircraft; Ground uses an 8 NM scope, Arriving 25 NM and Nearby 30 NM.
+- Removed external website-favicon airline images and replaced them with deterministic local airline-code badges.
+- Added Live Traffic regression tests covering distance filtering, Ground/Arriving classification and status inference.
+- Clarified in-product and README documentation that SayIntentions Living World internally uses real-world schedules/routes/gates, but does not currently expose a documented public Living World traffic board/API to Flight Deck.
+
 ## 1.7.3 — Traffic, layout & updater corrective hotfix
 
 - Fixed the Flightboard enrichment pipeline: FROM/TO, current airport, runway, parking, airline/flight number and ETD/ETA are no longer erased after the optional AI Traffic request succeeds.

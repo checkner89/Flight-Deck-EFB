@@ -11,7 +11,7 @@ const DISCOVERY_DEFINITION = 90;
 const DISCOVERY_REQUEST = 90;
 const TRAFFIC_DEFINITION = 91;
 const TRAFFIC_PLAN_DEFINITION = 92;
-const TRAFFIC_RADIUS_METERS = 200_000;
+const TRAFFIC_RADIUS_METERS = 60_000;
 const AIRCRAFT_CATEGORIES = new Set(['airplane', 'airship', 'helicopter', 'hotairballoon']);
 
 function clean(value) {

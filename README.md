@@ -1,18 +1,18 @@
 # Flight Deck EFB
 
-**Current release: 1.7.3 — Native EFB Community Package Builder**
+**Current release: 1.7.4 — Honest Live Traffic**
 
 Flight Deck EFB is a Windows companion and responsive Electronic Flight Bag for Microsoft Flight Simulator 2020/2024. The Windows host owns SimConnect, local data and guarded integrations; the same Flight Deck interface can be used in the desktop app, a browser, an iPad/iPhone, Android device and — with the optional SDK-built adapter — directly inside the native MSFS 2024 EFB.
 
 > **Flight simulation use only — not for real-world navigation.**
 
-## 1.7.3 highlights
+## 1.7.4 highlights
 
-- **One-click native EFB builder:** Settings → System can detect the locally installed MSFS 2024 SDK/EFB sample and build Flight Deck with that exact Microsoft template.
-- **Official Package Tool path:** the builder invokes the user's installed `fspackagetool.exe` to compile the Community package; Microsoft SDK/template files are not distributed with Flight Deck.
-- **Community2024 detection:** Flight Deck reads the existing `InstalledPackagesPath` from `UserCfg.opt` and targets `Community2024`. It never changes `UserCfg.opt`.
-- **Explicit install only:** **PAKET BAUEN** creates a reusable local package/ZIP; **BAUEN & INSTALLIEREN** additionally copies the finished package into Community2024 after an explicit confirmation.
-- **Private local paths:** full SDK/Community/build paths remain inside the Windows host and are not exposed to paired tablets or support exports.
+- **Live Traffic instead of fake FIDS:** the simulator traffic app now shows Ground / Arriving / Nearby based on observable MSFS traffic, not an airport departures/arrivals board that implies unavailable schedules.
+- **No invented FROM/TO:** route/schedule fields are no longer presented unless another feature explicitly has a real flight plan. SayIntentions Living World knows its own schedules internally, but does not expose a documented public Living World traffic-list API to Flight Deck.
+- **Local scope:** Ground is limited to 8 NM, Arriving to 25 NM and Nearby to 30 NM; at most the closest 40 aircraft are rendered. The underlying SimConnect discovery radius is reduced from 200 km to 60 km.
+- **Honest status provenance:** simulator-published states are marked REPORTED; movement-based Parking/Taxi/Arriving classifications are marked INFERRED.
+- **Stable airline identity:** local airline-code badges replace unreliable website-favicon images.
 
 ## 1.7.0 highlights
 
@@ -49,10 +49,12 @@ It never sends a simulator command by itself.
 - MSFS airport facility data (taxi names/points/paths, parking, hold positions, jetways and VDGS) merged with OpenStreetMap geometry and OurAirports fallback metadata.
 - Ground Safety for route deviation, excessive taxi speed, hold-short approach, stand approach and close moving ground traffic.
 
-### ATC, traffic and weather
+### ATC, Live Traffic and weather
 - SayIntentions SAPI flight/parking/weather/frequency/communications integration with a deduplicated per-flight message history.
+- **Live Traffic:** local SimConnect traffic in Ground / Arriving / Nearby views using observable position/movement/identity data. Flight Deck does not present a fake airport schedule when injected objects do not expose FROM/TO/ETD/ETA.
+- SayIntentions Living World is documented by SayIntentions as using real-world schedules/routes/gates internally; its complete Living World flight list is not currently exposed through a documented public traffic-board API to Flight Deck.
 - Read-only VATSIM/IVAO controller, ATIS and relevant-pilot data.
-- SimConnect traffic plus an all-object fallback for compatible injected/live/add-on traffic.
+- SimConnect primary traffic plus an all-object fallback for compatible injected/live/add-on traffic.
 - AviationWeather.gov METAR/TAF fallback.
 - Optional Little Navmap local WebAPI cross-check and airport metadata enrichment.
 
@@ -66,7 +68,7 @@ It never sends a simulator command by itself.
 
 ## Install / update Windows
 
-1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.3.exe`**.
+1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.4.exe`**.
 2. Windows SmartScreen can warn because the current build is not code-signed. Review the source/publisher before running it.
 3. Start **Flight Deck EFB**. The Windows app starts the local host used by the desktop UI and second screens.
 4. Allow private-network firewall access only when you want tablet/second-screen LAN access.

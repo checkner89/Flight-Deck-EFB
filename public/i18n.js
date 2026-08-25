@@ -366,3 +366,21 @@ export function translate(language, key) {
   const resolved = resolveLanguage(language);
   return dictionaries[resolved]?.[key] || dictionaries.en[key] || key;
 }
+
+
+const v174Translations = {
+  en: {
+    flightboard: 'Live Traffic',
+    flightboardSummary: 'Observed local simulator traffic',
+    flightboardIntro: 'Observed simulator traffic near your aircraft. No invented schedules or destinations.',
+    trafficSourceNote: 'Source: SimConnect. SayIntentions Living World schedules are not exposed through a documented public traffic API.',
+  },
+  de: {
+    flightboard: 'Live Traffic',
+    flightboardSummary: 'Beobachteter lokaler Simulator-Traffic',
+    flightboardIntro: 'Beobachteter Traffic in der Nähe deines Flugzeugs – ohne erfundene Schedules oder Destinations.',
+    trafficSourceNote: 'Quelle: SimConnect. SayIntentions Living World Schedules sind nicht über eine dokumentierte öffentliche Traffic-API verfügbar.',
+    trafficParked: 'PARKING', trafficPreparing: 'PREFLIGHT', trafficPushback: 'PUSHBACK', trafficTaxiOut: 'TAXI OUT', trafficDeparting: 'DEPARTURE', trafficEnroute: 'ENROUTE', trafficLanding: 'LANDING', trafficRollout: 'ROLLOUT', trafficTaxiIn: 'TAXI IN', trafficTaxi: 'TAXI', trafficUnknown: 'UNKNOWN',
+  },
+};
+for (const [language, additions] of Object.entries(v174Translations)) Object.assign(dictionaries[language] || dictionaries.en, additions);
