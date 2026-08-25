@@ -37,12 +37,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Synchronize embedded app version
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $server = Get-Content 'src/server.mjs' -Raw
+          $server = [regex]::Replace($server, "const APP_VERSION = '[^']+';", "const APP_VERSION = '$version';")
+          Set-Content -Path 'src/server.mjs' -Value $server -NoNewline
+          Write-Host "Embedded server version synchronized to $version"
+
       - name: Verify application source
         shell: pwsh
         run: |
           node --check src/electron-main.mjs
           node --check src/server.mjs
           node --check src/simconnect-client.mjs
+          node --check src/traffic-diagnostic.mjs
           node --check src/state-engine.mjs
           node --check public/app.js
           node --check public/i18n.js
@@ -98,21 +108,6 @@ jobs:
             }
           }
 
-      - name: Create release tag
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main' }}
-        shell: pwsh
-        run: |
-          $version = node -p "require('./package.json').version"
-          $tag = "v$version"
-          git fetch --tags --force
-          if ((git tag --list $tag) -ne $tag) {
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git tag -a $tag -m "Flight Deck EFB $version"
-            git push origin $tag
-          }
-          Write-Host "Release tag: $tag"
-
       - name: Build Windows installer
         run: npm run dist
 
@@ -150,8 +145,23 @@ jobs:
             throw "latest.yml does not advertise version $version."
           }
 
+      - name: Create release tag
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Release ')) }}
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          git fetch --tags --force
+          if ((git tag --list $tag) -ne $tag) {
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a $tag -m "Flight Deck EFB $version"
+            git push origin $tag
+          }
+          Write-Host "Release tag: $tag"
+
       - name: Publish GitHub release assets
-        if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Release ')) }}
         shell: pwsh
         run: |
           $version = node -p "require('./package.json').version"
@@ -168,12 +178,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Uploading release assets failed.' }
             gh release edit $tag --repo $repo --draft=false --prerelease=false --title "Flight Deck EFB $version"
           } else {
-            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. Flight simulation use only — not for real-world navigation." --verify-tag
+            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. Improved third-party injected traffic detection plus independent raw SimConnect AIRCRAFT/ALL object diagnostics. Flight simulation use only — not for real-world navigation." --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing GitHub release failed.' }
 
       - name: Upload test-build artifact
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main') && !(github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Release ')) }}
         uses: actions/upload-artifact@v4
         with:
           name: Flight-Deck-EFB-Windows
