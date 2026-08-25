@@ -23,15 +23,18 @@ Var DesktopShortcutSelection
 !macroend
 
 Function ThirdPartyPageCreate
-  !insertmacro MUI_HEADER_TEXT "Third-party notices" "Open-source software, data sources and optional compatibility services"
-
   nsDialogs::Create 1018
   Pop $ThirdPartyDialog
   ${If} $ThirdPartyDialog == error
     Abort
   ${EndIf}
 
-  nsDialogs::CreateControl EDIT ${DEFAULT_STYLES}|${WS_TABSTOP}|${WS_VSCROLL}|${ES_MULTILINE}|${ES_READONLY}|${ES_AUTOVSCROLL}|${WS_BORDER} ${WS_EX_CLIENTEDGE} 0 0 100% 100% ""
+  ${NSD_CreateLabel} 0 0 100% 14u "Third-party notices"
+  Pop $0
+  ${NSD_CreateLabel} 0 17u 100% 20u "Open-source software, data sources and optional compatibility services used by Flight Deck EFB."
+  Pop $0
+
+  nsDialogs::CreateControl EDIT ${DEFAULT_STYLES}|${WS_TABSTOP}|${WS_VSCROLL}|${ES_MULTILINE}|${ES_READONLY}|${ES_AUTOVSCROLL}|${WS_BORDER} ${WS_EX_CLIENTEDGE} 0 42u 100% -42u ""
   Pop $ThirdPartyText
 
   File /oname=$PLUGINSDIR\flight-deck-third-party-notices.txt "${BUILD_RESOURCES_DIR}\third-party-notices.txt"
@@ -56,22 +59,22 @@ Function ThirdPartyPageCreate
 FunctionEnd
 
 Function AdditionalTasksPageCreate
-  !insertmacro MUI_HEADER_TEXT "Additional Tasks" "Select the additional tasks you would like Setup to perform."
-
   nsDialogs::Create 1018
   Pop $0
   ${If} $0 == error
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 20u "Select additional tasks, then click Next."
+  ${NSD_CreateLabel} 0 0 100% 14u "Additional Tasks"
+  Pop $1
+  ${NSD_CreateLabel} 0 17u 100% 20u "Select the additional tasks you would like Setup to perform, then click Next."
   Pop $1
 
-  ${NSD_CreateCheckbox} 0 30u 100% 14u "Create a Desktop Shortcut"
+  ${NSD_CreateCheckbox} 0 48u 100% 14u "Create a Desktop Shortcut"
   Pop $DesktopShortcutCheckbox
   ${NSD_Check} $DesktopShortcutCheckbox
 
-  ${NSD_CreateLabel} 0 58u 100% 38u "A Start Menu shortcut is always created. Updates preserve your local Flight Deck EFB data."
+  ${NSD_CreateLabel} 0 76u 100% 38u "A Start Menu shortcut is always created. Uninstalling or updating Flight Deck EFB does not silently delete your local flight history, settings or caches."
   Pop $1
 
   nsDialogs::Show
