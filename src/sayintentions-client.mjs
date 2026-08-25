@@ -1,5 +1,12 @@
 const DEFAULT_FLIGHT_JSON_URL = 'http://localhost:63287/flightJSON';
 const DEFAULT_SAPI_BASE_URL = 'https://apipri.sayintentions.ai/sapi/';
+const MAX_COMMS_HISTORY = 2_000;
+
+function commKey(entry = {}) {
+  const id = Number(entry.id);
+  if (Number.isFinite(id) && id > 0) return `id:${id}`;
+  return [entry.stamp_zulu, entry.station_name, entry.ident, entry.outgoing_message_english, entry.incoming_message_english, entry.message].map((value) => String(value || '')).join('|');
+}
 
 async function fetchJson(url, timeoutMs = 4_000) {
   const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
@@ -118,10 +125,16 @@ export class SayIntentionsClient {
         }
         const entries = Array.isArray(data?.comm_history) ? data.comm_history : [];
         if (entries.length > 0) {
-          this.allComms.push(...entries);
-          this.allComms = this.allComms.slice(-100);
+          const merged = new Map(this.allComms.map((entry) => [commKey(entry), entry]));
+          for (const entry of entries) merged.set(commKey(entry), entry);
+          this.allComms = [...merged.values()].slice(-MAX_COMMS_HISTORY);
           this.lastCommsId = Math.max(this.lastCommsId, ...entries.map((entry) => Number(entry.id) || 0));
           this.engine.applyComms(this.allComms);
+          this.engine.setIntegration('sayIntentions', {
+            commsCount: this.allComms.length,
+            commsHistoryLimit: MAX_COMMS_HISTORY,
+            commsUpdatedAt: new Date().toISOString(),
+          });
         }
       }
     } catch {

@@ -114,6 +114,13 @@ export class InjectedTrafficClient {
     }
   }
 
+  refresh() {
+    if (!this.handle) return { requested: false, reason: 'not-connected' };
+    if (this.discoveryBatch || this.detailBatch) return { requested: true, pending: true };
+    this.#poll();
+    return { requested: true };
+  }
+
   #registerDefinitions(handle) {
     handle.addToDataDefinition(
       DISCOVERY_DEFINITION,

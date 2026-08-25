@@ -1,4 +1,4 @@
-# Flight Deck EFB 1.2.0
+# Flight Deck EFB 1.5.0
 
 Flight Deck EFB is a native Windows host and responsive companion EFB for Microsoft
 Flight Simulator 2020/2024. Its Taxi module draws assigned or planned routes
@@ -88,6 +88,13 @@ respective owners and identify compatibility only.
   relevant airport, while operational labels such as parked, taxi out,
   departing, landing and taxi in are derived from simulator state. It does not
   depend on a SayIntentions traffic endpoint.
+- **Little Navmap** can be detected through its local WebAPI (`127.0.0.1:8965/api`)
+  when the Little Navmap web server is enabled. Flight Deck uses the documented
+  simulator and airport-information endpoints as an optional cross-check and
+  metadata source; Little Navmap is never required for the core MSFS connection.
+- **Online Networks** can additionally normalize relevant VATSIM/IVAO pilots
+  whose flight plans involve the active airports or whose position is near the
+  user aircraft, alongside the existing controller and ATIS view.
 
 - Reads `taxi_path`, airport, runway, gate, and flight data from the local
   SayIntentions `flightJSON` endpoint.
