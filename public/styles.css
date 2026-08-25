@@ -5438,7 +5438,7 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
 
 
 /* 1.7.2 compact UI */
-.efb-pages .efb-card { min-width: 0; min-height: 0; height: auto; align-self: start; }
+.efb-pages .efb-card { min-width: 0; min-height: 0; height: auto; }
 .ground-layout,.automation-layout,.settings-grid,.flight-page-layout,.briefing-layout,.atc-layout,.combined-atc-layout { align-items: start !important; grid-auto-rows: max-content !important; }
 .atc-layout > *, .combined-atc-layout > * { min-width: 0; align-self: start; }
 .atc-messages-card,.manual-clearance,.network-selector-card,.online-controllers-card,.online-atis-card { height: auto !important; min-height: 0 !important; }
@@ -5489,3 +5489,64 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
   .atc-messages-card .message-view-selector { width: 100%; margin-left: 0; }
   .atc-messages-card .message-view-selector button { flex: 1 1 0; }
 }
+
+
+/* 1.7.3 corrective UI layout */
+.home-launcher > .efb-card { width: 100%; max-width: none; align-self: stretch; }
+.home-assistant-card { width: 100%; max-width: none; align-self: stretch !important; padding: 17px 18px; }
+.home-assistant-card > p { margin: 7px 0 10px; }
+.home-assistant-card .flight-assistant-list { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 8px 0 0; }
+.home-assistant-card .flight-assistant-item { min-height: 70px; align-items: flex-start; }
+.home-assistant-card .safety-note { margin-top: 10px; }
+.combined-atc-layout .atc-messages-card { grid-column: 1 / -1 !important; width: 100%; }
+.aircraft-view, .aircraft-view-stack, .fenix-efb-view { width: 100%; max-width: none; }
+.ground-layout > .efb-card,
+.automation-layout > .efb-card,
+.settings-grid > .efb-card,
+.flight-page-layout > .efb-card,
+.briefing-layout > .efb-card,
+.atc-layout > .efb-card,
+.combined-atc-layout > .efb-card { align-self: start; }
+
+.update-modal { width: min(680px, calc(100% - 32px)); max-height: min(820px, calc(100% - 32px)); overflow: hidden; border-radius: 22px; }
+.update-modal-shell { width: 100%; max-width: none; padding: 0; overflow: hidden; }
+.update-modal-header { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) 40px; gap: 14px; align-items: start; padding: 22px 22px 18px; border-bottom: 1px solid var(--line); background: linear-gradient(145deg, rgba(22,227,212,.09), rgba(45,184,255,.025)); }
+.update-modal-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 15px; background: rgba(22,227,212,.11); color: var(--cyan); font-size: 27px; font-weight: 500; }
+.update-modal-copy { min-width: 0; }
+.update-modal-copy > small { display: block; margin: 1px 0 5px; color: var(--cyan); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.update-modal-copy h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.update-modal-copy p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.update-modal-close { position: static; width: 36px; height: 36px; justify-self: end; border: 1px solid var(--line); border-radius: 50%; background: rgba(255,255,255,.03); color: var(--muted); font-size: 21px; line-height: 1; }
+.update-modal-close:hover { border-color: rgba(22,227,212,.4); background: rgba(22,227,212,.08); color: var(--cyan); }
+.update-version-strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; margin: 18px 22px 0; padding: 13px 15px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.025); }
+.update-version-strip span { display: grid; gap: 3px; }
+.update-version-strip span:last-child { text-align: right; }
+.update-version-strip small { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .14em; }
+.update-version-strip b { font-size: 15px; }
+.update-version-strip i { color: var(--cyan); font-size: 17px; font-style: normal; }
+.update-notes-panel { margin: 14px 22px 0; padding: 14px 15px; border: 1px solid rgba(22,227,212,.18); border-radius: 12px; background: rgba(22,227,212,.035); }
+.update-notes-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.update-notes-heading small { color: var(--cyan); font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+.update-notes-heading strong { font-size: 11px; }
+.update-dialog-notes { max-height: 230px; overflow: auto; padding-right: 6px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.update-dialog-notes .update-note-heading { display: block; margin: 9px 0 5px; color: var(--text); font-size: 11px; }
+.update-dialog-notes .update-note-heading:first-child { margin-top: 0; }
+.update-dialog-notes ul { display: grid; gap: 6px; margin: 0; padding-left: 18px; }
+.update-dialog-notes li::marker { color: var(--cyan); }
+.update-dialog-notes p { margin: 6px 0; }
+.update-modal-shell > .update-progress { margin: 14px 22px 0; }
+.update-modal-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 18px 22px 22px; }
+.update-modal-actions button { min-height: 40px; }
+@media (max-width: 720px) {
+  .home-assistant-card .flight-assistant-list { grid-template-columns: 1fr; }
+  .update-modal { width: calc(100% - 18px); max-height: calc(100% - 18px); }
+  .update-modal-header { grid-template-columns: 46px minmax(0,1fr) 36px; padding: 17px; }
+  .update-modal-icon { width: 46px; height: 46px; }
+  .update-version-strip, .update-notes-panel { margin-inline: 17px; }
+  .update-modal-actions { padding: 16px 17px 18px; flex-wrap: wrap; }
+}
+html[data-theme="light"] .update-modal-header { background: linear-gradient(145deg, rgba(0,145,137,.09), rgba(23,141,185,.025)); }
+html[data-theme="light"] .update-modal-close { background: rgba(255,255,255,.7); color: #496875; }
+html[data-theme="light"] .update-version-strip { background: rgba(255,255,255,.62); }
+html[data-theme="light"] .update-notes-panel { background: rgba(0,145,137,.045); border-color: rgba(0,145,137,.2); }
+html[data-theme="light"] .update-dialog-notes .update-note-heading { color: #173642; }

@@ -792,8 +792,28 @@ export class SimConnectClient {
     const batch = this.trafficBatch;
     this.trafficBatch = null;
     if (!batch) return;
+    const previousById = new Map((this.engine.publicState().integrations?.simTraffic?.aircraft || [])
+      .map((entry) => [Number(entry?.objectId), entry])
+      .filter(([id]) => Number.isFinite(id)));
+    const metadataFields = ['airline', 'flightNumber', 'currentAirport', 'runway', 'parking', 'origin', 'destination'];
     const aircraft = batch.aircraft
       .filter((entry) => Number.isFinite(entry.lat) && Number.isFinite(entry.lon))
+      .map((entry) => {
+        const previous = previousById.get(Number(entry.objectId));
+        const merged = { ...entry, source: 'simconnect-primary' };
+        if (!previous) return merged;
+        for (const field of metadataFields) merged[field] = String(entry[field] || '').trim() || String(previous[field] || '').trim();
+        for (const field of ['etdSeconds', 'etaSeconds']) {
+          const current = entry[field];
+          const prior = previous[field];
+          merged[field] = current !== null && current !== undefined && current !== '' ? current : prior ?? null;
+        }
+        if (previous.scheduleEnriched) {
+          merged.scheduleEnriched = true;
+          if (previous.state) merged.state = previous.state;
+        }
+        return merged;
+      })
       .slice(0, 300)
       .sort((left, right) => left.callsign.localeCompare(right.callsign, 'en', { numeric: true }));
     this.engine.setIntegration('simTraffic', {
