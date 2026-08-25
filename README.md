@@ -1,18 +1,18 @@
 # Flight Deck EFB
 
-**Current release: 1.7.6 — Traffic & Taxi Recovery**
+**Current release: 1.7.7 — Installer & Legal Transparency**
 
 Flight Deck EFB is a Windows companion and responsive Electronic Flight Bag for Microsoft Flight Simulator 2020/2024. The Windows host owns SimConnect, local data and guarded integrations; the same Flight Deck interface can be used in the desktop app, a browser, an iPad/iPhone, Android device and — with the optional SDK-built adapter — directly inside the native MSFS 2024 EFB.
 
 > **Flight simulation use only — not for real-world navigation.**
 
-## 1.7.6 highlights
+## 1.7.7 highlights
 
-- **Live Traffic instead of fake FIDS:** the simulator traffic app now shows Ground / Arriving / Nearby based on observable MSFS traffic, not an airport departures/arrivals board that implies unavailable schedules.
-- **No invented FROM/TO:** route/schedule fields are no longer presented unless another feature explicitly has a real flight plan. SayIntentions Living World knows its own schedules internally, but does not expose a documented public Living World traffic-list API to Flight Deck.
-- **Wider Live Traffic scope:** Ground remains 8 NM, Arriving is 80 NM and Nearby is 120 NM; at most the closest 40 aircraft are rendered. Direct SimConnect discovery uses the documented 200 km (~108 NM) maximum, so the last ~12 NM of the Nearby UI scope can only be populated by another compatible source.
-- **Honest status provenance:** simulator-published states are marked REPORTED; movement-based Parking/Taxi/Arriving classifications are marked INFERRED.
-- **Stable airline identity:** local airline-code badges replace unreliable website-favicon images.
+- **Installer license page:** assisted Windows Setup shows the MIT License together with simulation-only, privacy/LAN and third-party acknowledgements before installation.
+- **Third-party notices in Setup:** the installer contains a dedicated scrollable notices page and still installs the complete `THIRD_PARTY_NOTICES.md` file.
+- **Shortcut choice:** interactive Setup lets the user choose whether to create a Desktop shortcut; the Start Menu shortcut remains available.
+- **Non-destructive updates/uninstall:** normal updates and uninstall/reinstall do not silently delete local settings, caches or flight history.
+- **Windows metadata:** application author/copyright metadata now identifies **Christoph Heckner** consistently; the installer remains unsigned, so SmartScreen can still show an unknown-publisher warning.
 
 ## 1.7.0 highlights
 
@@ -68,7 +68,7 @@ It never sends a simulator command by itself.
 
 ## Install / update Windows
 
-1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.6.exe`**.
+1. Open the latest GitHub Release and run **`Flight-Deck-EFB-Setup-1.7.7.exe`**.
 2. Windows SmartScreen can warn because the current build is not code-signed. Review the source/publisher before running it.
 3. Start **Flight Deck EFB**. The Windows app starts the local host used by the desktop UI and second screens.
 4. Allow private-network firewall access only when you want tablet/second-screen LAN access.

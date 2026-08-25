@@ -1,5 +1,14 @@
 # Flight Deck EFB changelog
 
+## 1.7.7 — Installer & Legal Transparency
+
+- Published the completed installer/legal work as **1.7.7**.
+- Assisted Windows Setup includes the complete **MIT License** plus explicit simulation-only, privacy/LAN and third-party acknowledgements.
+- Setup includes a dedicated scrollable **Third-party notices** page and a selectable **Create a Desktop Shortcut** task.
+- Application author/copyright metadata now consistently identifies **Christoph Heckner**.
+- Updated packaged legal/version references to 1.7.7 while retaining non-destructive update/uninstall behavior and the existing installer regression checks.
+- The Windows executable is still **not code-signed**; SmartScreen may therefore continue to show an unknown-publisher warning.
+
 ## 1.7.6 — Installer & Legal Transparency
 
 - Added a proper assisted Windows Setup **License Agreement** page containing the complete MIT License plus simulation-only Safety, Privacy/LAN and Third-Party acknowledgements. The installer agreement explicitly does not remove, reduce or contradict MIT rights.
