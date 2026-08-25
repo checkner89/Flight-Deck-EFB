@@ -3,6 +3,7 @@ import {
   parseInstalledPackagesPath,
   isCommunityDirectory,
   transformTemplateText,
+  MsfsEfbPackageBuilder,
 } from '../src/msfs-efb-package-builder.mjs';
 
 assert.equal(
@@ -17,5 +18,14 @@ assert.match(transformed, /FlightDeckEFBProject/);
 assert.match(transformed, /flightdeck-efb-native/);
 assert.match(transformed, /FlightDeckEFB/);
 assert.doesNotMatch(transformed, /EFBTemplateAppProject|efb_apps_template/);
+
+const builder = new MsfsEfbPackageBuilder(null, { platform: 'win32' });
+builder.current = { ...builder.current, canBuild: true, sdk: { ready: true, sdkRoot: 'C:\\MSFS 2024 SDK' }, communityDirectory: null };
+builder.detect = async () => builder.publicStatus();
+await assert.rejects(
+  () => builder.build(),
+  /Builder storage directory is unavailable/,
+  'build() must use the trusted internal detected state after detect()',
+);
 
 console.log('MSFS EFB builder contract OK');

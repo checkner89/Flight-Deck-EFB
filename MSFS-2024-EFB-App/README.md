@@ -1,6 +1,6 @@
 # Flight Deck EFB — native MSFS 2024 EFB app (Phase 3)
 
-This folder contains the native Microsoft Flight Simulator 2024 EFB surface for Flight Deck EFB 1.7.1. The Windows application remains the trusted host for SimConnect, local storage, connector credentials, automations and safety checks. The in-simulator app adds a native route bridge and displays the same responsive Flight Deck interface inside MSFS.
+This folder contains the native Microsoft Flight Simulator 2024 EFB surface for Flight Deck EFB 1.7.2. The Windows application remains the trusted host for SimConnect, local storage, connector credentials, automations and safety checks. The in-simulator app adds a native route bridge and displays the same responsive Flight Deck interface inside MSFS.
 
 ## What the native app does
 
@@ -18,7 +18,7 @@ To send the simulator EFB route to supported aircraft avionics, use the normal M
 
 Flight Deck also does not answer `AvionicsRouteRequested` automatically. The SDK warns that multiple instrument responses to a route request are undefined, so the aircraft's own avionics/instrument remains the authoritative provider.
 
-## Recommended build method in 1.7.1
+## Recommended build method in 1.7.2
 
 Use the Windows app under **Settings → System → Native EFB Package Builder**. It detects the installed SDK/EFB sample and `fspackagetool.exe`, prepares an isolated copy of the SDK sample, replaces only the Flight Deck app source, builds the template and exports a Community package/ZIP. If requested explicitly, it can copy the finished package to `Community2024`.
 

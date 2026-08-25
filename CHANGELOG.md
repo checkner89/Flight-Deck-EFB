@@ -1,5 +1,11 @@
 # Flight Deck EFB changelog
 
+## 1.7.2 — Native EFB Builder Hotfix
+
+- Fixed a critical builder-state regression where **Build Package** / **Build & Install** could report the SDK as unavailable immediately after successful detection.
+- Added a regression check that verifies the build path uses the trusted internal detected SDK state rather than the sanitized public status object.
+- No changes to the Phase-3 route bridge, Flight Intelligence, Turnaround Coordinator or Flight Assistant behavior.
+
 ## 1.7.1 — Native EFB Community Package Builder
 
 - Added a Windows-hosted MSFS 2024 EFB Package Builder that detects the locally installed SDK/EFB template and uses the installed `fspackagetool.exe` instead of redistributing Microsoft SDK files.
