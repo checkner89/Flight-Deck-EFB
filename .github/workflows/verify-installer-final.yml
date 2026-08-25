@@ -1,0 +1,56 @@
+name: Verify 1.7.5 Installer Final
+
+on:
+  push:
+    branches:
+      - release/1.7.5-installer-legal-final
+    paths:
+      - '.github/workflows/verify-installer-final.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: release/1.7.5-installer-legal-final
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify source and installer contract
+        shell: pwsh
+        run: |
+          node --check src/electron-main.mjs
+          node --check src/server.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/injected-traffic-client.mjs
+          node --check public/live-traffic.js
+          node --check public/app.js
+          node scripts/test-live-traffic.mjs
+          if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
+          node scripts/verify-installer-legal.mjs
+
+      - name: Build real Windows NSIS installer
+        run: npm run dist
+
+      - name: Verify installer and updater output
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.7.5') { throw "Unexpected package version: $version" }
+          $installer = "dist/Flight-Deck-EFB-Setup-$version.exe"
+          if (!(Test-Path $installer)) { throw "Installer missing: $installer" }
+          if ((Get-Item $installer).Length -lt 50000000) { throw 'Installer is unexpectedly small.' }
+          if (!(Test-Path "dist/Flight-Deck-EFB-Setup-$version.exe.blockmap")) { throw 'Blockmap missing.' }
+          if (!(Test-Path 'dist/latest.yml')) { throw 'latest.yml missing.' }
+          Write-Host "Final combined NSIS build passed: $installer"
