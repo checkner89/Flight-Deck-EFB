@@ -214,6 +214,7 @@ export class RouteSyncService {
     this.msfsEfbReceivedAt = null;
     this.lastNativeSeenAt = null;
     this.avionicsSync = { lastAt: null, routeFingerprint: null };
+    this.sessionGeneration = null;
     this.lastPublishedFingerprint = '';
     this.publishing = false;
     this.listener = (state) => this.#publish(state);
@@ -271,6 +272,14 @@ export class RouteSyncService {
 
   #publish(state) {
     if (this.publishing) return;
+    const generation = Number(state.session?.generation || 1);
+    if (this.sessionGeneration !== null && generation !== this.sessionGeneration) {
+      this.msfsEfbRoute = null;
+      this.msfsEfbReceivedAt = null;
+      this.avionicsSync = { lastAt: null, routeFingerprint: null };
+      this.lastPublishedFingerprint = '';
+    }
+    this.sessionGeneration = generation;
     const flightDeckRoute = buildFlightDeckRoute(state);
     const comparison = compareRoutes(flightDeckRoute, this.msfsEfbRoute);
     const nativeFresh = this.lastNativeSeenAt && Date.now() - Date.parse(this.lastNativeSeenAt) < 60_000;

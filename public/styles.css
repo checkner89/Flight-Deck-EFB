@@ -5378,3 +5378,47 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
   .adapter-layout,
   .ground-layout { grid-template-columns: 1fr; }
 }
+
+
+/* Phase 3 · Native EFB bridge, flight intelligence and local assistant */
+.home-assistant-card { margin-top: 14px; }
+.flight-assistant-list { display: grid; gap: 8px; margin: 10px 0; }
+.flight-assistant-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); }
+.flight-assistant-item > span { display: grid; gap: 3px; min-width: 0; }
+.flight-assistant-item strong { font-size: 11px; letter-spacing: .05em; }
+.flight-assistant-item small { color: var(--muted); line-height: 1.35; }
+.flight-assistant-item button { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; background: transparent; color: var(--text); font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.flight-assistant-item.caution { border-color: rgba(255,200,87,.4); }
+.flight-assistant-item.warning, .flight-assistant-item.critical { border-color: rgba(255,92,108,.55); background: rgba(255,92,108,.06); }
+
+.phase3-flight-grid { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 12px; margin: 12px 0; }
+.phase3-evidence { display: block; margin-top: 9px; color: var(--muted); line-height: 1.45; letter-spacing: .025em; }
+.route-sync-facts { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin: 12px 0; }
+.route-sync-facts > span { display: grid; gap: 3px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.025); }
+.route-sync-facts small { color: var(--muted); font-size: 9px; letter-spacing: .06em; }
+.route-sync-facts b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.route-sync-differences { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.route-sync-differences > span { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 8px; border: 1px solid rgba(255,200,87,.28); border-radius: 999px; background: rgba(255,200,87,.045); }
+.route-sync-differences b { font-size: 8px; letter-spacing: .06em; }
+.route-sync-differences small { color: var(--muted); font-size: 9px; }
+
+.turnaround-stage { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.turnaround-stage > span { display: grid; gap: 2px; }
+.turnaround-stage small, .turnaround-next small { color: var(--muted); font-size: 9px; letter-spacing: .06em; }
+.turnaround-stage strong { font-size: 17px; }
+.turnaround-stage > b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.turnaround-progress-track { height: 6px; margin: 10px 0 12px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+.turnaround-progress-track > i { display: block; width: 0; height: 100%; border-radius: inherit; background: currentColor; transition: width .35s ease; }
+.turnaround-next { display: grid; gap: 3px; margin-top: 12px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.025); }
+.turnaround-blockers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.turnaround-blockers > span { padding: 4px 7px; border: 1px solid rgba(255,200,87,.32); border-radius: 999px; color: var(--muted); font-size: 9px; }
+
+@media (max-width: 980px) {
+  .phase3-flight-grid { grid-template-columns: 1fr; }
+  .route-sync-facts { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+@media (max-width: 560px) {
+  .route-sync-facts { grid-template-columns: 1fr 1fr; }
+  .flight-assistant-item { align-items: flex-start; }
+}

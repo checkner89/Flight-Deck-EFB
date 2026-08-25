@@ -14,6 +14,8 @@ import { InjectedTrafficClient } from './injected-traffic-client.mjs';
 import { LittleNavmapClient } from './littlenavmap-client.mjs';
 import { AircraftAdapterManager } from './aircraft-adapter-manager.mjs';
 import { GroundSafetyEngine } from './ground-safety-engine.mjs';
+import { RouteSyncService } from './route-sync-service.mjs';
+import { FlightIntelligenceEngine } from './flight-intelligence-engine.mjs';
 import { GsxClient } from './gsx-client.mjs';
 import { SimBriefClient } from './simbrief-client.mjs';
 import { OnlineNetworkClient } from './online-network-client.mjs';
@@ -37,7 +39,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -243,6 +245,8 @@ export async function createTaxiServer({
   const littleNavmap = demo ? null : new LittleNavmapClient(engine);
   const aircraftAdapters = demo ? null : new AircraftAdapterManager(engine, { simConnect });
   const groundSafety = new GroundSafetyEngine(engine);
+  const routeSync = new RouteSyncService(engine);
+  const flightIntelligence = new FlightIntelligenceEngine(engine);
   const facilityMapCache = new Map();
   const navigraph = {
     start() {
@@ -274,6 +278,8 @@ export async function createTaxiServer({
   });
   await automation.start();
   groundSafety.start();
+  routeSync.start();
+  flightIntelligence.start();
   const updater = updateService || {
     status: () => ({
       state: 'manual', currentVersion: APP_VERSION, configured: false,
@@ -305,6 +311,10 @@ export async function createTaxiServer({
       { id: 'little-navmap', label: 'Little Navmap WebAPI', status: state.integrations.littleNavmap?.status || 'waiting', detail: state.integrations.littleNavmap?.detail || '' },
       { id: 'aircraft-adapter', label: 'Aircraft Adapter (Fenix / PMDG)', status: state.integrations.aircraftAdapter?.status || 'idle', detail: state.integrations.aircraftAdapter?.detail || '' },
       { id: 'ground-safety', label: 'Ground / Taxi Safety', status: state.integrations.groundSafety?.status === 'clear' ? 'ready' : state.integrations.groundSafety?.status || 'waiting', detail: state.integrations.groundSafety?.detail || '' },
+      { id: 'flight-intelligence', label: 'Automatic Flight Intelligence', status: state.integrations.flightIntelligence?.status === 'stable' ? 'ready' : state.integrations.flightIntelligence?.status || 'waiting', detail: state.integrations.flightIntelligence?.detail || '' },
+      { id: 'route-sync', label: 'Native MSFS EFB Route Bridge', status: state.integrations.routeSync?.status === 'ready' ? 'ready' : state.integrations.routeSync?.status || 'waiting', detail: state.integrations.routeSync?.detail || '' },
+      { id: 'flight-assistant', label: 'Flight Assistant', status: state.integrations.flightAssistant?.status === 'clear' ? 'ready' : state.integrations.flightAssistant?.status || 'waiting', detail: state.integrations.flightAssistant?.detail || '' },
+      { id: 'turnaround', label: 'Turnaround Coordinator', status: ['ready', 'complete', 'inactive'].includes(state.integrations.turnaround?.status) ? 'ready' : state.integrations.turnaround?.status || 'waiting', detail: state.integrations.turnaround?.detail || '' },
       { id: 'atc', label: 'ATC source', status: activeConnectionStatus(state), detail: state.taxi?.clearance?.provider || state.atc?.selectedProvider || 'auto' },
       { id: 'gsx', label: 'GSX Pro readiness', status: state.integrations.gsx?.status || 'waiting', detail: state.integrations.gsx?.detail || '' },
       { id: 'navigraph', label: 'Navigraph account', status: state.integrations.navigraph?.status || 'configuration-required', detail: state.integrations.navigraph?.detail || '' },
@@ -317,7 +327,7 @@ export async function createTaxiServer({
       runtime: { platform: process.platform, architecture: process.arch, osRelease: os.release(), node: process.version },
       checks,
       data: { flightCount: flights.length, mapFiles, mapBytes, pairedDevices: accessManager.list().length, sharingEnabled: accessManager.sharingEnabled },
-      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, adapterControlRequiresExplicitRequest: true, groundSafetyAdvisoryOnly: true, secretsIncluded: false },
+      safety: { automationMode: automation.publicConfiguration().mode, gsxRemoteControl: false, turnaroundRemoteServiceControl: false, adapterControlRequiresExplicitRequest: true, groundSafetyAdvisoryOnly: true, flightAssistantAdvisoryOnly: true, routeSyncUsesDocumentedReadApi: true, secretsIncluded: false },
     };
   };
 
@@ -423,6 +433,47 @@ export async function createTaxiServer({
       const pathname = requestUrl.pathname;
       const requestAddress = remoteAddress(request);
       const localRequest = isLoopbackAddress(requestAddress);
+      const nativeCorsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '600',
+      };
+      if (pathname.startsWith('/api/native/')) {
+        if (!localRequest) return json(response, 403, { error: 'Native EFB bridge is loopback-only.' }, nativeCorsHeaders);
+        if (request.method === 'OPTIONS') {
+          response.writeHead(204, nativeCorsHeaders);
+          response.end();
+          return;
+        }
+        if (pathname === '/api/native/health' && request.method === 'GET') {
+          routeSync.touchNative();
+          return json(response, 200, { status: 'ok', name: 'Flight Deck EFB', version: APP_VERSION, routeBridge: true }, nativeCorsHeaders);
+        }
+        if (pathname === '/api/native/route' && request.method === 'POST') {
+          try {
+            const body = await readJsonBody(request);
+            const route = routeSync.ingestMsfsRoute(body.route ?? body);
+            return json(response, 200, { accepted: true, routeSync: route }, nativeCorsHeaders);
+          } catch (error) {
+            return json(response, 422, { error: error.message }, nativeCorsHeaders);
+          }
+        }
+        if (pathname === '/api/native/avionics-sync' && request.method === 'POST') {
+          try {
+            const body = await readJsonBody(request);
+            const route = routeSync.markAvionicsSync(body.route ?? body);
+            return json(response, 200, { accepted: true, routeSync: route }, nativeCorsHeaders);
+          } catch (error) {
+            return json(response, 422, { error: error.message }, nativeCorsHeaders);
+          }
+        }
+        if (pathname === '/api/native/flight-deck-route' && request.method === 'GET') {
+          routeSync.touchNative();
+          return json(response, 200, { route: routeSync.currentFlightDeckRoute(), routeSync: routeSync.publicStatus() }, nativeCorsHeaders);
+        }
+        return json(response, 404, { error: 'Native EFB bridge endpoint not found.' }, nativeCorsHeaders);
+      }
       if (!localRequest && !accessManager.sharingEnabled) {
         return json(response, 403, { error: 'Tablet-/Netzwerkzugriff ist auf dem Windows-Host deaktiviert.' });
       }
@@ -1259,6 +1310,8 @@ export async function createTaxiServer({
     async close() {
       clearInterval(keepAlive);
       stopDataSources();
+      flightIntelligence.stop();
+      routeSync.stop();
       groundSafety.stop();
       automation.stop();
       await recorder.stop();

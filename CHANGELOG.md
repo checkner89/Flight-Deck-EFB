@@ -1,5 +1,17 @@
 # Flight Deck EFB changelog
 
+## 1.7.0 — Phase 3 Native EFB & Flight Intelligence
+
+- Upgraded the MSFS 2024 native EFB source from a fixed-port iframe wrapper to a native route bridge with automatic Flight Deck host discovery across ports 39871–39890.
+- Added documented `GET_EFB_ROUTE` ingestion and `AvionicsRouteSync` observation for the MSFS 2024 Planned Route API. Flight Deck intentionally does not call route-write methods that remain incompletely documented/stubbed by the SDK.
+- Added a local Route Sync Service that normalizes the MSFS EFB route, builds the current Flight Deck/SimBrief route and compares airports, runways, procedures and enroute waypoints without exposing connector credentials.
+- Added a stabilized Flight Intelligence engine with phase-transition dwell/hysteresis on top of MSFS, ATC and route context. Manual phase override still has priority and existing phase-triggered automations automatically use the stabilized phase.
+- Added a Turnaround Coordinator that combines flight-plan, aircraft and documented GSX state into departure/arrival progress, blockers and the next recommended step without remotely starting/cancelling GSX services.
+- Added a local, advisory-only Flight Assistant for Ground Safety, route mismatch, projected fuel reserve, arrival weather, flight-plan/route readiness and turnaround recommendations.
+- Added Flight Intelligence and Route Bridge cards to Flight Hub, Turnaround Coordinator to Ground Services and Flight Assistant advisories to Home.
+- Added loopback-only native EFB bridge endpoints with explicit CORS handling; they expose route/status data only and never credentials or Windows update controls.
+- Updated diagnostics, privacy, legal notices, native-EFB build instructions, version strings and cache identifiers for 1.7.0.
+
 ## 1.6.0 — Phase 2 Aircraft & Ground Intelligence
 
 - Added a central Aircraft Adapter Layer that automatically selects Fenix, PMDG or Generic SimConnect for the loaded aircraft.
