@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, Menu, nativeImage, screen, shell, Tray } from 'electron';
 import updaterPackage from 'electron-updater';
 import { createTaxiServer } from './server.mjs';
+import { TrafficDiagnostic } from './traffic-diagnostic.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ const { autoUpdater } = updaterPackage;
 
 let mainWindow;
 let taxiServer;
+let trafficDiagnostic;
 let tray;
 let shutdownStarted = false;
 let isQuitting = false;
@@ -109,6 +111,11 @@ async function createWindow() {
     accessStorageDirectory: path.join(app.getPath('userData'), 'access'),
     updateService,
   });
+  if (!demo) {
+    trafficDiagnostic?.stop();
+    trafficDiagnostic = new TrafficDiagnostic(taxiServer.engine);
+    trafficDiagnostic.start();
+  }
   const { workAreaSize } = screen.getPrimaryDisplay();
   const initialWidth = Math.min(workAreaSize.width, Math.max(1320, Math.round(workAreaSize.width * 0.96)));
   const initialHeight = Math.min(workAreaSize.height, Math.max(820, Math.round(workAreaSize.height * 0.94)));
@@ -189,6 +196,8 @@ app.on('before-quit', (event) => {
   if (!taxiServer || shutdownStarted) return;
   event.preventDefault();
   shutdownStarted = true;
+  trafficDiagnostic?.stop();
+  trafficDiagnostic = null;
   taxiServer.close().finally(() => {
     taxiServer = null;
     tray?.destroy();
