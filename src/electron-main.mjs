@@ -20,6 +20,23 @@ function normalizeReleaseNotes(value) {
   return '';
 }
 
+
+async function fetchGitHubReleaseNotes(version) {
+  const normalized = String(version || '').trim().replace(/^v/i, '');
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized)) return '';
+  try {
+    const response = await fetch(`https://api.github.com/repos/checkner89/Flight-Deck-EFB/releases/tags/v${normalized}`, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Flight-Deck-EFB-Updater' },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) return '';
+    const body = await response.json();
+    return normalizeReleaseNotes(body?.body || '');
+  } catch {
+    return '';
+  }
+}
+
 function createUpdateService() {
   const currentVersion = app.getVersion();
   let value = app.isPackaged && process.platform === 'win32'
@@ -31,10 +48,17 @@ function createUpdateService() {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.on('checking-for-update', () => set({ state: 'checking', percent: 0, detail: 'GitHub Release wird geprüft.' }));
-    autoUpdater.on('update-available', (info) => set({ state: 'available', percent: 0, releaseName: info?.version || null, releaseNotes: normalizeReleaseNotes(info?.releaseNotes), detail: `Version ${info?.version || ''} ist verfügbar.`.replace(/\s+/g, ' ').trim() }));
+    autoUpdater.on('update-available', (info) => {
+      const releaseName = info?.version || null;
+      const releaseNotes = normalizeReleaseNotes(info?.releaseNotes);
+      set({ state: 'available', percent: 0, releaseName, releaseNotes, detail: `Version ${releaseName || ''} ist verfügbar.`.replace(/\s+/g, ' ').trim() });
+      if (!releaseNotes && releaseName) fetchGitHubReleaseNotes(releaseName).then((notes) => {
+        if (notes && value.releaseName === releaseName) set({ releaseNotes: notes });
+      });
+    });
     autoUpdater.on('update-not-available', (info) => set({ state: 'current', percent: 0, releaseName: info?.version || currentVersion, detail: 'Flight Deck EFB ist aktuell.' }));
     autoUpdater.on('download-progress', (progress) => set({ state: 'downloading', percent: Math.round(progress.percent || 0), detail: `Update wird heruntergeladen: ${Math.round(progress.percent || 0)} %` }));
-    autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', percent: 100, releaseName: info?.version || null, releaseNotes: normalizeReleaseNotes(info?.releaseNotes), detail: `Version ${info?.version || ''} ist bereit. Neustart zum Installieren.`.replace(/\s+/g, ' ').trim() }));
+    autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', percent: 100, releaseName: info?.version || null, releaseNotes: normalizeReleaseNotes(info?.releaseNotes) || value.releaseNotes || '', detail: `Version ${info?.version || ''} ist bereit. Neustart zum Installieren.`.replace(/\s+/g, ' ').trim() }));
     autoUpdater.on('error', (error) => set({ state: 'error', percent: 0, detail: `Update-Prüfung fehlgeschlagen: ${error.message}` }));
   }
 

@@ -1,5 +1,16 @@
 # Flight Deck EFB changelog
 
+## 1.7.3 — Traffic, layout & updater corrective hotfix
+
+- Fixed the Flightboard enrichment pipeline: FROM/TO, current airport, runway, parking, airline/flight number and ETD/ETA are no longer erased after the optional AI Traffic request succeeds.
+- Merges schedule metadata into the primary SimConnect object when both readers report the same aircraft, and preserves that metadata across later primary traffic refreshes.
+- Keeps unknown route fields unknown when an injector does not expose a simulator schedule; Flight Deck does not invent destinations.
+- Reverted the global card shrink introduced in 1.7.2. Flex-based Home cards now stretch to the intended workspace width, while grid cards still keep content-height behavior.
+- Flight Assistant uses the full Home width and lays advisories out responsively instead of collapsing into a narrow column.
+- SayIntentions Messages now spans the complete ATC workspace.
+- Rebuilt the update dialog with installed/available version context, a readable close control and release notes / changelog directly inside the popup.
+- If electron-updater does not provide release notes immediately, the Windows host fetches the matching public GitHub Release body as a fallback.
+
 ## 1.7.2 — Native EFB Builder Hotfix
 
 - Fixed Taxi Navigation auto-follow so the aircraft stays centered on module open and route refresh.

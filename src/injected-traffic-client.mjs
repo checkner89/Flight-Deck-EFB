@@ -18,6 +18,78 @@ function clean(value) {
   return String(value || '').replace(/\0/g, '').trim();
 }
 
+
+const TRAFFIC_TEXT_FIELDS = ['airline', 'flightNumber', 'currentAirport', 'runway', 'parking', 'origin', 'destination'];
+
+function trafficNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function normalizeInjectedTrafficEntry(entry = {}) {
+  const atcId = clean(entry.atcId);
+  const title = clean(entry.title);
+  const airline = clean(entry.airline);
+  const flightNumber = clean(entry.flightNumber);
+  const suppliedState = clean(entry.state).toLowerCase();
+  const inferredState = suppliedState || (entry.onGround
+    ? Number(entry.groundSpeed) > 3 ? 'taxi' : 'parked'
+    : Number(entry.aglFeet) < 1_500 && Number(entry.verticalSpeedFpm) < -150 ? 'landing' : 'enroute');
+  const callsign = atcId || [airline, flightNumber].filter(Boolean).join(' ') || title || `AI-${entry.objectId}`;
+  return {
+    ...entry,
+    title,
+    atcId,
+    airline,
+    flightNumber,
+    callsign,
+    state: inferredState,
+    currentAirport: clean(entry.currentAirport).toUpperCase(),
+    runway: clean(entry.runway).toUpperCase(),
+    parking: clean(entry.parking),
+    origin: clean(entry.origin).toUpperCase(),
+    destination: clean(entry.destination).toUpperCase(),
+    etdSeconds: trafficNumber(entry.etdSeconds),
+    etaSeconds: trafficNumber(entry.etaSeconds),
+    scheduleEnriched: Boolean(entry.scheduleEnriched),
+    source: entry.source || 'simconnect-all',
+  };
+}
+
+export function mergeTrafficSources(primary = [], fallback = []) {
+  const supplementalById = new Map((Array.isArray(fallback) ? fallback : [])
+    .map((entry) => [Number(entry?.objectId), entry])
+    .filter(([id]) => Number.isFinite(id)));
+  const used = new Set();
+  const merged = (Array.isArray(primary) ? primary : []).map((entry) => {
+    const id = Number(entry?.objectId);
+    const supplemental = supplementalById.get(id);
+    if (!supplemental) return entry;
+    used.add(id);
+    const combined = { ...supplemental, ...entry };
+    for (const field of TRAFFIC_TEXT_FIELDS) {
+      const primaryValue = clean(entry?.[field]);
+      const supplementalValue = clean(supplemental?.[field]);
+      combined[field] = primaryValue || supplementalValue;
+      if (['currentAirport', 'runway', 'origin', 'destination'].includes(field)) combined[field] = combined[field].toUpperCase();
+    }
+    for (const field of ['etdSeconds', 'etaSeconds']) {
+      combined[field] = trafficNumber(entry?.[field]) ?? trafficNumber(supplemental?.[field]);
+    }
+    if (supplemental.scheduleEnriched && clean(supplemental.state)) combined.state = clean(supplemental.state).toLowerCase();
+    combined.scheduleEnriched = Boolean(entry?.scheduleEnriched || supplemental.scheduleEnriched);
+    combined.source = entry?.source || 'simconnect-primary';
+    return combined;
+  });
+  for (const entry of Array.isArray(fallback) ? fallback : []) {
+    const id = Number(entry?.objectId);
+    if (!Number.isFinite(id) || used.has(id)) continue;
+    merged.push(entry);
+  }
+  return merged;
+}
+
 export class InjectedTrafficClient {
   constructor(engine, { pollMs = 3_000, retryMs = 5_000 } = {}) {
     this.engine = engine;
@@ -328,7 +400,7 @@ export class InjectedTrafficClient {
     if (!this.handle) return;
     for (const entry of aircraft.slice(0, 120)) {
       const objectId = Number(entry.objectId);
-      if (!Number.isInteger(objectId) || this.pendingPlanRequests.has(objectId)) continue;
+      if (!Number.isInteger(objectId) || [...this.pendingPlanRequests.values()].includes(objectId)) continue;
       const requestId = this.#nextDetailRequestId();
       this.pendingPlanRequests.set(requestId, objectId);
       try {
@@ -356,6 +428,7 @@ export class InjectedTrafficClient {
         destination: clean(data.readString32()).toUpperCase(),
         etdSeconds: data.readFloat64(),
         etaSeconds: data.readFloat64(),
+        scheduleEnriched: true,
       };
       this.trafficPlanByObjectId.set(Number(objectId), plan);
       this.fallbackAircraft = this.fallbackAircraft.map((entry) => Number(entry.objectId) === Number(objectId)
@@ -367,39 +440,16 @@ export class InjectedTrafficClient {
   }
 
   #normalizeTrafficEntry(entry) {
-    const atcId = clean(entry.atcId);
-    const title = clean(entry.title);
-    const callsign = atcId || title || `AI-${entry.objectId}`;
-    const inferredState = entry.onGround
-      ? entry.groundSpeed > 3 ? 'taxi' : 'parked'
-      : entry.aglFeet < 1_500 && entry.verticalSpeedFpm < -150 ? 'landing' : 'enroute';
-    return {
-      ...entry,
-      title,
-      atcId,
-      airline: '',
-      flightNumber: '',
-      callsign,
-      state: inferredState,
-      currentAirport: '',
-      runway: '',
-      parking: '',
-      origin: '',
-      destination: '',
-      etdSeconds: null,
-      etaSeconds: null,
-      source: 'simconnect-all',
-    };
+    return normalizeInjectedTrafficEntry(entry);
   }
 
   #publishMergedTraffic() {
     const integration = this.engine.publicState().integrations?.simTraffic || {};
-    const primary = Array.isArray(integration.aircraft)
-      ? integration.aircraft.filter((entry) => entry?.source !== 'simconnect-all')
-      : [];
+    const currentAircraft = Array.isArray(integration.aircraft) ? integration.aircraft : [];
+    const primary = currentAircraft.filter((entry) => entry?.source !== 'simconnect-all');
     const primaryIds = new Set(primary.map((entry) => Number(entry.objectId)).filter(Number.isFinite));
-    const fallback = this.fallbackAircraft.filter((entry) => !primaryIds.has(Number(entry.objectId)));
-    const aircraft = [...primary, ...fallback]
+    const fallbackOnlyCount = this.fallbackAircraft.filter((entry) => !primaryIds.has(Number(entry.objectId))).length;
+    const aircraft = mergeTrafficSources(primary, this.fallbackAircraft)
       .filter((entry) => Number.isFinite(entry.lat) && Number.isFinite(entry.lon))
       .slice(0, 300)
       .sort((left, right) => String(left.callsign || '').localeCompare(String(right.callsign || ''), 'en', { numeric: true }));
@@ -409,10 +459,10 @@ export class InjectedTrafficClient {
       source: 'SimConnect',
       radiusKm: TRAFFIC_RADIUS_METERS / 1_000,
       updatedAt: new Date().toISOString(),
-      detail: fallback.length > 0
-        ? `${aircraft.length} Simulator-Flugzeuge im Umkreis · ${fallback.length} über Injector-Fallback`
+      detail: fallbackOnlyCount > 0
+        ? `${aircraft.length} Simulator-Flugzeuge im Umkreis · ${fallbackOnlyCount} über Injector-Fallback`
         : `${aircraft.length} Simulator-Flugzeuge im Umkreis`,
-      injectedFallbackCount: fallback.length,
+      injectedFallbackCount: fallbackOnlyCount,
       aircraft,
     });
   }
@@ -420,9 +470,18 @@ export class InjectedTrafficClient {
   #restoreMergedTrafficIfNeeded() {
     if (this.stopped || this.fallbackAircraft.length === 0) return;
     const current = this.engine.publicState().integrations?.simTraffic;
-    const currentIds = new Set((Array.isArray(current?.aircraft) ? current.aircraft : [])
-      .map((entry) => Number(entry.objectId)).filter(Number.isFinite));
-    if (this.fallbackAircraft.some((entry) => !currentIds.has(Number(entry.objectId)))) {
+    const currentById = new Map((Array.isArray(current?.aircraft) ? current.aircraft : [])
+      .map((entry) => [Number(entry?.objectId), entry])
+      .filter(([id]) => Number.isFinite(id)));
+    const needsRestore = this.fallbackAircraft.some((fallback) => {
+      const existing = currentById.get(Number(fallback.objectId));
+      if (!existing) return true;
+      if (fallback.scheduleEnriched && clean(fallback.state) && clean(existing.state).toLowerCase() !== clean(fallback.state).toLowerCase()) return true;
+      return TRAFFIC_TEXT_FIELDS.some((field) => clean(fallback[field]) && !clean(existing[field]))
+        || (trafficNumber(fallback.etdSeconds) !== null && trafficNumber(existing.etdSeconds) === null)
+        || (trafficNumber(fallback.etaSeconds) !== null && trafficNumber(existing.etaSeconds) === null);
+    });
+    if (needsRestore) {
       queueMicrotask(() => {
         if (!this.stopped) this.#publishMergedTraffic();
       });

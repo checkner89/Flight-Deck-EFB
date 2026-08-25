@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.2';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.3';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.2';
+} from './flight-phases.js?v=1.7.3';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -451,6 +451,11 @@ const elements = {
   updateDialog: $('#update-dialog'),
   updateDialogTitle: $('#update-dialog-title'),
   updateDialogDetail: $('#update-dialog-detail'),
+  updateDialogCurrentVersion: $('#update-dialog-current-version'),
+  updateDialogTargetVersion: $('#update-dialog-target-version'),
+  updateDialogNotesPanel: $('#update-dialog-notes-panel'),
+  updateDialogNotesTitle: $('#update-dialog-notes-title'),
+  updateDialogNotes: $('#update-dialog-notes'),
   updateDialogProgress: $('#update-dialog-progress'),
   updateDialogProgressLabel: $('#update-dialog-progress-label'),
   updateDialogDownload: $('#update-dialog-download'),
@@ -3984,10 +3989,66 @@ async function afterAuthentication() {
   }
 }
 
+function releaseNotesText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map((entry) => typeof entry === 'string' ? entry : entry?.note || '').filter(Boolean).join('\n');
+  return '';
+}
+
+function renderUpdateDialogNotes(value, version = '') {
+  if (!elements.updateDialogNotes || !elements.updateDialogNotesPanel) return;
+  const raw = releaseNotesText(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\r/g, '')
+    .trim();
+  elements.updateDialogNotes.replaceChildren();
+  elements.updateDialogNotesTitle.textContent = version ? `Neu in ${version}` : 'Änderungen';
+  if (!raw) {
+    elements.updateDialogNotesPanel.hidden = true;
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  let list = null;
+  const flushList = () => {
+    if (list) fragment.append(list);
+    list = null;
+  };
+  for (const sourceLine of raw.split('\n').slice(0, 80)) {
+    const line = sourceLine.trim();
+    if (!line || /^>\s*Flight simulation/i.test(line)) continue;
+    if (/^#{1,4}\s+/.test(line)) {
+      flushList();
+      const heading = document.createElement('strong');
+      heading.className = 'update-note-heading';
+      heading.textContent = line.replace(/^#{1,4}\s+/, '').replace(/\*\*/g, '');
+      fragment.append(heading);
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      list ||= document.createElement('ul');
+      const item = document.createElement('li');
+      item.textContent = line.replace(/^[-*]\s+/, '').replace(/\*\*/g, '');
+      list.append(item);
+      continue;
+    }
+    flushList();
+    const paragraph = document.createElement('p');
+    paragraph.textContent = line.replace(/\*\*/g, '');
+    fragment.append(paragraph);
+  }
+  flushList();
+  elements.updateDialogNotes.append(fragment);
+  elements.updateDialogNotesPanel.hidden = elements.updateDialogNotes.childElementCount === 0;
+}
+
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.7.0';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.7.3';
   elements.updateVersion.textContent = `v${currentVersion}`;
+  if (elements.updateDialogCurrentVersion) elements.updateDialogCurrentVersion.textContent = `v${currentVersion}`;
+  if (elements.updateDialogTargetVersion) elements.updateDialogTargetVersion.textContent = status.releaseName ? `v${status.releaseName}` : '—';
+  renderUpdateDialogNotes(status.releaseNotes, status.releaseName ? `v${status.releaseName}` : '');
   const states = {
     manual: t('updateReadyManual'), idle: t('updateReady'), checking: t('checkingUpdates'),
     available: t('updateAvailable'), downloading: t('downloadingUpdate'), downloaded: t('updateDownloaded'),
@@ -4037,7 +4098,7 @@ async function checkForUpdate({ startup = false } = {}) {
   const existing = await refreshUpdateStatus().catch(() => null);
   if (existing?.canManage === false) return existing;
   if (elements.checkUpdate) elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', canManage: existing?.canManage });
+  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.7.3', canManage: existing?.canManage });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
@@ -4045,7 +4106,7 @@ async function checkForUpdate({ startup = false } = {}) {
     renderUpdateStatus(data);
     return data;
   } catch (error) {
-    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message, canManage: existing?.canManage };
+    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.3', detail: error.message, canManage: existing?.canManage };
     renderUpdateStatus(failed);
     if (!startup) throw error;
     return failed;
@@ -4062,7 +4123,7 @@ async function downloadAvailableUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.3', detail: error.message });
   } finally {
     elements.updateDialogDownload.disabled = false;
   }
@@ -4077,7 +4138,7 @@ async function installDownloadedUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.0', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.3', detail: error.message });
     if (elements.installUpdate) elements.installUpdate.disabled = false;
     if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = false;
   }
