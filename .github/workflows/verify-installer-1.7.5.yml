@@ -1,0 +1,96 @@
+name: Verify Installer 1.7.5
+
+on:
+  push:
+    branches:
+      - release/1.7.5-installer-legal
+    paths:
+      - '.github/workflows/verify-installer-1.7.5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: release/1.7.5-installer-legal
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Synchronize 1.7.5 source and docs
+        shell: pwsh
+        run: |
+          $files = @(
+            'public/index.html',
+            'public/app.js',
+            'public/service-worker.js',
+            'src/server.mjs',
+            'README.md'
+          )
+          foreach ($file in $files) {
+            $text = Get-Content $file -Raw
+            $text = $text.Replace('1.7.4', '1.7.5')
+            Set-Content -Path $file -Value $text -NoNewline
+          }
+
+          $changelog = Get-Content 'CHANGELOG.md' -Raw
+          if ($changelog -notmatch '(?m)^## 1\.7\.5\b') {
+            $entry = @'
+          ## 1.7.5 — Installer Agreement & Legal Transparency
+
+          - Added a proper assisted Windows Setup **License Agreement** page. Flight Deck EFB remains MIT licensed; the installer acknowledgement explicitly does not remove, reduce or contradict MIT rights.
+          - Added simulation-only, no-real-world-navigation, local-network, privacy and third-party acknowledgements to the installer agreement.
+          - Added a dedicated scrollable **Third-party notices** Setup page containing only software, data sources and compatibility services actually relevant to Flight Deck EFB.
+          - Added an **Additional Tasks** Setup page with a user-selectable **Create a Desktop Shortcut** option while keeping the Start Menu shortcut.
+          - Uninstall behavior remains conservative: Flight Deck EFB user data is not silently deleted by uninstall/reinstall.
+          - Added permanent installer regression checks so future Windows releases must retain MIT licensing, legal pages, shortcut selection and non-destructive uninstall behavior.
+
+          '@
+            $changelog = $changelog -replace '(?s)^(# Flight Deck EFB changelog\s*)', "`$1`r`n$entry"
+            Set-Content -Path 'CHANGELOG.md' -Value $changelog -NoNewline
+          }
+
+      - name: Install dependencies and synchronize lockfile
+        run: npm install
+
+      - name: Verify installer legal contract
+        run: |
+          node scripts/verify-installer-legal.mjs
+          node --check public/app.js
+          node --check public/service-worker.js
+          node --check src/server.mjs
+
+      - name: Build real Windows NSIS installer
+        run: npm run dist
+
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.7.5') { throw "Unexpected package version: $version" }
+          $installer = "dist/Flight-Deck-EFB-Setup-$version.exe"
+          if (!(Test-Path $installer)) { throw "Installer missing: $installer" }
+          if ((Get-Item $installer).Length -lt 50000000) { throw 'Installer is unexpectedly small.' }
+          if (!(Test-Path 'dist/latest.yml')) { throw 'latest.yml missing.' }
+          Write-Host "NSIS installer compiled successfully: $installer"
+
+      - name: Commit materialized 1.7.5 files
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json public/index.html public/app.js public/service-worker.js src/server.mjs README.md CHANGELOG.md
+          if (git diff --cached --quiet) {
+            Write-Host 'No materialized changes to commit.'
+          } else {
+            git commit -m 'Finalize Flight Deck EFB 1.7.5 installer release'
+            git push origin HEAD:release/1.7.5-installer-legal
+          }
