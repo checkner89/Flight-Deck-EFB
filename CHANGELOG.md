@@ -1,5 +1,13 @@
 # Flight Deck EFB changelog
 
+## 1.7.10 — Airport Focus & Taxi Readability
+
+- Added **Airport Focus** to Taxi Navigation. It is enabled by default and masks almost all map context outside the airport boundary while keeping the operational airport vectors fully visible.
+- Added an **AIRPORT** map toggle so the surrounding OpenStreetMap context can be restored at any time.
+- Made **PLAN TAXI** a high-contrast primary action in both light and dark themes.
+- Improved contrast of the **APPS** button and **GROUND NAVIGATION** toolbar label, especially in light mode.
+- Airport Focus preference is stored locally per device.
+
 ## 1.7.9 — Real Airport Map & Standalone Taxi Planning
 
 - Taxi Navigation now always has an **OpenStreetMap basemap**, so taxiways, roads, terminal context and buildings remain visible even with MSFS/SimConnect offline.

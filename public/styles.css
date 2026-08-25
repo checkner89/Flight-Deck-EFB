@@ -5583,3 +5583,67 @@ html[data-theme="light"] .live-traffic-motion strong { color: #17313d; }
   .live-traffic-tabs { grid-column: 1 / -1; order: 3; overflow-x: auto; }
   .live-traffic-trust-note { grid-template-columns: 1fr; }
 }
+
+
+/* 1.7.10 — Taxi readability and Airport Focus */
+.plan-button {
+  min-width: 122px;
+  justify-content: center;
+  border-color: #5bc9bd !important;
+  background: linear-gradient(180deg, #bdf8f1, #9ee9df) !important;
+  color: #073936 !important;
+  font-weight: 900 !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 14px rgba(0, 104, 98, 0.18);
+}
+.plan-button:hover {
+  border-color: #279f95 !important;
+  background: linear-gradient(180deg, #d1fff9, #a9eee5) !important;
+  color: #042e2c !important;
+}
+.app-home-button {
+  border-color: rgba(141, 194, 204, 0.42) !important;
+  background: rgba(14, 38, 51, 0.92) !important;
+  color: #e9fbfd !important;
+  font-weight: 900 !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+}
+.app-home-button:hover {
+  border-color: rgba(93, 224, 207, 0.7) !important;
+  background: rgba(21, 63, 72, 0.98) !important;
+  color: #c9fff9 !important;
+}
+.app-toolbar-context {
+  color: #b7ced8 !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+}
+#airport-focus-button.active {
+  border-color: rgba(25, 184, 170, 0.78) !important;
+  background: rgba(18, 203, 185, 0.19) !important;
+  color: #77f4e8 !important;
+  box-shadow: inset 0 0 0 1px rgba(119, 244, 232, 0.12), 0 6px 18px rgba(0, 0, 0, 0.14);
+}
+html[data-theme="light"] .app-home-button {
+  border-color: #a8bdc7 !important;
+  background: #ffffff !important;
+  color: #173846 !important;
+  box-shadow: 0 4px 13px rgba(38, 66, 80, 0.13);
+}
+html[data-theme="light"] .app-home-button:hover {
+  border-color: #64a9a3 !important;
+  background: #eaf8f6 !important;
+  color: #0c554f !important;
+}
+html[data-theme="light"] .app-toolbar-context {
+  color: #425f6c !important;
+}
+html[data-theme="light"] #airport-focus-button.active {
+  border-color: #5aaba3 !important;
+  background: #dff5f1 !important;
+  color: #075d56 !important;
+}
+html[data-theme="light"] .map-attribution {
+  background: rgba(247, 250, 252, 0.86);
+  color: #496875;
+}

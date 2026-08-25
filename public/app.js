@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.9';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.10';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,8 +6,8 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.9';
-import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.9';
+} from './flight-phases.js?v=1.7.10';
+import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.10';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -44,6 +44,7 @@ const elements = {
   fitButton: $('#fit-button'),
   fullscreenButton: $('#fullscreen-button'),
   refreshMapButton: $('#refresh-map-button'),
+  airportFocusButton: $('#airport-focus-button'),
   mapStatus: $('#map-status'),
   mapAirport: $('#map-airport'),
   mapStatusText: $('#map-status-text'),
@@ -620,7 +621,10 @@ const taxiBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.
   attribution: '&copy; OpenStreetMap contributors',
 }).addTo(map);
 
+let airportFocusEnabled = localStorage.getItem('flight-deck-airport-focus') !== 'false';
+
 for (const [name, zIndex] of [
+  ['airportFocusMask', 205],
   ['airportBoundary', 210],
   ['airportAreas', 220],
   ['airportRunways', 240],
@@ -634,6 +638,7 @@ for (const [name, zIndex] of [
 }
 
 const layers = {
+  airportFocus: L.layerGroup().addTo(map),
   airport: L.layerGroup().addTo(map),
   airportLabels: L.layerGroup().addTo(map),
   routeHalo: null,
@@ -1221,6 +1226,53 @@ function airportMapPalette() {
   };
 }
 
+function syncAirportFocusButton() {
+  if (!elements.airportFocusButton) return;
+  elements.airportFocusButton.classList.toggle('active', airportFocusEnabled);
+  elements.airportFocusButton.setAttribute('aria-pressed', String(airportFocusEnabled));
+  elements.airportFocusButton.title = airportFocusEnabled ? 'Airport Focus ausschalten' : 'Nur Flughafen hervorheben';
+}
+
+function airportFocusHole(mapData) {
+  const aerodrome = (mapData?.features || []).find((feature) => (
+    feature.kind === 'aerodrome'
+    && feature.geometry === 'polygon'
+    && Array.isArray(feature.coordinates)
+    && feature.coordinates.length >= 4
+  ));
+  if (aerodrome) return aerodrome.coordinates.map(([lat, lon]) => [lat, lon]);
+  if (!Array.isArray(mapData?.bounds) || mapData.bounds.length < 2) return null;
+  const bounds = L.latLngBounds(mapData.bounds);
+  if (!bounds.isValid()) return null;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  return [[sw.lat, sw.lng], [sw.lat, ne.lng], [ne.lat, ne.lng], [ne.lat, sw.lng], [sw.lat, sw.lng]];
+}
+
+function renderAirportFocus(mapData = loadedAirportMapData) {
+  layers.airportFocus.clearLayers();
+  taxiBasemap.setOpacity(airportFocusEnabled ? 0.58 : 0.78);
+  syncAirportFocusButton();
+  if (!airportFocusEnabled || !mapData) return;
+  const hole = airportFocusHole(mapData);
+  if (!hole?.length) return;
+  const airportBounds = L.latLngBounds(hole);
+  const outer = airportBounds.pad(4.5);
+  const sw = outer.getSouthWest();
+  const ne = outer.getNorthEast();
+  const shell = [[sw.lat, sw.lng], [sw.lat, ne.lng], [ne.lat, ne.lng], [ne.lat, sw.lng], [sw.lat, sw.lng]];
+  const light = document.documentElement.dataset.theme === 'light';
+  L.polygon([shell, hole], {
+    pane: 'airportFocusMask',
+    interactive: false,
+    stroke: false,
+    fill: true,
+    fillRule: 'evenodd',
+    fillColor: light ? '#e7eef2' : '#06121b',
+    fillOpacity: light ? 0.94 : 0.92,
+  }).addTo(layers.airportFocus);
+}
+
 function renderAirportMap(mapData) {
   layers.airport.clearLayers();
   layers.airportLabels.clearLayers();
@@ -1447,6 +1499,7 @@ function renderAirportMap(mapData) {
   }
 
   latestAirportBounds = Array.isArray(mapData.bounds) ? L.latLngBounds(mapData.bounds) : null;
+  renderAirportFocus(mapData);
   loadedAirportIcao = mapData.icao;
   loadedAirportMapData = mapData;
   renderGate(latestState?.gate || latestState?.taxi?.pathMetadata?.destination || null);
@@ -4875,7 +4928,7 @@ async function start() {
   }
 
   if ('serviceWorker' in navigator && !/Electron\//i.test(navigator.userAgent)) {
-    navigator.serviceWorker.register('/service-worker.js?v=1.7.9', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/service-worker.js?v=1.7.10', { updateViaCache: 'none' })
       .then((registration) => registration.update())
       .catch(() => {});
   }
@@ -4925,6 +4978,12 @@ elements.fitButton.addEventListener('click', fitRoute);
 elements.refreshMapButton.addEventListener('click', () => {
   if (latestState) loadAirportMap(latestState, { forceRefresh: true }).catch(() => {});
 });
+elements.airportFocusButton?.addEventListener('click', () => {
+  airportFocusEnabled = !airportFocusEnabled;
+  localStorage.setItem('flight-deck-airport-focus', String(airportFocusEnabled));
+  renderAirportFocus();
+});
+syncAirportFocusButton();
 map.on('dragstart', () => {
   followAircraft = false;
   syncFollowButton();
