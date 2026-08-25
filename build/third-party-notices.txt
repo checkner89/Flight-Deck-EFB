@@ -1,0 +1,106 @@
+Flight Deck EFB third-party notices
+===================================
+
+Flight Deck EFB is an independent flight-simulation companion. Product names and trademarks belong to their respective owners. Compatibility references do not imply sponsorship, certification, endorsement or affiliation.
+
+OpenStreetMap
+-------------
+Flight Deck EFB can use OpenStreetMap / Overpass data for airport geometry and map context.
+
+© OpenStreetMap contributors
+https://www.openstreetmap.org/copyright
+
+OpenStreetMap data is made available under the Open Data Commons Open Database License (ODbL) 1.0 and remains subject to OpenStreetMap attribution and usage policies.
+
+OurAirports
+-----------
+Flight Deck EFB uses OurAirports airport and runway datasets for local/offline airport metadata and fallback information.
+
+https://ourairports.com/data/
+
+OurAirports publishes its downloadable airport datasets as public-domain data.
+
+Esri World Imagery
+------------------
+Flight Deck EFB can optionally display Esri World Imagery. Imagery and attribution remain subject to Esri provider terms.
+
+Electron / Chromium / Node.js
+-----------------------------
+The Windows desktop application is built with Electron and includes Chromium/Node.js runtime components and their applicable open-source notices.
+
+https://www.electronjs.org/
+https://www.chromium.org/
+https://nodejs.org/
+
+Leaflet
+-------
+Leaflet is used for interactive map rendering and is distributed under the BSD 2-Clause License.
+
+https://leafletjs.com/
+
+node-simconnect
+---------------
+Flight Deck EFB uses node-simconnect for the local Microsoft Flight Simulator SimConnect interface. The package is distributed under LGPL-3.0-or-later.
+
+https://github.com/EvenAR/node-simconnect
+
+qrcode
+------
+Flight Deck EFB uses the qrcode package to generate local pairing QR codes. The package retains its own open-source license.
+
+https://github.com/soldair/node-qrcode
+
+electron-builder / electron-updater / NSIS
+-------------------------------------------
+Flight Deck EFB uses electron-builder, electron-updater and NSIS-generated installer components for Windows packaging and GitHub Release updates. These components retain their respective licenses and notices.
+
+https://www.electron.build/
+https://nsis.sourceforge.io/
+
+Microsoft Flight Simulator / SimConnect / MSFS 2024 EFB SDK
+------------------------------------------------------------
+Flight Deck EFB optionally connects to Microsoft Flight Simulator through SimConnect and can build a native MSFS 2024 EFB package using the SDK/template already installed by the user.
+
+Microsoft/Asobo SDK, template and simulator files are not redistributed by Flight Deck EFB and remain subject to Microsoft/Asobo terms.
+
+SayIntentions.AI
+----------------
+Optional active-flight/SAPI compatibility. No SayIntentions account credential or API key is distributed with Flight Deck EFB. Living World traffic data available to Flight Deck is limited to information exposed through documented/local simulator interfaces.
+
+BeyondATC
+---------
+Optional local read-only log compatibility. Flight Deck EFB does not distribute BeyondATC code or assets.
+
+SimBrief / Navigraph
+--------------------
+Flight Deck EFB can use the SimBrief latest-OFP endpoint with a user-supplied Pilot ID/username. SimBrief/Navigraph terms apply. Standalone Navigraph chart embedding remains disabled unless a separately approved integration is available.
+
+AviationWeather.gov
+-------------------
+Flight Deck EFB can request METAR/TAF data from AviationWeather.gov. Provider terms and operational disclaimers apply.
+
+VATSIM / IVAO
+-------------
+Optional public live-network data can be requested when selected by the user. Network API, data and usage policies apply.
+
+Little Navmap
+-------------
+Optional local WebAPI compatibility. Flight Deck EFB does not bundle Little Navmap code or databases.
+
+Fenix Simulations
+-----------------
+Compatibility uses the official local Fenix Remote EFB/Web MCDU and MSFS Input Events exposed by the user's installed/running aircraft. Flight Deck EFB does not bundle a private or unofficial Fenix variable catalog.
+
+PMDG
+----
+Compatibility can discover SDK header/options files already installed with the user's PMDG product and derive available event identifiers at runtime. Flight Deck EFB does not bundle, copy or redistribute PMDG SDK source/header content.
+
+FSDreamTeam / GSX
+-----------------
+Compatibility uses local installation/process detection and documented GSX simulator variables. Flight Deck EFB does not bundle GSX code/assets and does not emulate a general remote GSX service API.
+
+Full notices
+------------
+The complete current notices are installed as THIRD_PARTY_NOTICES.md with Flight Deck EFB and are also maintained in the project repository.
+
+Flight simulation use only — not for real-world navigation.
