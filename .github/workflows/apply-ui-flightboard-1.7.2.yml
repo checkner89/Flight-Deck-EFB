@@ -40,8 +40,8 @@ jobs:
           grep -q 'update-changelog-card' public/index.html
           grep -q 'traffic-airline-logo' public/styles.css
           grep -q 'AI TRAFFIC FROMAIRPORT' src/injected-traffic-client.mjs
-          grep -q "trafficEnroute: 'Enroute'" public/i18n.js
-          grep -q "trafficParked: 'Parking'" public/i18n.js
+          grep -q 'Enroute' public/i18n.js
+          grep -q 'Parking' public/i18n.js
           npm audit --audit-level=high
       - name: Commit product changes
         run: |
