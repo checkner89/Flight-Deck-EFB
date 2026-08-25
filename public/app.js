@@ -2996,9 +2996,9 @@ function renderFlightboard(state) {
   for (const entry of model.rows) {
     const status = entry.liveStatus || {};
     const [airlineCode, airlineName] = liveTrafficAirline(entry);
-    const altitude = Number(entry.altitudeFeet);
-    const groundSpeed = Number(entry.groundSpeed);
-    const distance = Number(status.distanceNm);
+    const altitude = entry.altitudeFeet === null || entry.altitudeFeet === undefined || entry.altitudeFeet === '' ? null : Number(entry.altitudeFeet);
+    const groundSpeed = entry.groundSpeed === null || entry.groundSpeed === undefined || entry.groundSpeed === '' ? null : Number(entry.groundSpeed);
+    const distance = status.distanceNm === null || status.distanceNm === undefined || status.distanceNm === '' ? null : Number(status.distanceNm);
     const row = document.createElement('div');
     row.className = 'flightboard-row live-traffic-row';
     row.setAttribute('role', 'row');
