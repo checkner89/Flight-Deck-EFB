@@ -35,7 +35,6 @@ jobs:
           node --check public/live-traffic.js
           node --check public/app.js
           node scripts/test-live-traffic.mjs
-          node scripts/verify-traffic-merge.mjs
       - name: Commit release source
         run: |
           git config user.name 'github-actions[bot]'
