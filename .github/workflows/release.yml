@@ -58,13 +58,19 @@ jobs:
           node --check src/ground-safety-engine.mjs
           node --check src/route-sync-service.mjs
           node --check src/flight-intelligence-engine.mjs
+          node --check src/msfs-efb-package-builder.mjs
           node --check src/gsx-client.mjs
           node --check src/state-engine.mjs
           node --check public/flight-phases.js
           node --check public/app.js
           node --check public/si-operations.js
           node --check public/i18n.js
+          node scripts/verify-msfs-efb-builder.mjs
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
+          $builder = Get-Content 'src/msfs-efb-package-builder.mjs' -Raw
+          if ($builder -notmatch 'fspackagetool\.exe' -or $builder -notmatch 'Community2024' -or $builder -notmatch 'InstalledPackagesPath') {
+            throw 'MSFS EFB Community package builder contract is incomplete.'
+          }
           $native = Get-Content 'MSFS-2024-EFB-App/src/FlightDeckEFB.tsx' -Raw
           if ($native -notmatch 'GET_EFB_ROUTE' -or $native -notmatch 'AvionicsRouteSync') {
             throw 'Native MSFS EFB route bridge contract is incomplete.'

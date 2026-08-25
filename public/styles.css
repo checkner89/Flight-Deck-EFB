@@ -5422,3 +5422,16 @@ html[data-theme="light"] .home-flight-facts>span:nth-child(3){background:#fff3cf
   .route-sync-facts { grid-template-columns: 1fr 1fr; }
   .flight-assistant-item { align-items: flex-start; }
 }
+
+
+/* 1.7.1 · MSFS 2024 native EFB package builder */
+.msfs-efb-builder-card { grid-column: 1 / -1; }
+.builder-path-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:14px 0; }
+.builder-path-grid label { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.builder-path-grid label > span { color:var(--muted, #8faaba); font-size:12px; font-weight:700; letter-spacing:.02em; }
+.builder-path-grid input { width:100%; min-width:0; }
+.builder-progress { height:6px; overflow:hidden; margin:12px 0 4px; border-radius:99px; background:rgba(143,170,186,.12); }
+.builder-progress > i { display:block; width:0; height:100%; border-radius:inherit; background:currentColor; transition:width .25s ease; }
+.builder-actions { flex-wrap:wrap; }
+.msfs-efb-builder-card .safety-note { display:block; margin-top:10px; }
+@media (max-width:900px) { .builder-path-grid { grid-template-columns:1fr; } }

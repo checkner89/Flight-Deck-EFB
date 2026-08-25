@@ -1,5 +1,14 @@
 # Flight Deck EFB changelog
 
+## 1.7.1 — Native EFB Community Package Builder
+
+- Added a Windows-hosted MSFS 2024 EFB Package Builder that detects the locally installed SDK/EFB template and uses the installed `fspackagetool.exe` instead of redistributing Microsoft SDK files.
+- Added automatic `Community2024` discovery by reading `InstalledPackagesPath` from the user's existing `UserCfg.opt`; Flight Deck never modifies that file.
+- Added explicit **Build Package** and **Build & Install** actions plus ZIP export and Explorer output access. Community installation is never performed without an explicit user action.
+- Builder work happens in an isolated local copy of the SDK EFB sample, preserving compatibility with the user's installed SDK project format.
+- SDK/Community paths and detailed build output remain Windows-host-only; paired tablets receive only sanitized builder readiness/progress state.
+- Added builder status, progress, path overrides and diagnostics to Settings, plus release-CI contract checks for the new service and UI.
+
 ## 1.7.0 — Phase 3 Native EFB & Flight Intelligence
 
 - Upgraded the MSFS 2024 native EFB source from a fixed-port iframe wrapper to a native route bridge with automatic Flight Deck host discovery across ports 39871–39890.

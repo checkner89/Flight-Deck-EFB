@@ -1,4 +1,4 @@
-# Third-party notices — Flight Deck EFB 1.7.0
+# Third-party notices — Flight Deck EFB 1.7.1
 
 Flight Deck EFB is an independent flight-simulation companion. It is not affiliated with or endorsed by Microsoft/Asobo Studio, SayIntentions.AI, BeyondATC, Navigraph, SimBrief, Fenix Simulations, PMDG, FSDreamTeam/GSX, Little Navmap, VATSIM, IVAO, OpenStreetMap, OurAirports or Esri unless explicitly stated otherwise.
 
@@ -36,3 +36,8 @@ Copyright © 2026 Christoph Heckner. Flight Deck EFB application code is provide
 The Electron distribution retains its runtime/Chromium notices. Individual dependency licenses remain with their packages and packaged resources as applicable. See `PRIVACY.md` for local storage, LAN/loopback access, optional network requests, native-route data flow, exports and deletion.
 
 Flight simulation use only — not for real-world navigation.
+
+
+## Microsoft Flight Simulator 2024 SDK build integration
+
+Flight Deck EFB does not redistribute the Microsoft Flight Simulator SDK or EFB template. The optional local package builder operates on the SDK/template installed by the user and invokes the user's installed `fspackagetool.exe`. Those Microsoft files retain their original terms and remain local to the user's PC.
