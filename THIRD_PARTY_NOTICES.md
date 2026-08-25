@@ -1,6 +1,10 @@
-# Third-party notices — Flight Deck EFB 1.7.3
+# Third-party notices — Flight Deck EFB 1.7.5
 
 Flight Deck EFB is an independent flight-simulation companion. It is not affiliated with or endorsed by Microsoft/Asobo Studio, SayIntentions.AI, BeyondATC, Navigraph, SimBrief, Fenix Simulations, PMDG, FSDreamTeam/GSX, Little Navmap, VATSIM, IVAO, OpenStreetMap, OurAirports or Esri unless explicitly stated otherwise.
+
+## Installer notice
+
+The Windows assisted installer displays a concise third-party notice before installation. This document remains the fuller installed/repository notice. The installer acknowledgement does not replace or restrict the MIT License that governs Flight Deck EFB application code.
 
 ## Bundled/open-source components
 
@@ -18,7 +22,7 @@ Flight Deck EFB is an independent flight-simulation companion. It is not affilia
 
 - Microsoft Flight Simulator / SimConnect — local simulator interface; Microsoft/Asobo terms and SDK terms apply.
 - Microsoft Flight Simulator 2024 EFB / Planned Route API — optional native adapter source uses the installed SDK template and documented route-read/event interfaces. Microsoft SDK/template/build files are not redistributed by Flight Deck. Direct route-write APIs that remain incompletely documented/stubbed are deliberately not used.
-- SayIntentions.AI — optional active-flight/SAPI compatibility. No SayIntentions credential/API key is distributed with Flight Deck.
+- SayIntentions.AI — optional active-flight/SAPI compatibility. No SayIntentions credential/API key is distributed with Flight Deck. Living World traffic shown in Flight Deck is limited to information exposed by documented/local simulator interfaces; Flight Deck does not reverse-engineer a private Living World traffic feed.
 - BeyondATC — optional local, read-only log compatibility. No BeyondATC code/assets are distributed.
 - SimBrief — latest-OFP endpoint used with a Pilot ID/username; SimBrief/Navigraph terms apply.
 - AviationWeather.gov — requested METAR/TAF data; provider terms/operational disclaimers apply.
@@ -26,7 +30,7 @@ Flight Deck EFB is an independent flight-simulation companion. It is not affilia
 - Little Navmap — optional local WebAPI compatibility. Little Navmap code/data is not bundled.
 - Fenix Simulations — compatibility uses the official local Remote EFB/Web MCDU and MSFS Input Events available from the user's installed/running aircraft. Flight Deck does not distribute a private/unofficial Fenix variable catalog.
 - PMDG — compatibility discovers SDK header/options files already installed with the user's PMDG product. Flight Deck parses event identifiers at runtime and **does not bundle, copy or redistribute PMDG SDK source/header content**.
-- FSDreamTeam/GSX — compatibility uses local installation/process detection and documented GSX variables. Flight Deck does not bundle GSX code/assets and does not emulate a general GSX remote-service API. Phase-3 Turnaround coordination remains advisory and does not automatically start/cancel GSX services.
+- FSDreamTeam/GSX — compatibility uses local installation/process detection and documented GSX variables. Flight Deck does not bundle GSX code/assets and does not emulate a general GSX remote-service API. Turnaround coordination remains advisory and does not automatically start/cancel GSX services.
 - Navigraph — standalone chart embedding remains disabled pending an approved, license-compliant integration.
 
 Product names and trademarks are property of their respective owners. Their appearance identifies optional compatibility only and does not imply sponsorship, certification or affiliation.
@@ -36,7 +40,6 @@ Copyright © 2026 Christoph Heckner. Flight Deck EFB application code is provide
 The Electron distribution retains its runtime/Chromium notices. Individual dependency licenses remain with their packages and packaged resources as applicable. See `PRIVACY.md` for local storage, LAN/loopback access, optional network requests, native-route data flow, exports and deletion.
 
 Flight simulation use only — not for real-world navigation.
-
 
 ## Microsoft Flight Simulator 2024 SDK build integration
 
