@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.4.4';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.5.0';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,7 +6,7 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.4.4';
+} from './flight-phases.js?v=1.5.0';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -139,10 +139,12 @@ const elements = {
   manualClearanceMessage: $('#manual-clearance-message'),
   applyManualClearance: $('#apply-manual-clearance'),
   settingsMsfsDot: $('#settings-msfs-dot'),
+  settingsLnmDot: $('#settings-lnm-dot'),
   settingsAtcDot: $('#settings-atc-dot'),
   settingsNavDot: $('#settings-nav-dot'),
   settingsGsxDot: $('#settings-gsx-dot'),
   settingsMsfs: $('#settings-msfs'),
+  settingsLnm: $('#settings-lnm'),
   settingsAtc: $('#settings-atc'),
   settingsNav: $('#settings-nav'),
   settingsGsx: $('#settings-gsx'),
@@ -3391,11 +3393,14 @@ function renderEfb(state) {
   elements.atcClearanceText.textContent = clearance?.text || 'Noch keine Taxifreigabe empfangen.';
   elements.atcClearanceTime.textContent = formatTime(clearance?.time);
 
+  const littleNavmap = state.integrations?.littleNavmap || {};
   setStatusDot(elements.settingsMsfsDot, simConnection.status);
+  setStatusDot(elements.settingsLnmDot, littleNavmap.status);
   setStatusDot(elements.settingsAtcDot, atcConnection?.status);
   setStatusDot(elements.settingsNavDot, navStatus);
   setStatusDot(elements.settingsGsxDot, state.connections?.gsx?.status || gsxStatus);
   elements.settingsMsfs.textContent = simConnection.detail || 'Wird gesucht';
+  elements.settingsLnm.textContent = littleNavmap.detail || 'WebAPI wird gesucht';
   elements.settingsAtc.textContent = `${effectiveProvider === 'auto' ? 'AUTO' : atcProviderLabel(effectiveProvider)} · ${atcConnection?.detail || 'wartet'}`;
   elements.settingsNav.textContent = navigraph.detail || 'Setup erforderlich';
   elements.settingsGsx.textContent = gsx.detail || 'Wird gesucht';

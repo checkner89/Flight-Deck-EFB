@@ -389,7 +389,17 @@ export class StateEngine extends EventEmitter {
           airports: [],
           controllers: [],
           atis: [],
+          pilots: [],
           detail: 'VATSIM / IVAO bei Bedarf aktualisieren',
+        },
+        littleNavmap: {
+          status: 'waiting',
+          reachable: false,
+          simulatorConnected: false,
+          updatedAt: null,
+          detail: 'Little Navmap WebAPI wird gesucht',
+          sim: null,
+          airport: null,
         },
         aviationWeather: {
           status: 'idle',
@@ -594,6 +604,7 @@ export class StateEngine extends EventEmitter {
       airports: [],
       controllers: [],
       atis: [],
+      pilots: [],
       detail: 'VATSIM / IVAO bei Bedarf aktualisieren',
     };
     this.state.integrations.flightOperations = emptyFlightOperations();
@@ -693,6 +704,8 @@ export class StateEngine extends EventEmitter {
         destinationPosition: this.state.flight.destinationPosition || flight.destinationPosition || null,
         departureRunway: this.state.flight.departureRunway || flight.departureRunway || null,
         arrivalRunway: this.state.flight.arrivalRunway || flight.arrivalRunway || null,
+        sid: this.state.flight.sid || flight.sid || null,
+        star: this.state.flight.star || flight.star || null,
         flightPlanRoute: this.state.flight.flightPlanRoute || flight.route || null,
       };
     }
@@ -910,7 +923,7 @@ export class StateEngine extends EventEmitter {
   }
 
   applyComms(comms) {
-    const timeline = Array.isArray(comms) ? comms.slice(-100).map((entry) => ({
+    const timeline = Array.isArray(comms) ? comms.slice(-2_000).map((entry) => ({
       id: numberOrNull(entry.id),
       station: textOrEmpty(entry.station_name, entry.station, entry.ident),
       ident: textOrEmpty(entry.ident).toUpperCase(),

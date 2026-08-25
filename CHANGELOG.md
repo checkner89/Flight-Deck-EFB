@@ -1,5 +1,15 @@
 # Flight Deck EFB changelog
 
+## 1.5.0 — Phase 1 connectors
+
+- Hardened SimConnect health reporting with a telemetry watchdog while preserving transport connections on optional data errors.
+- Moved injected/all-object traffic fallback into the shared host so Flightboard traffic works consistently in Windows and portable/tablet-host modes.
+- Expanded SayIntentions communications history to a deduplicated 2,000-message per-flight session window while keeping incremental SAPI polling.
+- Expanded normalized SimBrief OFP data with procedures, cruise planning, distances, additional weights/fuel/timing and METAR/TAF fields.
+- Extended VATSIM and IVAO refresh data with relevant live pilots in addition to ATC and ATIS.
+- Added a local-only Little Navmap WebAPI connector on port 8965 for simulator-health cross-checks and airport metadata/weather/frequency enrichment.
+- Added Little Navmap, SimConnect data-health and traffic status to diagnostics and the Settings integration overview.
+
 ## 1.4.4 — SayIntentions operations
 
 - Selectable weather source: Auto, SayIntentions or AviationWeather.gov.

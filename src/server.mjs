@@ -10,6 +10,8 @@ import { StateEngine } from './state-engine.mjs';
 import { SayIntentionsClient } from './sayintentions-client.mjs';
 import { BeyondAtcClient } from './beyondatc-client.mjs';
 import { SimConnectClient } from './simconnect-client.mjs';
+import { InjectedTrafficClient } from './injected-traffic-client.mjs';
+import { LittleNavmapClient } from './littlenavmap-client.mjs';
 import { GsxClient } from './gsx-client.mjs';
 import { SimBriefClient } from './simbrief-client.mjs';
 import { OnlineNetworkClient } from './online-network-client.mjs';
@@ -33,7 +35,7 @@ const PUBLIC_DIR = path.join(PROJECT_DIR, 'public');
 const LEAFLET_DIR = path.join(PROJECT_DIR, 'node_modules', 'leaflet', 'dist');
 const DEFAULT_PORT = 39_871;
 const MAX_BODY_BYTES = 262_144;
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.0';
 
 const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -235,6 +237,8 @@ export async function createTaxiServer({
   let sayIntentions = null;
   let gsx = null;
   const simConnect = demo ? null : new SimConnectClient(engine);
+  const injectedTraffic = demo ? null : new InjectedTrafficClient(engine);
+  const littleNavmap = demo ? null : new LittleNavmapClient(engine);
   const facilityMapCache = new Map();
   const navigraph = {
     start() {
@@ -291,6 +295,9 @@ export async function createTaxiServer({
     const flights = await recorder.list();
     const checks = [
       { id: 'msfs', label: 'Microsoft Flight Simulator / SimConnect', status: state.connections.simConnect?.status || 'waiting', detail: state.connections.simConnect?.detail || '' },
+      { id: 'simconnect-health', label: 'SimConnect data health', status: state.integrations.simConnectHealth?.status || 'waiting', detail: state.integrations.simConnectHealth?.detail || '' },
+      { id: 'traffic', label: 'Simulator traffic', status: state.integrations.simTraffic?.status || 'waiting', detail: state.integrations.simTraffic?.detail || '' },
+      { id: 'little-navmap', label: 'Little Navmap WebAPI', status: state.integrations.littleNavmap?.status || 'waiting', detail: state.integrations.littleNavmap?.detail || '' },
       { id: 'atc', label: 'ATC source', status: activeConnectionStatus(state), detail: state.taxi?.clearance?.provider || state.atc?.selectedProvider || 'auto' },
       { id: 'gsx', label: 'GSX Pro readiness', status: state.integrations.gsx?.status || 'waiting', detail: state.integrations.gsx?.detail || '' },
       { id: 'navigraph', label: 'Navigraph account', status: state.integrations.navigraph?.status || 'configuration-required', detail: state.integrations.navigraph?.detail || '' },
@@ -377,6 +384,7 @@ export async function createTaxiServer({
       baseMap.cache = { status: 'preview', offlineReady: false };
     }
     const mapData = facilityMap ? mergeMsfsFacilityMap(baseMap, facilityMap) : baseMap;
+    littleNavmap?.getAirport(reference.icao).catch(() => {});
     return {
       ...mapData,
       planning: airportPlanningOptions(mapData),
@@ -706,6 +714,22 @@ export async function createTaxiServer({
         }
       }
 
+      if (pathname === '/api/littlenavmap/status' && request.method === 'GET') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        return json(response, 200, { littleNavmap: engine.publicState().integrations.littleNavmap });
+      }
+
+      if (pathname === '/api/littlenavmap/airport' && request.method === 'GET') {
+        if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
+        if (!littleNavmap) return json(response, 409, { error: 'Little Navmap ist im Demo-Modus nicht aktiv.' });
+        const icao = String(requestUrl.searchParams.get('icao') || '').trim().toUpperCase();
+        try {
+          return json(response, 200, { airport: await littleNavmap.getAirport(icao), state: engine.publicState() });
+        } catch (error) {
+          return json(response, 502, { error: error.message });
+        }
+      }
+
       if (pathname === '/api/simbrief/import' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         const body = await readJsonBody(request);
@@ -850,7 +874,9 @@ export async function createTaxiServer({
       if (pathname === '/api/traffic/refresh' && request.method === 'POST') {
         if (!authenticated) return json(response, 401, { error: 'Pairing erforderlich.' });
         try {
-          return json(response, 202, simConnect?.refreshTraffic() || { requested: false });
+          const primary = simConnect?.refreshTraffic() || { requested: false };
+          const fallback = injectedTraffic?.refresh() || { requested: false };
+          return json(response, 202, { requested: Boolean(primary.requested || fallback.requested), primary, fallback });
         } catch (error) {
           return json(response, 409, { error: error.message });
         }
@@ -1156,12 +1182,16 @@ export async function createTaxiServer({
     sayIntentions.start();
     beyondAtc.start();
     simConnect.start();
+    injectedTraffic.start();
+    littleNavmap.start();
     gsx.start();
     navigraph.start();
     aviationWeather.start();
     stopDataSources = () => {
       sayIntentions.stop();
       beyondAtc.stop();
+      injectedTraffic.stop();
+      littleNavmap.stop();
       simConnect.stop();
       gsx.stop();
       navigraph.stop();

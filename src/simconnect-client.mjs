@@ -76,17 +76,22 @@ export class SimConnectClient {
     this.trafficBatch = null;
     this.sentOperations = new Map();
     this.lastCoreDataAt = 0;
+    this.watchdogTimer = null;
   }
 
   start() {
     if (!this.stopped) return;
     this.stopped = false;
+    clearInterval(this.watchdogTimer);
+    this.watchdogTimer = setInterval(() => this.#watchConnection(), 5_000);
     this.#connect();
   }
 
   stop() {
     this.stopped = true;
     clearTimeout(this.retryTimer);
+    clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
     clearInterval(this.trafficPollTimer);
     this.trafficPollTimer = null;
     this.trafficPoll = null;
@@ -106,6 +111,8 @@ export class SimConnectClient {
       const { recvOpen, handle, protocol } = await this.#openCompatibleProtocol();
       this.handle = handle;
       this.protocol = protocol;
+      this.lastCoreDataAt = 0;
+      this.engine.setIntegration('simConnectHealth', { status: 'waiting', detail: `Transport verbunden · ${this.#protocolLabel(protocol)} · warte auf Telemetrie`, protocol: this.#protocolLabel(protocol), updatedAt: new Date().toISOString() });
       this.eventIds.clear();
       this.nextEventId = 1_000;
       this.engine.setConnection('simConnect', 'connected', `${recvOpen.applicationName || 'MSFS verbunden'} · ${this.#protocolLabel(protocol)}`);
@@ -160,6 +167,37 @@ export class SimConnectClient {
     if (protocol === Protocol.KittyHawk) return 'MSFS 2024';
     if (protocol === Protocol.SunRise) return 'MSFS 2024 (Legacy)';
     return 'Legacy SimConnect';
+  }
+
+  #watchConnection() {
+    if (!this.handle) return;
+    const ageMs = this.lastCoreDataAt ? Date.now() - this.lastCoreDataAt : null;
+    if (ageMs === null) {
+      this.engine.setIntegration('simConnectHealth', {
+        status: 'waiting',
+        detail: `Transport verbunden · ${this.#protocolLabel(this.protocol)} · warte auf Telemetrie`,
+        protocol: this.#protocolLabel(this.protocol),
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+    if (ageMs > 15_000) {
+      this.engine.setIntegration('simConnectHealth', {
+        status: 'limited',
+        detail: `SimConnect verbunden · Telemetrie seit ${Math.round(ageMs / 1_000)} s unverändert`,
+        protocol: this.#protocolLabel(this.protocol),
+        lastCoreDataAt: new Date(this.lastCoreDataAt).toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+    this.engine.setIntegration('simConnectHealth', {
+      status: 'ready',
+      detail: `SimConnect Telemetrie aktiv · ${this.#protocolLabel(this.protocol)}`,
+      protocol: this.#protocolLabel(this.protocol),
+      lastCoreDataAt: new Date(this.lastCoreDataAt).toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   #rememberOperation(sendId, label, { optional = false } = {}) {

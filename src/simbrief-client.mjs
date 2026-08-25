@@ -73,6 +73,9 @@ export function summarizeSimBrief(payload, user) {
   const flight = {
     callsign: text(general.callsign || `${general.icao_airline || ''}${general.flight_number || ''}`, 24),
     flightNumber: text(general.flight_number, 16),
+    airlineIcao: text(general.icao_airline, 4)?.toUpperCase() || null,
+    airlineIata: text(general.iata_airline, 3)?.toUpperCase() || null,
+    flightRules: text(general.flight_rules || general.flight_rule, 8)?.toUpperCase() || null,
     origin: text(origin.icao_code, 4)?.toUpperCase() || null,
     destination: text(destination.icao_code, 4)?.toUpperCase() || null,
     alternate: text(alternate.icao_code, 4)?.toUpperCase() || null,
@@ -82,16 +85,28 @@ export function summarizeSimBrief(payload, user) {
     destinationPosition: position(destination),
     departureRunway: text(origin.plan_rwy, 6)?.toUpperCase() || null,
     arrivalRunway: text(destination.plan_rwy, 6)?.toUpperCase() || null,
+    sid: text(general.sid || origin.sid, 40)?.toUpperCase() || null,
+    star: text(general.star || destination.star, 40)?.toUpperCase() || null,
     route: text(general.route_ifps || general.route, 4_000),
+    routeDistanceNm: number(general.route_distance || general.distance),
+    airDistanceNm: number(general.air_distance),
     initialAltitude: text(general.initial_altitude, 12),
+    cruiseAltitudeFeet: number(general.initial_altitude || general.cruise_altitude),
+    cruiseMach: number(general.cruise_mach),
+    cruiseTasKnots: number(general.cruise_tas),
+    costIndex: number(general.costindex || general.cost_index),
     aircraftType: text(aircraft.icaocode || aircraft.icao_code, 12)?.toUpperCase() || null,
     aircraftName: text(aircraft.name, 100),
     registration: text(aircraft.reg, 20)?.toUpperCase() || null,
     passengers: number(weights.pax_count),
+    payloadPounds: number(weights.payload),
     cargoPounds: number(weights.cargo),
     zeroFuelWeightPounds: number(weights.est_zfw),
     takeoffWeightPounds: number(weights.est_tow),
     landingWeightPounds: number(weights.est_ldw),
+    maxZeroFuelWeightPounds: number(weights.max_zfw),
+    maxTakeoffWeightPounds: number(weights.max_tow),
+    maxLandingWeightPounds: number(weights.max_ldw),
     blockFuelPounds: number(fuel.plan_ramp || fuel.plan_block),
     tripFuelPounds: number(fuel.enroute_burn || fuel.plan_trip),
     taxiFuelPounds: number(fuel.taxi || fuel.plan_taxi),
@@ -104,10 +119,18 @@ export function summarizeSimBrief(payload, user) {
     estimatedOn: seconds(times.est_on),
     estimatedIn: seconds(times.est_in),
     enrouteSeconds: seconds(times.est_time_enroute),
+    blockSeconds: seconds(times.est_block),
     originMetar: text(origin.metar, 600),
+    originTaf: text(origin.taf, 1_200),
     destinationMetar: text(destination.metar, 600),
+    destinationTaf: text(destination.taf, 1_200),
+    alternateMetar: text(alternate.metar, 600),
+    alternateTaf: text(alternate.taf, 1_200),
     waypoints,
     ofpLink: safeLink(files.pdf?.link || files.pdf?.url || files.directory),
+    navlogCount: waypoints.length,
+    units: text(params.units, 16),
+    airacCycle: text(params.airac, 16),
   };
   if (!flight.origin || !flight.destination) throw new Error('Der letzte SimBrief-OFP enthält keine gültige Route.');
   const generated = number(params.time_generated || general.release_time);
@@ -134,7 +157,7 @@ export class SimBriefClient {
     url.searchParams.set(/^\d+$/.test(value) ? 'userid' : 'username', value);
     url.searchParams.set('json', '1');
     const response = await this.fetchImpl(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB/1.3.2' },
+      headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB' },
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) throw new Error(`SimBrief antwortet mit HTTP ${response.status}.`);
