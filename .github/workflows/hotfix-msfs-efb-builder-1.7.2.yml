@@ -65,7 +65,7 @@ jobs:
           verify = Path('scripts/verify-msfs-efb-builder.mjs')
           value = verify.read_text(encoding='utf-8')
           value = value.replace("  transformTemplateText,\n", "  transformTemplateText,\n  MsfsEfbPackageBuilder,\n")
-          regression = '''\nconst builder = new MsfsEfbPackageBuilder(null, { platform: 'win32' });\nbuilder.current = { ...builder.current, canBuild: true, sdk: { ready: true }, communityDirectory: null };\nbuilder.detect = async () => builder.publicStatus();\nawait assert.rejects(\n  () => builder.build(),\n  /Builder storage directory is unavailable/,\n  'build() must use the trusted internal detected state after detect()',\n);\n'''
+          regression = '''\nconst builder = new MsfsEfbPackageBuilder(null, { platform: 'win32' });\nbuilder.current = { ...builder.current, canBuild: true, sdk: { ready: true, sdkRoot: 'C:\\\\MSFS 2024 SDK' }, communityDirectory: null };\nbuilder.detect = async () => builder.publicStatus();\nawait assert.rejects(\n  () => builder.build(),\n  /Builder storage directory is unavailable/,\n  'build() must use the trusted internal detected state after detect()',\n);\n'''
           if 'trusted internal detected state' not in value:
               value = value.replace("\nconsole.log('MSFS EFB builder contract OK');\n", regression + "\nconsole.log('MSFS EFB builder contract OK');\n")
           verify.write_text(value, encoding='utf-8')
@@ -84,7 +84,7 @@ jobs:
       - name: Commit hotfix
         run: |
           git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898282+checkner89@users.noreply.github.com'
           git add CHANGELOG.md README.md PRIVACY.md THIRD_PARTY_NOTICES.md package.json package-lock.json public src scripts MSFS-2024-EFB-App
           git commit -m 'Fix MSFS EFB builder detected state and bump 1.7.2'
           git push origin HEAD:hotfix-msfs-efb-builder-1.7.2
