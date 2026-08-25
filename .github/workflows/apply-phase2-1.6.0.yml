@@ -25,8 +25,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Apply final safeguards and legal text
-        run: python scripts/finalize-phase2.py
+      - name: Apply final safeguards and documentation
+        run: |
+          python scripts/finalize-phase2.py
+          python scripts/fix-phase2-ui.py
 
       - name: Install dependencies
         run: npm install
@@ -80,8 +82,9 @@ jobs:
           grep -q 'Effective for version 1.6.0' PRIVACY.md
           grep -q 'Third-party notices — Flight Deck EFB 1.6.0' THIRD_PARTY_NOTICES.md
           grep -q -- '--notes-file $notesFile' .github/workflows/release.yml
+          grep -q 'PMDG_PACKAGES_DIR' public/index.html
           ! grep -q 'SayIntentions operations update' .github/workflows/release.yml
-          ! grep -R -nE 'Setup-1\.2\.0|FLIGHT_DECK_UPDATE_URL|Flight Deck EFB 1\.4\.1|v1\.4\.4' README.md PRIVACY.md THIRD_PARTY_NOTICES.md public/index.html .github/workflows/release.yml
+          ! grep -R -nE 'Setup-1\.2\.0|FLIGHT_DECK_UPDATE_URL|Flight Deck EFB 1\.4\.1|v1\.4\.4|NAVIGRAPH_CLIENT_SECRET' README.md PRIVACY.md THIRD_PARTY_NOTICES.md public/index.html .github/workflows/release.yml
 
       - name: Smoke test demo host
         shell: bash
@@ -104,6 +107,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/aircraft-adapter-manager.mjs PRIVACY.md THIRD_PARTY_NOTICES.md
+          git add src/aircraft-adapter-manager.mjs PRIVACY.md THIRD_PARTY_NOTICES.md public/index.html
           git commit -m 'Finalize Phase 2 adapter safeguards and documentation'
           git push origin HEAD:phase2-aircraft-ground-1.6.0
