@@ -1,0 +1,210 @@
+.si-weather-source-bar,
+.si-ops-actions,
+.si-pause-row,
+.si-weather-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.si-weather-source-bar {
+  justify-content: space-between;
+  margin: 10px 0 14px;
+  flex-wrap: wrap;
+}
+
+.si-source-field,
+.si-weather-setting {
+  flex: 1 1 280px;
+}
+
+.si-source-field > span,
+.si-gate-form label > span,
+.si-current-assignment > small,
+.si-message-block > small {
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  opacity: .68;
+  margin-bottom: 6px;
+}
+
+.si-source-field select,
+.si-weather-setting select,
+.si-gate-form input,
+.si-message-block select,
+.si-message-block textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.si-weather-setting {
+  justify-content: space-between;
+  margin: 12px 0;
+  padding: 12px 0;
+  border-top: 1px solid rgba(127, 146, 164, .16);
+  border-bottom: 1px solid rgba(127, 146, 164, .16);
+  flex-wrap: wrap;
+}
+
+.si-setting-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 230px;
+  flex: 1 1 320px;
+}
+
+.si-setting-copy small {
+  opacity: .68;
+  font-weight: 400;
+}
+
+.si-weather-setting select {
+  max-width: 260px;
+}
+
+.si-weather-render {
+  display: grid;
+  gap: 12px;
+}
+
+.si-weather-airport {
+  border: 1px solid rgba(127, 146, 164, .18);
+  border-radius: 12px;
+  padding: 13px 14px;
+  background: rgba(127, 146, 164, .055);
+}
+
+.si-weather-airport > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.si-weather-airport > header div {
+  display: grid;
+  gap: 2px;
+}
+
+.si-weather-airport > header strong {
+  font-size: 1.08rem;
+}
+
+.si-weather-airport > header small,
+.si-weather-airport > header span {
+  opacity: .72;
+}
+
+.si-weather-product {
+  margin-top: 9px;
+}
+
+.si-weather-product p {
+  margin: 3px 0 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.si-weather-product.metar p,
+.si-weather-product.taf p {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9rem;
+}
+
+.si-ops-card {
+  min-width: 0;
+}
+
+.si-current-assignment {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border-radius: 12px;
+  background: rgba(127, 146, 164, .07);
+  border: 1px solid rgba(127, 146, 164, .16);
+}
+
+.si-current-assignment strong {
+  font-size: 1.35rem;
+}
+
+.si-current-assignment span {
+  opacity: .68;
+  font-size: .84rem;
+}
+
+.si-gate-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.si-ops-actions {
+  flex-wrap: wrap;
+}
+
+.si-operation-status {
+  min-height: 1.2em;
+  margin: 10px 0 0;
+}
+
+.si-operation-status[data-state="error"] {
+  color: #ff8a8a;
+}
+
+.si-operation-status[data-state="success"] {
+  color: #8fe2b0;
+}
+
+.si-pause-row {
+  justify-content: space-between;
+  margin: 12px 0 16px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid rgba(127, 146, 164, .16);
+}
+
+.si-pause-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.si-pause-row small,
+.si-action-note {
+  opacity: .68;
+}
+
+.si-message-block {
+  display: grid;
+  gap: 10px;
+}
+
+.si-message-block textarea {
+  resize: vertical;
+  min-height: 78px;
+}
+
+.si-atc-ops-card {
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .si-gate-form {
+    grid-template-columns: 1fr;
+  }
+
+  .si-pause-row,
+  .si-weather-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .si-weather-setting select {
+    max-width: none;
+  }
+}
