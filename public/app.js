@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.4';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.5';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,8 +6,8 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.4';
-import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.4';
+} from './flight-phases.js?v=1.7.5';
+import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.5';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -317,6 +317,7 @@ const elements = {
   comActionButtons: [...document.querySelectorAll('[data-com-action]')],
   flightboardStatusPill: $('#flightboard-status-pill'),
   flightboardAirport: $('#flightboard-airport'),
+  flightboardScope: $('#live-traffic-scope'),
   flightboardTabs: [...document.querySelectorAll('[data-traffic-view]')],
   flightboardRefresh: $('#flightboard-refresh'),
   flightboardList: $('#flightboard-list'),
@@ -1478,8 +1479,10 @@ async function loadAirportMap(state, { forceRefresh = false } = {}) {
   const requestSerial = ++mapRequestSerial;
   if (!forceRefresh) {
     const clientCached = await readClientMapCache(icao);
-    if (clientCached?.icao === icao && requestSerial === mapRequestSerial) {
-      clientCached.cache = { status: 'cached', offlineReady: true };
+    if (clientCached?.icao === icao
+      && clientCached.cache?.status !== 'preview'
+      && requestSerial === mapRequestSerial) {
+      clientCached.cache = { ...clientCached.cache, status: 'cached', offlineReady: true };
       renderAirportMap(clientCached);
       requestedAirportIcao = null;
       return;
@@ -1501,7 +1504,7 @@ async function loadAirportMap(state, { forceRefresh = false } = {}) {
     if (!response.ok) throw new Error(data.detail || data.error || `HTTP ${response.status}`);
     if (requestSerial === mapRequestSerial) {
       renderAirportMap(data);
-      writeClientMapCache(data).catch(() => {});
+      if (data.cache?.status !== 'preview') writeClientMapCache(data).catch(() => {});
     }
   } catch (error) {
     if (requestSerial === mapRequestSerial) mapStatus('error', icao, `Karte nicht verfügbar · ${error.message}`);
@@ -2985,6 +2988,10 @@ function renderFlightboard(state) {
   elements.flightboardStatusPill.className = `module-status ${simulatorOnline ? 'connected' : 'waiting'}`;
   elements.flightboardStatusPill.textContent = simulatorOnline ? `${model.counts.nearby} LIVE` : 'SIM OFFLINE';
   elements.flightboardAirport.textContent = airport ? `${airport} · LIVE TRAFFIC` : 'LIVE TRAFFIC';
+  const scopeNm = model.view === 'ground'
+    ? model.limits.groundRadiusNm
+    : model.view === 'arriving' ? model.limits.arrivingRadiusNm : model.limits.nearbyRadiusNm;
+  if (elements.flightboardScope) elements.flightboardScope.textContent = `${scopeNm} NM · MAX ${model.limits.maxRows}`;
   elements.flightboardUpdated.textContent = integration.updatedAt ? `${t('updated')} ${formatTime(integration.updatedAt)}` : '—';
   elements.flightboardRefresh.disabled = !simulatorOnline;
   if (elements.flightboardGroundCount) elements.flightboardGroundCount.textContent = String(model.counts.ground);
@@ -3013,7 +3020,7 @@ function renderFlightboard(state) {
   if (model.hiddenRows > 0) {
     const note = document.createElement('p');
     note.className = 'live-traffic-more';
-    note.textContent = `${model.hiddenRows} additional aircraft hidden · showing the 40 closest`;
+    note.textContent = `${model.hiddenRows} additional aircraft hidden · showing the ${model.limits.maxRows} closest`;
     elements.flightboardList.append(note);
   }
 }
@@ -3959,7 +3966,7 @@ function renderUpdateDialogNotes(value, version = '') {
 
 function renderUpdateStatus(status = {}) {
   if (!elements.updateDetail) return;
-  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.7.4';
+  const currentVersion = status.currentVersion || document.documentElement.dataset.appVersion || '1.7.5';
   elements.updateVersion.textContent = `v${currentVersion}`;
   if (elements.updateDialogCurrentVersion) elements.updateDialogCurrentVersion.textContent = `v${currentVersion}`;
   if (elements.updateDialogTargetVersion) elements.updateDialogTargetVersion.textContent = status.releaseName ? `v${status.releaseName}` : '—';
@@ -4013,7 +4020,7 @@ async function checkForUpdate({ startup = false } = {}) {
   const existing = await refreshUpdateStatus().catch(() => null);
   if (existing?.canManage === false) return existing;
   if (elements.checkUpdate) elements.checkUpdate.disabled = true;
-  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.7.4', canManage: existing?.canManage });
+  renderUpdateStatus({ state: 'checking', currentVersion: document.documentElement.dataset.appVersion || '1.7.5', canManage: existing?.canManage });
   try {
     const response = await fetch(authenticatedUrl('/api/update/check'), { method: 'POST' });
     const data = await response.json();
@@ -4021,7 +4028,7 @@ async function checkForUpdate({ startup = false } = {}) {
     renderUpdateStatus(data);
     return data;
   } catch (error) {
-    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.4', detail: error.message, canManage: existing?.canManage };
+    const failed = { state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.5', detail: error.message, canManage: existing?.canManage };
     renderUpdateStatus(failed);
     if (!startup) throw error;
     return failed;
@@ -4038,7 +4045,7 @@ async function downloadAvailableUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.4', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.5', detail: error.message });
   } finally {
     elements.updateDialogDownload.disabled = false;
   }
@@ -4053,7 +4060,7 @@ async function installDownloadedUpdate() {
     if (!response.ok) throw new Error(data.error || t('updateFailed'));
     renderUpdateStatus(data);
   } catch (error) {
-    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.4', detail: error.message });
+    renderUpdateStatus({ state: 'error', currentVersion: document.documentElement.dataset.appVersion || '1.7.5', detail: error.message });
     if (elements.installUpdate) elements.installUpdate.disabled = false;
     if (elements.updateDialogInstall) elements.updateDialogInstall.disabled = false;
   }

@@ -2,8 +2,8 @@ const EARTH_RADIUS_NM = 3_440.065;
 
 export const LIVE_TRAFFIC_LIMITS = Object.freeze({
   groundRadiusNm: 8,
-  arrivingRadiusNm: 25,
-  nearbyRadiusNm: 30,
+  arrivingRadiusNm: 80,
+  nearbyRadiusNm: 120,
   maxRows: 40,
 });
 

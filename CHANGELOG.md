@@ -1,5 +1,14 @@
 # Flight Deck EFB changelog
 
+## 1.7.5 — Traffic & Taxi Recovery
+
+- Expanded Live Traffic to **Arriving 80 NM** and **Nearby 120 NM** while Ground remains 8 NM; the active tab now shows its actual scope.
+- Restored the documented maximum SimConnect discovery radius of **200 km (~108 NM)**. The 120 NM Nearby filter is retained as the UI target, while direct SimConnect visibility remains capped by the simulator API.
+- Broadened injected-traffic discovery to accept **PassiveAircraft / aircraft-style categories**, improving compatibility with SayIntentions Living World and other injectors that are visible in MSFS but were filtered out before detail reads.
+- Fixed Taxi Navigation getting stuck on a **runway-only preview**: preview maps are no longer persisted as complete browser maps, existing poisoned preview caches self-heal, and the host waits longer for OSM/Overpass geometry when MSFS facility data arrives first.
+- Fixed **New Flight** immediately re-importing the just-finished taxi route/session, which could make the red ROUTE / POSITION warning reappear and leave guidance unusable.
+- Taxi/map fixes are implemented independently with documented MSFS facility data, OpenStreetMap/Overpass and OurAirports; no TaxiNow code, assets or protected implementation were reused.
+
 ## 1.7.4 — Honest Live Traffic
 
 - Replaced the airport-style Flightboard with an honest **Live Traffic** workspace: **Ground / Arriving / Nearby**.

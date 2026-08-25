@@ -11,8 +11,11 @@ const DISCOVERY_DEFINITION = 90;
 const DISCOVERY_REQUEST = 90;
 const TRAFFIC_DEFINITION = 91;
 const TRAFFIC_PLAN_DEFINITION = 92;
-const TRAFFIC_RADIUS_METERS = 60_000;
-const AIRCRAFT_CATEGORIES = new Set(['airplane', 'airship', 'helicopter', 'hotairballoon']);
+const TRAFFIC_RADIUS_METERS = 200_000;
+const AIRCRAFT_CATEGORIES = new Set([
+  'airplane', 'airship', 'helicopter', 'hotairballoon',
+  'aircraft', 'passiveaircraft', 'passive aircraft',
+]);
 
 function clean(value) {
   return String(value || '').replace(/\0/g, '').trim();
@@ -283,7 +286,11 @@ export class InjectedTrafficClient {
     try {
       const category = clean(received.data.readString32()).toLowerCase();
       const objectId = Number(received.objectID);
-      if (AIRCRAFT_CATEGORIES.has(category)
+      const aircraftCategory = AIRCRAFT_CATEGORIES.has(category)
+        || category.includes('aircraft')
+        || category.includes('airplane')
+        || category.includes('helicopter');
+      if (aircraftCategory
         && Number.isInteger(objectId)
         && objectId !== SimConnectConstants.OBJECT_ID_USER) {
         this.discoveryBatch.objectIds.add(objectId);
