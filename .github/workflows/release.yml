@@ -55,6 +55,7 @@ jobs:
           node --check src/injected-traffic-client.mjs
           node --check src/state-engine.mjs
           node --check public/app.js
+          node --check public/si-operations.js
           node --check public/i18n.js
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
           if (Test-Path 'src/navigraph-client.mjs') {
@@ -178,7 +179,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Uploading release assets failed.' }
             gh release edit $tag --repo $repo --draft=false --prerelease=false --title "Flight Deck EFB $version"
           } else {
-            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. Third-party injected traffic fallback now discovers all AI-controlled SimObjects, filters real aircraft by CATEGORY, reads their live aircraft data by Object ID, and merges them directly into Flightboard and Tracking traffic. Flight simulation use only — not for real-world navigation." --verify-tag
+            gh release create $tag @assets --repo $repo --title "Flight Deck EFB $version" --notes "Flight Deck EFB $version. SayIntentions operations update: selectable SI/AviationWeather weather source, continuous SI parking sync, explicit gate assignment, SI airport-data refresh, guarded ATC pause/resume and pilot COM1/COM2 text transmission. Flight simulation use only — not for real-world navigation." --verify-tag
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing GitHub release failed.' }
 
