@@ -29,7 +29,7 @@ const TRAFFIC_DATA_REQUEST = 48;
 const TRUSTED_WRITE_DEFINITION = 49;
 const AIRPORT_FACILITY_DEFINITION = 3_100;
 const INPUT_EVENTS_REQUEST = 3_200;
-const TRAFFIC_RADIUS_METERS = 200_000;
+const TRAFFIC_RADIUS_METERS = 60_000;
 
 function decodeBco16(value) {
   const encoded = Math.max(0, Math.round(Number(value) || 0));
