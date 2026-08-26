@@ -1,0 +1,64 @@
+name: Validate Release Branch
+
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies and apply release migration
+        run: npm install
+
+      - name: Verify modified source
+        shell: pwsh
+        run: |
+          node --check scripts/apply-release-1.7.19.mjs
+          node --check src/local-path-discovery.mjs
+          node --check src/simconnect-client.mjs
+          node --check src/injected-traffic-client.mjs
+          node --check src/state-engine.mjs
+          node --check src/taxi-route-planner.mjs
+          node --check src/msfs-efb-package-builder.mjs
+          node --check src/server.mjs
+          node --check public/app.js
+          node --check public/live-traffic.js
+          node --check public/flight-overlay.js
+          node --check public/si-operations.js
+          node --check public/gsx-profile-manager.js
+          node --check public/release-1.7.19.js
+
+      - name: Run traffic and integration regressions
+        shell: pwsh
+        run: |
+          node scripts/test-live-traffic.mjs
+          if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
+          node scripts/verify-msfs-efb-builder.mjs
+          node scripts/test-gsx-profile-manager.mjs
+
+      - name: Verify release assets are wired
+        shell: pwsh
+        run: |
+          $html = Get-Content 'public/index.html' -Raw
+          if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.7.19 UI assets are not wired into index.html.' }
+          $server = Get-Content 'src/server.mjs' -Raw
+          if ($server -notmatch '/api/gsx/profile-library' -or $server -notmatch 'scanGsxProfileLibrary') { throw 'GSX automatic path discovery API is missing.' }
+          $app = Get-Content 'public/app.js' -Raw
+          if ($app -notmatch 'renderTaxiTraffic' -or $app -notmatch 'flightdeckstate') { throw 'Live map/taxi traffic integration is missing.' }
+          Write-Host 'Release 1.7.19 validation passed.'
