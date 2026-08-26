@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 const DEFAULT_INSTALLED = ['fselite', 'cruiselevel', 'msfsaddons', 'threshold', 'flightsimto', 'fsnews'];
 const REFRESH_MS = 10 * 60_000;
 const CACHE_MS = 4 * 60_000;
+const ARTICLE_CACHE_MS = 20 * 60_000;
 
 export const CURATED_NEWS_FEEDS = [
   { id: 'fselite', name: 'FSElite', language: 'en', site: 'https://fselite.net/', feeds: ['https://fselite.net/feed/'] },
@@ -33,8 +34,9 @@ export const CURATED_NEWS_FEEDS = [
 function decode(value) {
   return String(value || '')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)));
 }
 
@@ -70,6 +72,53 @@ function itemId(sourceId, link, guid, title, publishedAt) {
   return crypto.createHash('sha1').update(`${sourceId}|${guid}|${link}|${title}|${publishedAt}`).digest('hex').slice(0, 20);
 }
 
+function imageFromTag(node, base) {
+  const source = /\b(?:src|data-src|data-lazy-src)=["']([^"']+)["']/i.exec(node)?.[1]
+    || /\bsrcset=["']([^"',\s]+)[^"']*["']/i.exec(node)?.[1];
+  return safeUrl(source, base);
+}
+
+function extractContentBlocks(rawHtml, base) {
+  const clean = decode(rawHtml)
+    .replace(/<(script|style|noscript|iframe|form|svg)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<!--([\s\S]*?)-->/g, ' ');
+  const blocks = [];
+  const seen = new Set();
+  const pattern = /<(h[1-4]|p|blockquote|li)\b[^>]*>([\s\S]*?)<\/\1>|<img\b[^>]*>/gi;
+  for (const match of clean.matchAll(pattern)) {
+    if (blocks.length >= 140) break;
+    const whole = match[0];
+    if (/^<img/i.test(whole)) {
+      const url = imageFromTag(whole, base);
+      if (!url || seen.has(`img:${url}`)) continue;
+      seen.add(`img:${url}`);
+      const alt = stripHtml(/\balt=["']([^"']*)["']/i.exec(whole)?.[1] || '');
+      blocks.push({ type: 'image', url, alt });
+      continue;
+    }
+    const tagName = String(match[1] || '').toLowerCase();
+    for (const imageNode of String(match[2] || '').matchAll(/<img\b[^>]*>/gi)) {
+      const url = imageFromTag(imageNode[0], base);
+      if (url && !seen.has(`img:${url}`)) {
+        seen.add(`img:${url}`);
+        blocks.push({ type: 'image', url, alt: stripHtml(/\balt=["']([^"']*)["']/i.exec(imageNode[0])?.[1] || '') });
+      }
+    }
+    const value = stripHtml(match[2]);
+    if (!value || value.length < 3) continue;
+    const key = `txt:${value.slice(0, 240)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const type = tagName.startsWith('h') ? 'heading' : tagName === 'blockquote' ? 'quote' : tagName === 'li' ? 'list' : 'paragraph';
+    blocks.push({ type, text: value.slice(0, 5000) });
+  }
+  return blocks;
+}
+
+function firstImage(blocks = []) {
+  return blocks.find((entry) => entry.type === 'image' && entry.url)?.url || '';
+}
+
 function parseFeedXml(xml, source, feedUrl) {
   const blocks = [...String(xml || '').matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((match) => match[2]);
   const items = [];
@@ -81,12 +130,17 @@ function parseFeedXml(xml, source, feedUrl) {
     const dateValue = stripHtml(tag(block, ['pubDate', 'published', 'updated', 'dc:date']));
     const parsedDate = Date.parse(dateValue);
     const publishedAt = Number.isFinite(parsedDate) ? new Date(parsedDate).toISOString() : null;
-    const description = stripHtml(tag(block, ['description', 'summary', 'content:encoded', 'content'])).slice(0, 320);
+    const rawContent = tag(block, ['content:encoded', 'content', 'description', 'summary']);
+    const fullContent = stripHtml(rawContent).slice(0, 40_000);
+    const descriptionRaw = tag(block, ['description', 'summary']) || rawContent;
+    const description = stripHtml(descriptionRaw).slice(0, 420);
+    const contentBlocks = extractContentBlocks(rawContent, source.site);
     const image = safeUrl(/<(?:media:thumbnail|media:content)\b[^>]*url=["']([^"']+)["']/i.exec(block)?.[1]
-      || /<enclosure\b[^>]*url=["']([^"']+)["'][^>]*type=["']image\//i.exec(block)?.[1], source.site);
+      || /<enclosure\b[^>]*url=["']([^"']+)["'][^>]*type=["']image\//i.exec(block)?.[1], source.site)
+      || firstImage(contentBlocks);
     items.push({
       id: itemId(source.id, link, guid, title, publishedAt), sourceId: source.id, sourceName: source.name,
-      title, link, publishedAt, description, image, feedUrl,
+      title, link, publishedAt, description, content: fullContent, contentBlocks, image, feedUrl,
     });
   }
   return items;
@@ -111,7 +165,10 @@ async function fetchText(url, timeoutMs = 12_000) {
     const response = await fetch(url, {
       signal: controller.signal,
       redirect: 'follow',
-      headers: { 'User-Agent': 'Flight-Deck-EFB/1.20 (+flight-simulation-news-reader)', Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.7, */*;q=0.2' },
+      headers: {
+        'User-Agent': 'Flight-Deck-EFB/1.20.2 (+flight-simulation-news-reader)',
+        Accept: 'text/html, application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.2',
+      },
     });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     return { text: await response.text(), contentType: response.headers.get('content-type') || '', url: response.url };
@@ -138,6 +195,38 @@ async function resolveFeed(source) {
   throw new Error(lastError?.message || 'No RSS/Atom feed found.');
 }
 
+function sourceAllowsArticle(source, link) {
+  try {
+    const articleHost = new URL(link).hostname.replace(/^www\./, '').toLowerCase();
+    const sourceHost = new URL(source.site).hostname.replace(/^www\./, '').toLowerCase();
+    return articleHost === sourceHost || articleHost.endsWith(`.${sourceHost}`) || sourceHost.endsWith(`.${articleHost}`);
+  } catch { return false; }
+}
+
+function metaContent(html, selector) {
+  const pattern = selector === 'og:image'
+    ? /<meta\b[^>]*(?:property|name)=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>|<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']og:image["'][^>]*>/i
+    : selector === 'author'
+      ? /<meta\b[^>]*name=["']author["'][^>]*content=["']([^"']+)["'][^>]*>|<meta\b[^>]*content=["']([^"']+)["'][^>]*name=["']author["'][^>]*>/i
+      : null;
+  const match = pattern?.exec(String(html || ''));
+  return match?.[1] || match?.[2] || '';
+}
+
+function articleRegion(html) {
+  const value = String(html || '')
+    .replace(/<(nav|footer|aside)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<header\b[\s\S]*?<\/header>/gi, ' ');
+  return /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(value)?.[1]
+    || /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(value)?.[1]
+    || /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(value)?.[1]
+    || value;
+}
+
+function blockTextLength(blocks = []) {
+  return blocks.reduce((sum, block) => sum + String(block.text || '').length, 0);
+}
+
 export class NewsFeedService {
   constructor({ storageDirectory, onNewItems = null, now = () => new Date() } = {}) {
     this.storageDirectory = storageDirectory || path.join(os.homedir(), '.flight-deck-efb', 'news');
@@ -149,6 +238,7 @@ export class NewsFeedService {
     this.knownIds = {};
     this.cache = null;
     this.cacheAt = 0;
+    this.articleCache = new Map();
     this.timer = null;
   }
 
@@ -185,6 +275,7 @@ export class NewsFeedService {
   async setInstalled(ids) {
     this.installed = [...new Set((ids || []).filter((id) => CURATED_NEWS_FEEDS.some((feed) => feed.id === id)))];
     this.cache = null;
+    this.articleCache.clear();
     await this.#save();
     return this.catalog();
   }
@@ -194,6 +285,36 @@ export class NewsFeedService {
     const next = new Set(this.installed);
     if (installed) next.add(id); else next.delete(id);
     return this.setInstalled([...next]);
+  }
+
+  async article(id) {
+    const key = String(id || '');
+    const cached = this.articleCache.get(key);
+    if (cached && Date.now() - cached.at < ARTICLE_CACHE_MS) return cached.value;
+    const feed = await this.refresh({ force: false, notify: false });
+    const item = feed.items.find((entry) => entry.id === key);
+    if (!item) throw new Error('News article not found.');
+    const source = CURATED_NEWS_FEEDS.find((entry) => entry.id === item.sourceId);
+    let blocks = Array.isArray(item.contentBlocks) ? item.contentBlocks : [];
+    let hero = item.image || firstImage(blocks);
+    let author = '';
+    let contentSource = 'feed';
+    if (source && sourceAllowsArticle(source, item.link)) {
+      try {
+        const fetched = await fetchText(item.link, 15_000);
+        const region = articleRegion(fetched.text);
+        const extracted = extractContentBlocks(region, fetched.url || item.link);
+        if (blockTextLength(extracted) > Math.max(250, blockTextLength(blocks) * 1.08)) {
+          blocks = extracted;
+          contentSource = 'article';
+        }
+        hero = safeUrl(metaContent(fetched.text, 'og:image'), fetched.url || item.link) || hero || firstImage(extracted);
+        author = stripHtml(metaContent(fetched.text, 'author')).slice(0, 160);
+      } catch { /* fall back to feed content */ }
+    }
+    const value = { ...item, sourceSite: source?.site || '', sourceLanguage: source?.language || '', contentBlocks: blocks, image: hero, author, contentSource };
+    this.articleCache.set(key, { at: Date.now(), value });
+    return value;
   }
 
   async refresh({ force = false, notify = false } = {}) {
@@ -216,7 +337,12 @@ export class NewsFeedService {
       this.knownIds[result.source.id] = currentIds.slice(0, 80);
     }
     await this.#save().catch(() => {});
-    this.cache = { installed: [...this.installed], sources: results.map(({ source, status, error }) => ({ id: source.id, name: source.name, language: source.language, site: source.site, feedUrl: source.feedUrl || null, status, error })), items, updatedAt: this.now().toISOString() };
+    this.cache = {
+      installed: [...this.installed],
+      sources: results.map(({ source, status, error }) => ({ id: source.id, name: source.name, language: source.language, site: source.site, feedUrl: source.feedUrl || null, status, error })),
+      items,
+      updatedAt: this.now().toISOString(),
+    };
     this.cacheAt = Date.now();
     if (this.notificationsEnabled && newItems.length && typeof this.onNewItems === 'function') {
       try { await this.onNewItems(newItems.slice(0, 8)); } catch {}
