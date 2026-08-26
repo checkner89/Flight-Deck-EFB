@@ -61,14 +61,21 @@ jobs:
           node --check src/msfs-efb-package-builder.mjs
           node --check src/gsx-client.mjs
           node --check src/state-engine.mjs
+          node --check src/lan-discovery-service.mjs
+          node --check src/windows-sim-session.mjs
           node --check public/flight-phases.js
           node --check public/live-traffic.js
           node --check public/app.js
           node --check public/si-operations.js
           node --check public/i18n.js
+          node --check public/pilot-tools.js
+          node --check public/sim-session-native.js
+          node --check scripts/verify-packaged-renderer.mjs
           node scripts/verify-msfs-efb-builder.mjs
           node scripts/test-live-traffic.mjs
           node scripts/verify-installer-legal.mjs
+          node scripts/test-pilot-tools.mjs
+          node scripts/test-release-1.19.0.mjs
           if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
           node --input-type=module -e "import updaterPackage from 'electron-updater'; if (!('autoUpdater' in updaterPackage)) throw new Error('electron-updater autoUpdater export missing'); console.log('electron-updater CommonJS export shape OK');"
           $builder = Get-Content 'src/msfs-efb-package-builder.mjs' -Raw
@@ -140,19 +147,22 @@ jobs:
       - name: Build Windows installer
         run: npm run dist
 
-      - name: Smoke test packaged Windows app
+      - name: Smoke test packaged Windows renderer
         shell: pwsh
         run: |
           $exe = 'dist/win-unpacked/Flight Deck EFB.exe'
           if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
-          $process = Start-Process -FilePath $exe -ArgumentList @('--demo') -PassThru
+          $debugPort = 9333
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
           try {
-            Start-Sleep -Seconds 8
+            Start-Sleep -Seconds 4
             $process.Refresh()
             if ($process.HasExited) {
               throw "Packaged Flight Deck EFB exited during startup smoke test with code $($process.ExitCode)."
             }
-            Write-Host 'Packaged Flight Deck EFB startup smoke test passed.'
+            node scripts/verify-packaged-renderer.mjs $debugPort
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged Flight Deck EFB renderer health check failed.' }
+            Write-Host 'Packaged Flight Deck EFB process + renderer smoke test passed.'
           } finally {
             if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
           }
