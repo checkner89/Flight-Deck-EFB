@@ -31,7 +31,9 @@ jobs:
         run: |
           node --check scripts/apply-release-1.19.0.mjs
           node --check scripts/apply-release-1.20.0.mjs
+          node --check scripts/apply-release-1.20.1.mjs
           node --check scripts/prepare-release-1.19.0-notes.mjs
+          node --check scripts/prepare-release-1.20.1-notes.mjs
           node --check scripts/apply-release-1.17.19.mjs
           node --check scripts/prepare-operations-suite.mjs
           node --check scripts/test-pilot-tools.mjs
@@ -73,12 +75,15 @@ jobs:
       - name: Verify release assets are wired
         shell: pwsh
         run: |
+          $version = node -p "require('./package.json').version"
+          $escapedVersion = [regex]::Escape($version)
           $html = Get-Content 'public/index.html' -Raw
           if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired into index.html.' }
-          if ($html -notmatch 'pilot-tools\.css\?v=1\.20\.0' -or $html -notmatch 'pilot-tools\.js\?v=1\.20\.0') { throw '1.20 pilot tools are not wired into index.html.' }
-          if ($html -notmatch 'sim-session-native\.css\?v=1\.20\.0' -or $html -notmatch 'sim-session-native\.js\?v=1\.20\.0') { throw '1.20 Flight Setup assets are not wired into index.html.' }
-          if ($html -notmatch 'news-app\.css\?v=1\.20\.0' -or $html -notmatch 'news-app\.js\?v=1\.20\.0') { throw '1.20 News app is not wired into index.html.' }
-          if ($html -notmatch 'release-1\.20\.0\.css\?v=1\.20\.0') { throw '1.20 airport-only polish is not wired.' }
+          if ($html -notmatch "pilot-tools\.css\?v=$escapedVersion" -or $html -notmatch "pilot-tools\.js\?v=$escapedVersion") { throw "$version pilot tools are not wired into index.html." }
+          if ($html -notmatch "sim-session-native\.css\?v=$escapedVersion" -or $html -notmatch "sim-session-native\.js\?v=$escapedVersion") { throw "$version Flight Setup assets are not wired into index.html." }
+          if ($html -notmatch "news-app\.css\?v=$escapedVersion" -or $html -notmatch "news-app\.js\?v=$escapedVersion") { throw "$version News app is not wired into index.html." }
+          if ($html -notmatch "release-1\.20\.0\.css\?v=$escapedVersion") { throw 'Airport-only polish is not wired.' }
+          if ($html -notmatch "release-1\.20\.1\.css\?v=$escapedVersion") { throw '1.20.1 theme compatibility stylesheet is not wired.' }
           if ($html -match 'operations-suite\.(?:js|css)\?v=') { throw 'Duplicate 1.18.0 operations suite is still wired into the app.' }
           if ($html -notmatch 'data-i18n="flightNotes">Flight Notes</h3>') { throw 'Existing Flight Hub note area still claims to be the Scratchpad.' }
           $server = Get-Content 'src/server.mjs' -Raw
@@ -90,6 +95,9 @@ jobs:
           if ($pilot -match 'SMART CHECKLISTS|VATSIM_URL|currentFlightLog|Fuel Receipt') { throw 'A duplicate 1.18 feature is still bundled into Pilot Tools.' }
           if ($pilot -notmatch 'schedulePilotTileSync' -or $pilot -notmatch 'pilotLabelSignature') { throw 'Renderer mutation-loop recovery is missing.' }
           if ($pilot -notmatch 'Flight Setup' -or $pilot -match 'sim-session-internal') { throw 'Flight Setup redesign is incomplete.' }
-          $version = node -p "require('./package.json').version"
-          if ($version -ne '1.20.0') { throw "Unexpected package version: $version" }
-          Write-Host 'Release 1.20.0 validation passed.'
+          $news = Get-Content 'public/news-app.js' -Raw
+          if ($news -notmatch 'news-reader' -or $news -notmatch 'IN FLIGHT DECK LESEN' -or $news -notmatch 'OPEN ORIGINAL') { throw 'In-app News reader is incomplete.' }
+          $newsService = Get-Content 'src/news-feed-service.mjs' -Raw
+          if ($newsService -notmatch 'content: fullContent' -or $newsService -notmatch 'slice\(0, 12000\)') { throw 'Feed-supplied article content is not exposed to the News reader.' }
+          if ($version -ne '1.20.1') { throw "Unexpected package version: $version" }
+          Write-Host 'Release 1.20.1 validation passed.'
