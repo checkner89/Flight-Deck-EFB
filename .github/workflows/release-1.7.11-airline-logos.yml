@@ -23,192 +23,18 @@ jobs:
           node-version: 24
 
       - name: Fetch pinned airline logo catalog
-        shell: bash
         run: |
           git clone --quiet https://github.com/imgmongelli/airlines-logos-dataset.git "$RUNNER_TEMP/airlines-logos-dataset"
           git -C "$RUNNER_TEMP/airlines-logos-dataset" checkout --quiet 7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a
-          test -f "$RUNNER_TEMP/airlines-logos-dataset/airlines.json"
-          test -d "$RUNNER_TEMP/airlines-logos-dataset/images"
 
-      - name: Apply 1.7.11 changes and vendor all available logos
-        shell: bash
+      - name: Apply 1.7.11 patch
         env:
           AIRLINE_SOURCE: ${{ runner.temp }}/airlines-logos-dataset
         run: |
-          python <<'PY'
-          from pathlib import Path
-          import json, os, re, shutil
-
-          ROOT = Path('.')
-          SOURCE = Path(os.environ['AIRLINE_SOURCE'])
-          VERSION = '1.7.11'
-          SOURCE_COMMIT = '7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a'
-
-          def read(path):
-              return Path(path).read_text(encoding='utf-8')
-
-          def write(path, text):
-              Path(path).parent.mkdir(parents=True, exist_ok=True)
-              Path(path).write_text(text, encoding='utf-8')
-
-          def replace_once(text, old, new, label):
-              if old not in text:
-                  raise SystemExit(f'missing patch target: {label}')
-              return text.replace(old, new, 1)
-
-          # ---------- Vendor complete available image set ----------
-          source_data = json.loads((SOURCE / 'airlines.json').read_text(encoding='utf-8'))
-          records = source_data.get('data', [])
-          if len(records) < 1500:
-              raise SystemExit(f'airline catalog unexpectedly small: {len(records)} records')
-
-          logo_dir = ROOT / 'public' / 'assets' / 'airlines'
-          if logo_dir.exists():
-              shutil.rmtree(logo_dir)
-          logo_dir.mkdir(parents=True, exist_ok=True)
-
-          output_records = []
-          logo_count = 0
-          for item in records:
-              name = str(item.get('name') or '').strip()
-              iata = str(item.get('iata_code') or '').strip().upper()
-              icao = str(item.get('icao_code') or '').strip().upper()
-              source_logo = item.get('logo')
-              has_logo = False
-              logo_name = None
-              if source_logo:
-                  candidate = SOURCE / str(source_logo).replace('./', '')
-                  if candidate.is_file() and icao:
-                      logo_name = f'{icao}{candidate.suffix.lower()}'
-                      shutil.copy2(candidate, logo_dir / logo_name)
-                      has_logo = True
-                      logo_count += 1
-              if name or iata or icao:
-                  output_records.append({
-                      'name': name,
-                      'iata': iata,
-                      'icao': icao,
-                      'logo': f'/assets/airlines/{logo_name}' if has_logo else '',
-                  })
-
-          if logo_count < 1000:
-              raise SystemExit(f'airline logo catalog unexpectedly small: {logo_count} logos')
-
-          metadata = {
-              'source': 'imgmongelli/airlines-logos-dataset',
-              'sourceCommit': SOURCE_COMMIT,
-              'recordCount': len(output_records),
-              'logoCount': logo_count,
-              'records': output_records,
-          }
-          write('public/data/airlines.json', json.dumps(metadata, ensure_ascii=False, separators=(',', ':')))
-
-          # Browser-safe generated catalog. All logos that exist in the pinned dataset are shipped locally.
-          catalog_json = json.dumps(output_records, ensure_ascii=False, separators=(',', ':'))
-          catalog_js = f'''// Generated for Flight Deck EFB {VERSION} from imgmongelli/airlines-logos-dataset @ {SOURCE_COMMIT}\n// Airline names/logos are trademarks of their respective owners and are used for identification only.\nexport const AIRLINE_CATALOG_SOURCE = Object.freeze({{ repository: 'imgmongelli/airlines-logos-dataset', commit: '{SOURCE_COMMIT}', records: {len(output_records)}, logos: {logo_count} }});\n\nconst AIRLINES = {catalog_json};\nconst normalize = (value = '') => String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();\nconst compact = (value = '') => normalize(value).replace(/\\s+/g, '');\nconst BY_ICAO = new Map();\nconst BY_IATA = new Map();\nconst BY_NAME = new Map();\nfor (const airline of AIRLINES) {{\n  if (airline.icao) BY_ICAO.set(airline.icao, airline);\n  if (airline.iata) BY_IATA.set(airline.iata, airline);\n  const key = normalize(airline.name);\n  if (key && key.length >= 4 && !BY_NAME.has(key)) BY_NAME.set(key, airline);\n}}\nconst NAME_MATCHERS = [...BY_NAME.entries()]\n  .filter(([key]) => key.length >= 5)\n  .sort((a, b) => b[0].length - a[0].length);\n\nfunction directCode(value) {{\n  const raw = compact(value);\n  if (!raw) return null;\n  if (BY_ICAO.has(raw)) return BY_ICAO.get(raw);\n  if (BY_IATA.has(raw)) return BY_IATA.get(raw);\n  const icaoPrefix = raw.match(/^([A-Z]{{3}})(?:\\d|$)/)?.[1];\n  if (icaoPrefix && BY_ICAO.has(icaoPrefix)) return BY_ICAO.get(icaoPrefix);\n  const iataPrefix = raw.match(/^([A-Z0-9]{{2}})(?:\\d|$)/)?.[1];\n  if (iataPrefix && BY_IATA.has(iataPrefix)) return BY_IATA.get(iataPrefix);\n  return null;\n}}\n\nexport function resolveAirlineIdentity(entry = {{}}) {{\n  const explicitCandidates = [entry.icao, entry.airlineIcao, entry.iata, entry.airlineIata, entry.atcAirline, entry.airline];\n  for (const candidate of explicitCandidates) {{\n    const direct = directCode(candidate);\n    if (direct) return direct;\n  }}\n  for (const candidate of [entry.callsign, entry.atcId, entry.flightNumber]) {{\n    const direct = directCode(candidate);\n    if (direct) return direct;\n  }}\n  const haystack = normalize([entry.airline, entry.atcAirline, entry.title, entry.callsign, entry.atcId].filter(Boolean).join(' '));\n  if (haystack) {{\n    const exact = BY_NAME.get(haystack);\n    if (exact) return exact;\n    for (const [name, airline] of NAME_MATCHERS) {{\n      if (haystack.includes(name)) return airline;\n    }}\n  }}\n  const rawAirline = String(entry.airline || entry.atcAirline || '').trim();\n  const fallbackCode = compact(rawAirline).slice(0, 3) || compact(entry.callsign || entry.atcId).slice(0, 3) || 'AI';\n  return {{ name: rawAirline || 'Simulator traffic', iata: '', icao: fallbackCode, logo: '' }};\n}}\n\nexport function formatTrafficFlightNumber(entry = {{}}, identity = resolveAirlineIdentity(entry)) {{\n  const rawFlight = String(entry.flightNumber || '').trim().toUpperCase().replace(/\\s+/g, '');\n  if (rawFlight) {{\n    if (/^[A-Z0-9]{{2,3}}\\d/.test(rawFlight)) return rawFlight;\n    const prefix = identity.iata || identity.icao || '';\n    return prefix ? `${{prefix}}${{rawFlight}}` : rawFlight;\n  }}\n  const rawCallsign = String(entry.callsign || entry.atcId || '').trim().toUpperCase().replace(/\\s+/g, '');\n  if (rawCallsign && identity.icao && identity.iata && rawCallsign.startsWith(identity.icao)) {{\n    return `${{identity.iata}}${{rawCallsign.slice(identity.icao.length)}}`;\n  }}\n  return rawCallsign || (identity.name !== 'Simulator traffic' ? identity.name : `AI-${{entry.objectId ?? '—'}}`);\n}}\n\nexport function airlineCatalogStats() {{ return AIRLINE_CATALOG_SOURCE; }}\n'''
-          write('public/airline-catalog.js', catalog_js)
-
-          # ---------- app.js ----------
-          p = Path('public/app.js')
-          js = read(p)
-          js = js.replace("./i18n.js?v=1.7.10", "./i18n.js?v=1.7.11")
-          js = js.replace("./flight-phases.js?v=1.7.10", "./flight-phases.js?v=1.7.11")
-          js = js.replace("./live-traffic.js?v=1.7.10", "./live-traffic.js?v=1.7.11")
-          import_anchor = "import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.11';"
-          import_line = import_anchor + "\nimport { formatTrafficFlightNumber, resolveAirlineIdentity } from './airline-catalog.js?v=1.7.11';"
-          js = replace_once(js, import_anchor, import_line, 'airline catalog import')
-
-          start = js.find('const LIVE_TRAFFIC_AIRLINES = {')
-          end_marker = '\nfunction currentFlightboardAirport(state) {'
-          end = js.find(end_marker, start)
-          if start < 0 or end < 0:
-              raise SystemExit('missing old live traffic airline resolver block')
-          replacement = '''function liveTrafficBadge(entry = {}, identity = resolveAirlineIdentity(entry)) {
-  const code = identity.iata || identity.icao || 'AI';
-  const image = identity.logo
-    ? `<img data-airline-logo src="${escapeHtml(identity.logo)}" alt="" loading="lazy" decoding="async">`
-    : '';
-  return `<span class="traffic-airline-logo live-traffic-airline-badge" title="${escapeHtml(identity.name || code)}">${image}<b>${escapeHtml(code)}</b></span>`;
-}
-'''
-          js = js[:start] + replacement + js[end:]
-
-          js = replace_once(js,
-              "    const [airlineCode, airlineName] = liveTrafficAirline(entry);",
-              "    const airline = resolveAirlineIdentity(entry);\n    const flightLabel = formatTrafficFlightNumber(entry, airline);",
-              'traffic airline row identity')
-          old_row = "    row.innerHTML = `<span class=\"flightboard-flight\">${liveTrafficBadge(entry)}<span><strong>${escapeHtml(entry.callsign || entry.atcId || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(airlineName || airlineCode || 'Simulator traffic')}</small></span></span><b>${escapeHtml(trafficAircraftLabel(entry))}</b><span class=\"live-traffic-position\"><strong>${escapeHtml(trafficPositionLabel(entry))}</strong><small>${escapeHtml(entry.currentAirport || (entry.onGround ? 'GROUND' : 'AIRBORNE'))}</small></span><span class=\"live-traffic-motion\"><strong>${Number.isFinite(altitude) && !entry.onGround ? `${Math.round(altitude).toLocaleString(localeFor(currentLanguage))} ft` : 'GROUND'}</strong><small>${Number.isFinite(groundSpeed) ? `${Math.round(groundSpeed)} kt` : '—'}</small></span><b class=\"live-traffic-distance\">${Number.isFinite(distance) ? `${distance.toFixed(distance < 10 ? 1 : 0)} NM` : '—'}</b><em class=\"traffic-status ${escapeHtml(liveTrafficStatusClass(status.kind))}\"><span>${escapeHtml(status.label || 'UNKNOWN')}</span><small>${status.inferred ? 'INFERRED' : 'REPORTED'}</small></em>`;"
-          new_row = "    row.innerHTML = `<span class=\"flightboard-flight\">${liveTrafficBadge(entry, airline)}<span><strong>${escapeHtml(flightLabel)}</strong><small>${escapeHtml(airline.name || airline.iata || airline.icao || 'Simulator traffic')}</small></span></span><b>${escapeHtml(trafficAircraftLabel(entry))}</b><span class=\"live-traffic-position\"><strong>${escapeHtml(trafficPositionLabel(entry))}</strong><small>${escapeHtml(entry.currentAirport || (entry.onGround ? 'GROUND' : 'AIRBORNE'))}</small></span><span class=\"live-traffic-motion\"><strong>${Number.isFinite(altitude) && !entry.onGround ? `${Math.round(altitude).toLocaleString(localeFor(currentLanguage))} ft` : 'GROUND'}</strong><small>${Number.isFinite(groundSpeed) ? `${Math.round(groundSpeed)} kt` : '—'}</small></span><b class=\"live-traffic-distance\">${Number.isFinite(distance) ? `${distance.toFixed(distance < 10 ? 1 : 0)} NM` : '—'}</b><em class=\"traffic-status ${escapeHtml(liveTrafficStatusClass(status.kind))}\"><span>${escapeHtml(status.label || 'UNKNOWN')}</span><small>${status.inferred ? 'INFERRED' : 'REPORTED'}</small></em>`;\n    row.querySelector('img[data-airline-logo]')?.addEventListener('error', (event) => event.currentTarget.remove(), { once: true });"
-          js = replace_once(js, old_row, new_row, 'traffic row markup')
-          js = js.replace("navigator.serviceWorker.register('/service-worker.js?v=1.7.10'", "navigator.serviceWorker.register('/service-worker.js?v=1.7.11'")
-          write(p, js)
-
-          # ---------- index.html ----------
-          p = Path('public/index.html')
-          html = read(p)
-          html = html.replace('data-app-version="1.7.10"', 'data-app-version="1.7.11"', 1)
-          html = html.replace('/styles.css?v=1.7.10', '/styles.css?v=1.7.11')
-          html = html.replace('/si-operations.css?v=1.7.10', '/si-operations.css?v=1.7.11')
-          html = html.replace('/app.js?v=1.7.10', '/app.js?v=1.7.11')
-          html = html.replace('/si-operations.js?v=1.7.10', '/si-operations.js?v=1.7.11')
-          html = html.replace('id="update-version">v1.7.10', 'id="update-version">v1.7.11', 1)
-          html = html.replace('CURRENT v1.7.10', 'CURRENT v1.7.11', 1)
-          anchor = '<div class="update-changelog"><section><b>1.7.10</b>'
-          insert = '<div class="update-changelog"><section><b>1.7.11</b><div><strong>Complete local airline logo catalog</strong><ul><li>Ships the complete available airline/operator logo set from a pinned 1,500+ record ICAO/IATA catalog locally with the app.</li><li>Traffic resolves airline identity from ICAO/IATA codes, callsign, ATC airline, flight number and aircraft title.</li><li>Real airline logos replace generic code badges whenever a catalog logo exists; unknown traffic still receives a clean fallback badge.</li><li>Flight labels prefer IATA flight numbers such as LH123 or XQ456 when the simulator exposes enough identity data.</li><li>No external logo request is required during flight.</li></ul></div></section><section><b>1.7.10</b>'
-          html = replace_once(html, anchor, insert, 'in-app changelog')
-          write(p, html)
-
-          # ---------- CSS ----------
-          p = Path('public/styles.css')
-          css = read(p)
-          css += '''\n\n/* 1.7.11 — complete local airline logo catalog */\n.traffic-airline-logo { width: 46px; height: 34px; flex-basis: 46px; border-radius: 9px; }\n.traffic-airline-logo img { inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; object-position: center; background: #fff; border-radius: 5px; }\n.traffic-airline-logo b { max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.flightboard-flight > span:last-child > strong { font-variant-numeric: tabular-nums; }\n'''
-          write(p, css)
-
-          # ---------- service worker ----------
-          p = Path('public/service-worker.js')
-          sw = read(p)
-          sw = sw.replace("const CACHE_NAME = 'flight-deck-efb-v1710';", "const CACHE_NAME = 'flight-deck-efb-v1711';")
-          sw = sw.replace('1.7.10', '1.7.11')
-          shell_anchor = "  '/live-traffic.js?v=1.7.11',"
-          sw = replace_once(sw, shell_anchor, shell_anchor + "\n  '/airline-catalog.js?v=1.7.11',", 'airline catalog service worker shell')
-          write(p, sw)
-
-          # ---------- server ----------
-          p = Path('src/server.mjs')
-          server = read(p)
-          server = server.replace("const APP_VERSION = '1.7.10';", "const APP_VERSION = '1.7.11';", 1)
-          write(p, server)
-
-          # ---------- docs ----------
-          p = Path('CHANGELOG.md')
-          changelog = read(p)
-          marker = '# Flight Deck EFB changelog\n\n'
-          section = f'''## 1.7.11 — Complete Airline Logos\n\n- Bundles **all {logo_count} available logo files** from the pinned {len(output_records)}-record airline/operator catalog locally in the installer; no external logo service is needed during a flight.\n- Resolves airline identity using **ICAO, IATA, callsign, ATC AIRLINE, flight number and aircraft title** instead of a tiny hand-maintained list.\n- Shows the real airline logo when available and a deterministic code badge only for traffic that genuinely cannot be mapped to a catalog logo.\n- Flight labels prefer familiar **IATA flight numbers** (for example `LH123`, `XQ456`) whenever the simulator exposes enough information.\n- Catalog source is pinned to `imgmongelli/airlines-logos-dataset@{SOURCE_COMMIT}` for reproducible builds. Airline names and logos remain trademarks/property of their respective owners and are used only to identify simulated traffic.\n\n'''
-          if '## 1.7.11 — Complete Airline Logos' not in changelog:
-              changelog = replace_once(changelog, marker, marker + section, 'changelog header')
-          write(p, changelog)
-
-          p = Path('README.md')
-          readme = read(p)
-          readme = readme.replace('**Current release: 1.7.10 — Airport Focus & Taxi Readability**', '**Current release: 1.7.11 — Complete Airline Logos**', 1)
-          readme = readme.replace('## 1.7.10 highlights', '## 1.7.11 highlights', 1)
-          readme = readme.replace('Flight-Deck-EFB-Setup-1.7.10.exe', 'Flight-Deck-EFB-Setup-1.7.11.exe')
-          write(p, readme)
-
-          p = Path('THIRD_PARTY_NOTICES.md')
-          notices = read(p)
-          notices = notices.replace('# Third-party notices — Flight Deck EFB 1.7.10', '# Third-party notices — Flight Deck EFB 1.7.11', 1)
-          if '## Airline logo identification catalog' not in notices:
-              notices += f'''\n\n## Airline logo identification catalog\n\nFlight Deck EFB 1.7.11 bundles the available airline/operator logo images and ICAO/IATA metadata from `imgmongelli/airlines-logos-dataset`, pinned to commit `{SOURCE_COMMIT}`. The repository describes its dataset under the MIT License. Airline names, logos, trade dress and trademarks remain the property of their respective owners; inclusion in Flight Deck EFB is solely for identification of simulated traffic and does not imply affiliation, sponsorship or endorsement. If a rights holder requests removal or correction, the corresponding asset can be removed from a future release.\n'''
-          write(p, notices)
-
-          print(f'Prepared {len(output_records)} airline records with {logo_count} local logos')
-          PY
-
+          python scripts/apply-1.7.11.py
           npm version 1.7.11 --no-git-tag-version
 
-      - name: Verify airline catalog and application source
-        shell: bash
+      - name: Verify 1.7.11 source
         run: |
           node --check public/app.js
           node --check public/airline-catalog.js
@@ -218,7 +44,7 @@ jobs:
           import assert from 'node:assert/strict';
           import { airlineCatalogStats, formatTrafficFlightNumber, resolveAirlineIdentity } from './public/airline-catalog.js';
           const stats = airlineCatalogStats();
-          assert.ok(stats.records >= 1500, `expected >=1500 airline records, got ${stats.records}`);
+          assert.ok(stats.records >= 1500, `expected >=1500 records, got ${stats.records}`);
           assert.ok(stats.logos >= 1000, `expected >=1000 logos, got ${stats.logos}`);
           const lufthansa = resolveAirlineIdentity({ callsign: 'DLH123' });
           assert.equal(lufthansa.icao, 'DLH');
@@ -244,12 +70,12 @@ jobs:
           grep -q 'Complete Airline Logos' CHANGELOG.md
           node -e "const p=require('./package.json'); if(p.version!=='1.7.11') throw new Error('wrong version')"
 
-      - name: Commit release source and vendored logo catalog
-        shell: bash
+      - name: Commit release source
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/release-1.7.11-airline-logos.yml
+          git rm scripts/apply-1.7.11.py
           git add -A
           git commit -m 'Release 1.7.11 Complete Airline Logos'
           git push origin HEAD:main
