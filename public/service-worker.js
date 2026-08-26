@@ -1,14 +1,15 @@
-const CACHE_NAME = 'flight-deck-efb-v1710';
+const CACHE_NAME = 'flight-deck-efb-v1711';
 const APP_SHELL = [
   '/',
   '/index.html',
-  '/styles.css?v=1.7.10',
-  '/si-operations.css?v=1.7.10',
-  '/app.js?v=1.7.10',
-  '/live-traffic.js?v=1.7.10',
-  '/si-operations.js?v=1.7.10',
-  '/i18n.js?v=1.7.10',
-  '/flight-phases.js?v=1.7.10',
+  '/styles.css?v=1.7.11',
+  '/si-operations.css?v=1.7.11',
+  '/app.js?v=1.7.11',
+  '/live-traffic.js?v=1.7.11',
+  '/airline-catalog.js?v=1.7.11',
+  '/si-operations.js?v=1.7.11',
+  '/i18n.js?v=1.7.11',
+  '/flight-phases.js?v=1.7.11',
   '/manifest.webmanifest',
   '/assets/app-icon.svg',
   '/assets/app-icon-192.png',

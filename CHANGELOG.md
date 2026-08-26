@@ -1,5 +1,13 @@
 # Flight Deck EFB changelog
 
+## 1.7.11 — Complete Airline Icons
+
+- Merges two pinned ICAO/IATA catalogs and ships **an icon for every one of the 2003 airline/operator records** in the resulting local catalog.
+- Uses **1591 supplied airline logo images** where available; the remaining **412 records** get a deterministic local code icon so the Traffic UI never has a missing/broken airline icon.
+- Resolves airline identity using **ICAO, IATA, callsign, ATC AIRLINE, flight number and aircraft title** instead of a tiny hand-maintained list.
+- Flight labels prefer familiar **IATA flight numbers** (for example `LH123`, `XQ456`) whenever the simulator exposes enough information.
+- Sources are pinned to `imgmongelli/airlines-logos-dataset@7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a` and `spydogenesis/airlines-logo@8c5f1ae3d25538bd1b649a7ad85b902528c612b6` for reproducible builds. Airline names and logos remain trademarks/property of their respective owners and are used only to identify simulated traffic.
+
 ## 1.7.10 — Airport Focus & Taxi Readability
 
 - Added **Airport Focus** to Taxi Navigation. It is enabled by default and masks almost all map context outside the airport boundary while keeping the operational airport vectors fully visible.

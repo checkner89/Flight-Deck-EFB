@@ -1,4 +1,4 @@
-# Third-party notices — Flight Deck EFB 1.7.10
+# Third-party notices — Flight Deck EFB 1.7.11
 
 Flight Deck EFB is an independent flight-simulation companion. It is not affiliated with or endorsed by Microsoft/Asobo Studio, SayIntentions.AI, BeyondATC, Navigraph, SimBrief, Fenix Simulations, PMDG, FSDreamTeam/GSX, Little Navmap, VATSIM, IVAO, OpenStreetMap, OurAirports or Esri unless explicitly stated otherwise.
 
@@ -41,3 +41,8 @@ Flight simulation use only — not for real-world navigation.
 ## Microsoft Flight Simulator 2024 SDK build integration
 
 Flight Deck EFB does not redistribute the Microsoft Flight Simulator SDK or EFB template. The optional local package builder operates on the SDK/template installed by the user and invokes the user's installed `fspackagetool.exe`. Those Microsoft files retain their original terms and remain local to the user's PC.
+
+
+## Airline logo identification catalogs
+
+Flight Deck EFB 1.7.11 uses ICAO/IATA metadata and available airline/operator logo images from `imgmongelli/airlines-logos-dataset` pinned to `7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a`, supplemented by the `spydogenesis/airlines-logo` collection pinned to `8c5f1ae3d25538bd1b649a7ad85b902528c612b6`. The first repository describes its dataset under the MIT License; the second explicitly notes that airline logos remain the property of their respective airlines. Flight Deck EFB uses these marks solely to identify simulated traffic and does not claim ownership, affiliation, sponsorship or endorsement. When neither source contains an image, Flight Deck EFB generates a neutral local code icon rather than reproducing another third-party mark. Rights holders can request correction or removal in a future release.

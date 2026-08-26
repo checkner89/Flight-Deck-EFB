@@ -5647,3 +5647,10 @@ html[data-theme="light"] .map-attribution {
   background: rgba(247, 250, 252, 0.86);
   color: #496875;
 }
+
+
+/* 1.7.11 — complete local airline icon catalog */
+.traffic-airline-logo { width: 46px; height: 34px; flex-basis: 46px; border-radius: 9px; }
+.traffic-airline-logo img { inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; object-position: center; background: #fff; border-radius: 5px; }
+.traffic-airline-logo b { max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flightboard-flight > span:last-child > strong { font-variant-numeric: tabular-nums; }

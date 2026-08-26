@@ -1,4 +1,4 @@
-import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.10';
+import { applyTranslations, localeFor, resolveLanguage, translate } from './i18n.js?v=1.7.11';
 import {
   FLIGHT_PHASES,
   PHASE_ACTIONS,
@@ -6,8 +6,9 @@ import {
   calculateFlightTimeline,
   phaseChecklist,
   resolveFlightPhase,
-} from './flight-phases.js?v=1.7.10';
-import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.10';
+} from './flight-phases.js?v=1.7.11';
+import { buildLiveTrafficModel, trafficAircraftLabel, trafficPositionLabel } from './live-traffic.js?v=1.7.11';
+import { formatTrafficFlightNumber, resolveAirlineIdentity } from './airline-catalog.js?v=1.7.11';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -2993,32 +2994,12 @@ function renderCom(state) {
   if (!unique.length) elements.comFrequencyPresets.innerHTML = '<p class="empty-list">No frequencies available from ATC or online networks.</p>';
 }
 
-const LIVE_TRAFFIC_AIRLINES = {
-  AFR: ['AF', 'Air France'], AEE: ['A3', 'Aegean'], AUA: ['OS', 'Austrian'], BAW: ['BA', 'British Airways'], BEL: ['SN', 'Brussels Airlines'],
-  BTI: ['BT', 'airBaltic'], CFG: ['DE', 'Condor'], DLH: ['LH', 'Lufthansa'], EIN: ['EI', 'Aer Lingus'], EWG: ['EW', 'Eurowings'],
-  EZY: ['U2', 'easyJet'], FIN: ['AY', 'Finnair'], ICE: ['FI', 'Icelandair'], KLM: ['KL', 'KLM'], LOT: ['LO', 'LOT'], NSZ: ['D8', 'Norwegian'],
-  QTR: ['QR', 'Qatar Airways'], RYR: ['FR', 'Ryanair'], SAS: ['SK', 'SAS'], SWR: ['LX', 'SWISS'], TAP: ['TP', 'TAP'], THY: ['TK', 'Turkish Airlines'],
-  TUI: ['X3', 'TUI fly'], UAE: ['EK', 'Emirates'], VLG: ['VY', 'Vueling'], WZZ: ['W6', 'Wizz Air'],
-};
-
-const LIVE_TRAFFIC_AIRLINE_NAMES = [
-  [/air\s*baltic/i, ['BT', 'airBaltic']], [/lufthansa/i, ['LH', 'Lufthansa']], [/british airways|speedbird/i, ['BA', 'British Airways']],
-  [/eurowings/i, ['EW', 'Eurowings']], [/condor/i, ['DE', 'Condor']], [/air france/i, ['AF', 'Air France']], [/easyjet/i, ['U2', 'easyJet']],
-  [/austrian/i, ['OS', 'Austrian']], [/aer lingus/i, ['EI', 'Aer Lingus']], [/aegean/i, ['A3', 'Aegean']], [/klm/i, ['KL', 'KLM']],
-];
-
-function liveTrafficAirline(entry = {}) {
-  const callsign = String(entry.callsign || entry.atcId || '').trim().toUpperCase();
-  const icao = callsign.match(/^([A-Z]{3})/)?.[1];
-  if (icao && LIVE_TRAFFIC_AIRLINES[icao]) return LIVE_TRAFFIC_AIRLINES[icao];
-  const haystack = [entry.airline, entry.title, entry.callsign].filter(Boolean).join(' ');
-  return LIVE_TRAFFIC_AIRLINE_NAMES.find(([pattern]) => pattern.test(haystack))?.[1]
-    || [String(entry.airline || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase() || 'AI', entry.airline || 'Simulator traffic'];
-}
-
-function liveTrafficBadge(entry = {}) {
-  const [code, name] = liveTrafficAirline(entry);
-  return `<span class="traffic-airline-logo live-traffic-airline-badge" title="${escapeHtml(name)}"><b>${escapeHtml(code || 'AI')}</b></span>`;
+function liveTrafficBadge(entry = {}, identity = resolveAirlineIdentity(entry)) {
+  const code = identity.iata || identity.icao || 'AI';
+  const image = identity.logo
+    ? `<img data-airline-logo src="${escapeHtml(identity.logo)}" alt="" loading="lazy" decoding="async">`
+    : '';
+  return `<span class="traffic-airline-logo live-traffic-airline-badge" title="${escapeHtml(identity.name || code)}">${image}<b>${escapeHtml(code)}</b></span>`;
 }
 
 function currentFlightboardAirport(state) {
@@ -3066,14 +3047,16 @@ function renderFlightboard(state) {
   elements.flightboardList.replaceChildren();
   for (const entry of model.rows) {
     const status = entry.liveStatus || {};
-    const [airlineCode, airlineName] = liveTrafficAirline(entry);
+    const airline = resolveAirlineIdentity(entry);
+    const flightLabel = formatTrafficFlightNumber(entry, airline);
     const altitude = entry.altitudeFeet === null || entry.altitudeFeet === undefined || entry.altitudeFeet === '' ? null : Number(entry.altitudeFeet);
     const groundSpeed = entry.groundSpeed === null || entry.groundSpeed === undefined || entry.groundSpeed === '' ? null : Number(entry.groundSpeed);
     const distance = status.distanceNm === null || status.distanceNm === undefined || status.distanceNm === '' ? null : Number(status.distanceNm);
     const row = document.createElement('div');
     row.className = 'flightboard-row live-traffic-row';
     row.setAttribute('role', 'row');
-    row.innerHTML = `<span class="flightboard-flight">${liveTrafficBadge(entry)}<span><strong>${escapeHtml(entry.callsign || entry.atcId || `AI-${entry.objectId}`)}</strong><small>${escapeHtml(airlineName || airlineCode || 'Simulator traffic')}</small></span></span><b>${escapeHtml(trafficAircraftLabel(entry))}</b><span class="live-traffic-position"><strong>${escapeHtml(trafficPositionLabel(entry))}</strong><small>${escapeHtml(entry.currentAirport || (entry.onGround ? 'GROUND' : 'AIRBORNE'))}</small></span><span class="live-traffic-motion"><strong>${Number.isFinite(altitude) && !entry.onGround ? `${Math.round(altitude).toLocaleString(localeFor(currentLanguage))} ft` : 'GROUND'}</strong><small>${Number.isFinite(groundSpeed) ? `${Math.round(groundSpeed)} kt` : '—'}</small></span><b class="live-traffic-distance">${Number.isFinite(distance) ? `${distance.toFixed(distance < 10 ? 1 : 0)} NM` : '—'}</b><em class="traffic-status ${escapeHtml(liveTrafficStatusClass(status.kind))}"><span>${escapeHtml(status.label || 'UNKNOWN')}</span><small>${status.inferred ? 'INFERRED' : 'REPORTED'}</small></em>`;
+    row.innerHTML = `<span class="flightboard-flight">${liveTrafficBadge(entry, airline)}<span><strong>${escapeHtml(flightLabel)}</strong><small>${escapeHtml(airline.name || airline.iata || airline.icao || 'Simulator traffic')}</small></span></span><b>${escapeHtml(trafficAircraftLabel(entry))}</b><span class="live-traffic-position"><strong>${escapeHtml(trafficPositionLabel(entry))}</strong><small>${escapeHtml(entry.currentAirport || (entry.onGround ? 'GROUND' : 'AIRBORNE'))}</small></span><span class="live-traffic-motion"><strong>${Number.isFinite(altitude) && !entry.onGround ? `${Math.round(altitude).toLocaleString(localeFor(currentLanguage))} ft` : 'GROUND'}</strong><small>${Number.isFinite(groundSpeed) ? `${Math.round(groundSpeed)} kt` : '—'}</small></span><b class="live-traffic-distance">${Number.isFinite(distance) ? `${distance.toFixed(distance < 10 ? 1 : 0)} NM` : '—'}</b><em class="traffic-status ${escapeHtml(liveTrafficStatusClass(status.kind))}"><span>${escapeHtml(status.label || 'UNKNOWN')}</span><small>${status.inferred ? 'INFERRED' : 'REPORTED'}</small></em>`;
+    row.querySelector('img[data-airline-logo]')?.addEventListener('error', (event) => event.currentTarget.remove(), { once: true });
     elements.flightboardList.append(row);
   }
   if (!model.rows.length) {
@@ -4928,7 +4911,7 @@ async function start() {
   }
 
   if ('serviceWorker' in navigator && !/Electron\//i.test(navigator.userAgent)) {
-    navigator.serviceWorker.register('/service-worker.js?v=1.7.10', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('/service-worker.js?v=1.7.11', { updateViaCache: 'none' })
       .then((registration) => registration.update())
       .catch(() => {});
   }
