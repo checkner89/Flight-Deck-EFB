@@ -15,28 +15,26 @@ async function update(relativePath, transform) {
 
 await update('public/index.html', (source) => {
   let html = source;
-  const css = `<link rel="stylesheet" data-operations-suite-style href="/operations-suite.css?v=${version}">`;
-  const script = `<script type="module" data-operations-suite src="/operations-suite.js?v=${version}"></script>`;
-  if (/operations-suite\.css\?v=/.test(html)) html = html.replace(/<link[^>]+operations-suite\.css\?v=[^>]+>/, css);
-  else html = html.replace('</head>', `    ${css}\n  </head>`);
-  if (/operations-suite\.js\?v=/.test(html)) html = html.replace(/<script[^>]+operations-suite\.js\?v=[^>]+><\/script>/, script);
-  else html = html.replace('</body>', `    ${script}\n  </body>`);
+  html = html.replace(/\s*<link[^>]+operations-suite\.css\?v=[^>]+>\s*/g, '\n');
+  html = html.replace(/\s*<script[^>]+operations-suite\.js\?v=[^>]+><\/script>\s*/g, '\n');
+  html = html.replace(/\s*<link[^>]+pilot-tools\.css\?v=[^>]+>\s*/g, '\n');
+  html = html.replace(/\s*<script[^>]+pilot-tools\.js\?v=[^>]+><\/script>\s*/g, '\n');
+  html = html.replace(/<h3\s+data-i18n="scratchpad">Scratchpad<\/h3>/g, '<h3 data-i18n="flightNotes">Flight Notes</h3>');
+  const css = `<link rel="stylesheet" data-pilot-tools-style href="/pilot-tools.css?v=${version}">`;
+  const script = `<script type="module" data-pilot-tools src="/pilot-tools.js?v=${version}"></script>`;
+  html = html.replace('</head>', `    ${css}\n  </head>`);
+  html = html.replace('</body>', `    ${script}\n  </body>`);
   return html;
 });
 
 await update('public/service-worker.js', (source) => {
   let sw = source;
-  sw = sw.replace(/\/operations-suite\.js\?v=[^'"\s,]+/g, `/operations-suite.js?v=${version}`);
-  sw = sw.replace(/\/operations-suite\.css\?v=[^'"\s,]+/g, `/operations-suite.css?v=${version}`);
-  if (!sw.includes(`/operations-suite.js?v=${version}`)) {
-    const anchor = `  '/flight-phases.js?v=${version}',`;
-    if (sw.includes(anchor)) {
-      sw = sw.replace(anchor, `${anchor}\n  '/operations-suite.js?v=${version}',\n  '/operations-suite.css?v=${version}',`);
-    } else {
-      sw = sw.replace(`  '/manifest.webmanifest',`, `  '/operations-suite.js?v=${version}',\n  '/operations-suite.css?v=${version}',\n  '/manifest.webmanifest',`);
-    }
-  }
-  return sw;
+  sw = sw.replace(/^\s*['"]\/operations-suite\.(?:js|css)\?v=[^'"\s,]+['"],?\s*$/gm, '');
+  sw = sw.replace(/^\s*['"]\/pilot-tools\.(?:js|css)\?v=[^'"\s,]+['"],?\s*$/gm, '');
+  const anchor = `  '/manifest.webmanifest',`;
+  const entries = `  '/pilot-tools.js?v=${version}',\n  '/pilot-tools.css?v=${version}',\n`;
+  if (sw.includes(anchor)) sw = sw.replace(anchor, `${entries}${anchor}`);
+  return sw.replace(/\n{3,}/g, '\n\n');
 });
 
-console.log(`Prepared operations suite assets for ${version}.`);
+console.log(`Prepared deduplicated pilot tools for ${version}.`);
