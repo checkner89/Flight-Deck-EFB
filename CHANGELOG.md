@@ -1,5 +1,15 @@
 # Flight Deck EFB changelog
 
+## 1.7.12 — Home Flight Overlay
+
+- Reworked Home around the most important live flight parameters instead of the previous flight-phase timeline.
+- Added a compact top flight overlay with **route, flight progress, remaining distance and estimated arrival time**.
+- Added live **flight number, current/destination airport, runway, gate, altitude, IAS/groundspeed, COM active and COM standby** information to the Home flight strip.
+- Airport and runway context switch toward the **destination while airborne**; arrival gate information can appear later when provided by connected ground/ATC data.
+- Added direct Home shortcuts to **COM, Taxi and Live Map**.
+- Replaced the single local clock with **UTC plus local time** shown together.
+- Removed the old Home flight-phase card and its phase-overview presentation.
+
 ## 1.7.11 — Complete Airline Icons
 
 - Merges two pinned ICAO/IATA catalogs and ships **an icon for every one of the 2003 airline/operator records** in the resulting local catalog.
@@ -62,6 +72,7 @@
 - Fixed Taxi Navigation getting stuck on a **runway-only preview**: preview maps are no longer persisted as complete browser maps, existing poisoned preview caches self-heal, and the host waits longer for OSM/Overpass geometry when MSFS facility data arrives first.
 - Fixed **New Flight** immediately re-importing the just-finished taxi route/session, which could make the red ROUTE / POSITION warning reappear and leave guidance unusable.
 - Taxi/map fixes are implemented independently with documented MSFS facility data, OpenStreetMap/Overpass and OurAirports; no TaxiNow code, assets or protected implementation were reused.
+
 ## 1.7.4 — Honest Live Traffic
 
 - Replaced the airport-style Flightboard with an honest **Live Traffic** workspace: **Ground / Arriving / Nearby**.
@@ -114,7 +125,7 @@
 - Added documented `GET_EFB_ROUTE` ingestion and `AvionicsRouteSync` observation for the MSFS 2024 Planned Route API. Flight Deck intentionally does not call route-write methods that remain incompletely documented/stubbed by the SDK.
 - Added a local Route Sync Service that normalizes the MSFS EFB route, builds the current Flight Deck/SimBrief route and compares airports, runways, procedures and enroute waypoints without exposing connector credentials.
 - Added a stabilized Flight Intelligence engine with phase-transition dwell/hysteresis on top of MSFS, ATC and route context. Manual phase override still has priority and existing phase-triggered automations automatically use the stabilized phase.
-- Added a Turnaround Coordinator that combines flight-plan, aircraft and documented GSX state into departure/arrival progress, blockers and the next recommended step without remotely starting/cancelling GSX services.
+- Added a Turnaround Coordinator that combines flight-plan, aircraft and documented GSX state into departure/arrival progress, blockers and the next recommended step without remotely starting/cancels GSX services.
 - Added a local, advisory-only Flight Assistant for Ground Safety, route mismatch, projected fuel reserve, arrival weather, flight-plan/route readiness and turnaround recommendations.
 - Added Flight Intelligence and Route Bridge cards to Flight Hub, Turnaround Coordinator to Ground Services and Flight Assistant advisories to Home.
 - Added loopback-only native EFB bridge endpoints with explicit CORS handling; they expose route/status data only and never credentials or Windows update controls.
