@@ -41,17 +41,20 @@ function storedAircraftView() {
 function syncAircraftView(page, requested = null) {
   if (!page) return;
   const view = normalizeAircraftView(requested || page.dataset.stableAircraftView || storedAircraftView());
-  page.dataset.stableAircraftView = view;
-  try { localStorage.setItem(AIRCRAFT_VIEW_KEY, view); } catch {}
+  if (page.dataset.stableAircraftView !== view) page.dataset.stableAircraftView = view;
+  try {
+    if (localStorage.getItem(AIRCRAFT_VIEW_KEY) !== view) localStorage.setItem(AIRCRAFT_VIEW_KEY, view);
+  } catch {}
 
   for (const button of page.querySelectorAll('[data-aircraft-view-button]')) {
     const active = button.dataset.aircraftViewButton === view;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', String(active));
-    button.setAttribute('aria-pressed', String(active));
+    if (button.classList.contains('active') !== active) button.classList.toggle('active', active);
+    if (button.getAttribute('aria-selected') !== String(active)) button.setAttribute('aria-selected', String(active));
+    if (button.getAttribute('aria-pressed') !== String(active)) button.setAttribute('aria-pressed', String(active));
   }
   for (const section of page.querySelectorAll('[data-aircraft-view]')) {
-    section.hidden = section.dataset.aircraftView !== view;
+    const shouldHide = section.dataset.aircraftView !== view;
+    if (section.hidden !== shouldHide) section.hidden = shouldHide;
   }
 }
 
@@ -67,13 +70,13 @@ function enhanceAircraftPage() {
   }, true);
   syncAircraftView(page);
 
-  let restoring = false;
+  let scheduled = false;
   const observer = new MutationObserver(() => {
-    if (restoring) return;
-    restoring = true;
+    if (scheduled) return;
+    scheduled = true;
     queueMicrotask(() => {
+      scheduled = false;
       syncAircraftView(page);
-      restoring = false;
     });
   });
   observer.observe(page, { attributes: true, subtree: true, attributeFilter: ['hidden', 'class', 'aria-selected'] });
@@ -88,7 +91,7 @@ function polishTurnaround() {
   const next = document.getElementById('turnaround-next');
   if (!card || !status || !stage || !progress || !bar) return;
   const inactive = isTurnaroundInactive(status.textContent, stage.textContent);
-  card.classList.toggle('turnaround-inactive', inactive);
+  if (card.classList.contains('turnaround-inactive') !== inactive) card.classList.toggle('turnaround-inactive', inactive);
   if (!inactive) return;
   if (progress.textContent !== '—') progress.textContent = '—';
   if (bar.style.width !== '0%') bar.style.width = '0%';
@@ -100,8 +103,8 @@ function polishGroundOverview() {
   if (!overview) return;
   const installed = /ERKANNT|INSTALLED/i.test(document.getElementById('gsx-install')?.textContent || '');
   const simOnline = /ONLINE/i.test(document.getElementById('gsx-sim')?.textContent || '');
-  overview.classList.toggle('gsx-installed', installed);
-  overview.classList.toggle('sim-online', simOnline);
+  if (overview.classList.contains('gsx-installed') !== installed) overview.classList.toggle('gsx-installed', installed);
+  if (overview.classList.contains('sim-online') !== simOnline) overview.classList.toggle('sim-online', simOnline);
 
   const payload = document.querySelector('[data-page="ground"] .gsx-payload-card');
   if (payload) {
@@ -109,7 +112,7 @@ function polishGroundOverview() {
     const boarded = document.getElementById('gsx-pax-progress')?.textContent?.trim() || '—';
     const cargo = document.getElementById('gsx-cargo-progress')?.textContent?.trim() || '—';
     const empty = ['—', '0'].includes(target) && ['—', '0'].includes(boarded) && ['—', '0 %', '0%'].includes(cargo);
-    payload.classList.toggle('payload-empty', empty);
+    if (payload.classList.contains('payload-empty') !== empty) payload.classList.toggle('payload-empty', empty);
   }
 }
 
