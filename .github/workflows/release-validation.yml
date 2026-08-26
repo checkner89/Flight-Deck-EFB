@@ -29,6 +29,7 @@ jobs:
       - name: Verify modified source
         shell: pwsh
         run: |
+          node --check scripts/apply-release-1.17.19.mjs
           node --check scripts/apply-release-1.7.19.mjs
           node --check src/local-path-discovery.mjs
           node --check src/simconnect-client.mjs
@@ -56,9 +57,11 @@ jobs:
         shell: pwsh
         run: |
           $html = Get-Content 'public/index.html' -Raw
-          if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.7.19 UI assets are not wired into index.html.' }
+          if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 UI compatibility assets are not wired into index.html.' }
           $server = Get-Content 'src/server.mjs' -Raw
           if ($server -notmatch '/api/gsx/profile-library' -or $server -notmatch 'scanGsxProfileLibrary') { throw 'GSX automatic path discovery API is missing.' }
           $app = Get-Content 'public/app.js' -Raw
           if ($app -notmatch 'renderTaxiTraffic' -or $app -notmatch 'flightdeckstate') { throw 'Live map/taxi traffic integration is missing.' }
-          Write-Host 'Release 1.7.19 validation passed.'
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.17.19') { throw "Unexpected package version: $version" }
+          Write-Host 'Release 1.17.19 validation passed.'
