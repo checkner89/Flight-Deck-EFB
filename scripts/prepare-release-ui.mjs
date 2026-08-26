@@ -45,6 +45,8 @@ await updateFile('public/index.html', (source) => {
     '/ground-polish.css',
     '/ui-polish.js',
     '/ui-polish.css',
+    '/gsx-profile-manager.js',
+    '/gsx-profile-manager.css',
   ]) html = updateAssetVersion(html, asset);
 
   const overlayCss = `<link rel="stylesheet" data-flight-overlay-style href="/flight-overlay.css?v=${version}">`;
@@ -80,6 +82,20 @@ await updateFile('public/index.html', (source) => {
     html = html.replace(/<link[^>]+ui-polish\.css\?v=[^>]+>/, uiCss);
   } else {
     html = html.replace('</head>', `    ${uiCss}\n  </head>`);
+  }
+
+  const gsxProfileCss = `<link rel="stylesheet" data-gsx-profile-manager-style href="/gsx-profile-manager.css?v=${version}">`;
+  if (/gsx-profile-manager\.css\?v=/.test(html)) {
+    html = html.replace(/<link[^>]+gsx-profile-manager\.css\?v=[^>]+>/, gsxProfileCss);
+  } else {
+    html = html.replace('</head>', `    ${gsxProfileCss}\n  </head>`);
+  }
+
+  const gsxProfileScript = `<script data-gsx-profile-manager src="/gsx-profile-manager.js?v=${version}"></script>`;
+  if (/gsx-profile-manager\.js\?v=/.test(html)) {
+    html = html.replace(/<script[^>]+gsx-profile-manager\.js\?v=[^>]+><\/script>/, gsxProfileScript);
+  } else {
+    html = html.replace(/(<script type="module" src="\/app\.js\?v=[^"]+"><\/script>)/, `    ${gsxProfileScript}\n    $1`);
   }
 
   const overlayScript = `<script type="module" src="/flight-overlay.js?v=${version}"></script>`;
@@ -154,6 +170,8 @@ await updateFile('public/service-worker.js', (source) => {
     '/ground-polish.css',
     '/ui-polish.js',
     '/ui-polish.css',
+    '/gsx-profile-manager.js',
+    '/gsx-profile-manager.css',
     '/airline-catalog.js',
     '/si-operations.js',
     '/i18n.js',
@@ -174,6 +192,9 @@ await updateFile('public/service-worker.js', (source) => {
   }
   if (!sw.includes(`/ui-polish.js?v=${version}`)) {
     sw = sw.replace(`  '/ground-polish.css?v=${version}',`, `  '/ground-polish.css?v=${version}',\n  '/ui-polish.js?v=${version}',\n  '/ui-polish.css?v=${version}',`);
+  }
+  if (!sw.includes(`/gsx-profile-manager.js?v=${version}`)) {
+    sw = sw.replace(`  '/ui-polish.css?v=${version}',`, `  '/ui-polish.css?v=${version}',\n  '/gsx-profile-manager.js?v=${version}',\n  '/gsx-profile-manager.css?v=${version}',`);
   }
   return sw;
 });
