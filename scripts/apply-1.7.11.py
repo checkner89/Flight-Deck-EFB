@@ -1,12 +1,16 @@
 from pathlib import Path
+import html as html_lib
 import json
 import os
+import re
 import shutil
 
 ROOT = Path('.')
 SOURCE = Path(os.environ['AIRLINE_SOURCE'])
+SOURCE_2 = Path(os.environ['AIRLINE_SOURCE_2'])
 VERSION = '1.7.11'
 SOURCE_COMMIT = '7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a'
+SOURCE_2_COMMIT = '8c5f1ae3d25538bd1b649a7ad85b902528c612b6'
 
 
 def read(path):
@@ -24,11 +28,89 @@ def replace_once(text, old, new, label):
     return text.replace(old, new, 1)
 
 
-# ---------- Vendor complete available image set ----------
-source_data = json.loads((SOURCE / 'airlines.json').read_text(encoding='utf-8'))
-records = source_data.get('data', [])
-if len(records) < 1500:
-    raise SystemExit(f'airline catalog unexpectedly small: {len(records)} records')
+def clean_code(value):
+    return re.sub(r'[^A-Z0-9]', '', str(value or '').upper())
+
+
+def record_key(item):
+    icao = clean_code(item.get('icao_code') or item.get('icao'))
+    iata = clean_code(item.get('iata_code') or item.get('iata'))
+    name = re.sub(r'[^A-Z0-9]+', '', str(item.get('name') or '').upper())
+    if icao:
+        return f'ICAO:{icao}'
+    if iata:
+        return f'IATA:{iata}'
+    return f'NAME:{name}'
+
+
+def make_generated_icon(path, code, name):
+    safe_code = html_lib.escape(code or 'AI')
+    safe_name = html_lib.escape(name or 'Airline')
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="{safe_name}">
+  <rect width="200" height="200" rx="34" fill="#ffffff"/>
+  <rect x="5" y="5" width="190" height="190" rx="29" fill="none" stroke="#b9c9d1" stroke-width="10"/>
+  <path d="M42 112h116M100 46v108" stroke="#16a79d" stroke-width="12" stroke-linecap="round" opacity=".18"/>
+  <text x="100" y="118" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800" fill="#173846">{safe_code[:4]}</text>
+</svg>'''
+    path.write_text(svg, encoding='utf-8')
+
+
+# ---------- Merge broad airline/operator catalogs ----------
+primary_payload = json.loads((SOURCE / 'airlines.json').read_text(encoding='utf-8'))
+primary_records = primary_payload.get('data', [])
+secondary_records = json.loads((SOURCE_2 / 'airlines.json').read_text(encoding='utf-8'))
+if len(primary_records) < 1500:
+    raise SystemExit(f'primary airline catalog unexpectedly small: {len(primary_records)} records')
+if len(secondary_records) < 1000:
+    raise SystemExit(f'secondary airline catalog unexpectedly small: {len(secondary_records)} records')
+
+combined = {}
+for item in secondary_records:
+    key = record_key(item)
+    combined[key] = {
+        'name': str(item.get('name') or '').strip(),
+        'iata': clean_code(item.get('iata_code')),
+        'icao': clean_code(item.get('icao_code')),
+    }
+for item in primary_records:
+    key = record_key(item)
+    current = combined.get(key, {})
+    combined[key] = {
+        'name': str(item.get('name') or current.get('name') or '').strip(),
+        'iata': clean_code(item.get('iata_code')) or current.get('iata', ''),
+        'icao': clean_code(item.get('icao_code')) or current.get('icao', ''),
+    }
+
+# Cross-link records that share the same ICAO/IATA so lookups stay deterministic.
+by_icao = {}
+by_iata = {}
+for item in combined.values():
+    if item['icao']:
+        by_icao.setdefault(item['icao'], item)
+    if item['iata']:
+        by_iata.setdefault(item['iata'], item)
+for item in combined.values():
+    if item['icao'] and item['icao'] in by_icao:
+        canonical = by_icao[item['icao']]
+        canonical['iata'] = canonical['iata'] or item['iata']
+        canonical['name'] = canonical['name'] or item['name']
+    if item['iata'] and item['iata'] in by_iata:
+        canonical = by_iata[item['iata']]
+        canonical['icao'] = canonical['icao'] or item['icao']
+        canonical['name'] = canonical['name'] or item['name']
+
+# Primary logos are keyed by ICAO; secondary v2 logos are keyed by IATA.
+primary_logo_by_icao = {}
+for item in primary_records:
+    icao = clean_code(item.get('icao_code'))
+    source_logo = item.get('logo')
+    if not icao or not source_logo:
+        continue
+    candidate = SOURCE / str(source_logo).replace('./', '')
+    if candidate.is_file():
+        primary_logo_by_icao[icao] = candidate
+
+secondary_logo_dir = SOURCE_2 / 'airlines-logo' / '200x200_v2'
 
 logo_dir = ROOT / 'public' / 'assets' / 'airlines'
 if logo_dir.exists():
@@ -36,45 +118,74 @@ if logo_dir.exists():
 logo_dir.mkdir(parents=True, exist_ok=True)
 
 output_records = []
-logo_count = 0
-for item in records:
-    name = str(item.get('name') or '').strip()
-    iata = str(item.get('iata_code') or '').strip().upper()
-    icao = str(item.get('icao_code') or '').strip().upper()
-    source_logo = item.get('logo')
-    has_logo = False
-    logo_name = None
-    if source_logo:
-        candidate = SOURCE / str(source_logo).replace('./', '')
-        if candidate.is_file() and icao:
-            logo_name = f'{icao}{candidate.suffix.lower()}'
-            shutil.copy2(candidate, logo_dir / logo_name)
-            has_logo = True
-            logo_count += 1
-    if name or iata or icao:
-        output_records.append({
-            'name': name,
-            'iata': iata,
-            'icao': icao,
-            'logo': f'/assets/airlines/{logo_name}' if has_logo else '',
-        })
+official_logo_count = 0
+generated_icon_count = 0
+seen = set()
+for item in sorted(combined.values(), key=lambda row: (row['icao'] or 'ZZZ', row['iata'] or 'ZZ', row['name'])):
+    icao = item['icao']
+    iata = item['iata']
+    name = item['name']
+    dedupe = (icao, iata, name)
+    if dedupe in seen or not any(dedupe):
+        continue
+    seen.add(dedupe)
 
-if logo_count < 1000:
-    raise SystemExit(f'airline logo catalog unexpectedly small: {logo_count} logos')
+    file_stem = icao or (f'IATA_{iata}' if iata else f'NAME_{len(output_records):05d}')
+    logo_path = ''
+    logo_kind = 'generated'
+
+    primary_logo = primary_logo_by_icao.get(icao)
+    secondary_logo = secondary_logo_dir / f'{iata}.png' if iata else None
+    if primary_logo and primary_logo.is_file():
+        target = logo_dir / f'{file_stem}{primary_logo.suffix.lower()}'
+        shutil.copy2(primary_logo, target)
+        logo_path = f'/assets/airlines/{target.name}'
+        logo_kind = 'official'
+        official_logo_count += 1
+    elif secondary_logo and secondary_logo.is_file():
+        target = logo_dir / f'{file_stem}.png'
+        shutil.copy2(secondary_logo, target)
+        logo_path = f'/assets/airlines/{target.name}'
+        logo_kind = 'official'
+        official_logo_count += 1
+    else:
+        target = logo_dir / f'{file_stem}.svg'
+        make_generated_icon(target, iata or icao or 'AI', name)
+        logo_path = f'/assets/airlines/{target.name}'
+        generated_icon_count += 1
+
+    output_records.append({
+        'name': name,
+        'iata': iata,
+        'icao': icao,
+        'logo': logo_path,
+        'logoKind': logo_kind,
+    })
+
+if len(output_records) < 1500:
+    raise SystemExit(f'merged airline catalog unexpectedly small: {len(output_records)} records')
+if official_logo_count < 900:
+    raise SystemExit(f'official airline logo catalog unexpectedly small: {official_logo_count} logos')
+if official_logo_count + generated_icon_count != len(output_records):
+    raise SystemExit('not every airline record received a local icon')
 
 metadata = {
-    'source': 'imgmongelli/airlines-logos-dataset',
-    'sourceCommit': SOURCE_COMMIT,
+    'sources': [
+        {'repository': 'imgmongelli/airlines-logos-dataset', 'commit': SOURCE_COMMIT},
+        {'repository': 'spydogenesis/airlines-logo', 'commit': SOURCE_2_COMMIT},
+    ],
     'recordCount': len(output_records),
-    'logoCount': logo_count,
+    'officialLogoCount': official_logo_count,
+    'generatedIconCount': generated_icon_count,
+    'iconCount': len(output_records),
     'records': output_records,
 }
 write('public/data/airlines.json', json.dumps(metadata, ensure_ascii=False, separators=(',', ':')))
 
 catalog_json = json.dumps(output_records, ensure_ascii=False, separators=(',', ':'))
-catalog_js = """// Generated for Flight Deck EFB __VERSION__ from imgmongelli/airlines-logos-dataset @ __SOURCE_COMMIT__
+catalog_js = r"""// Generated for Flight Deck EFB __VERSION__.
 // Airline names/logos are trademarks of their respective owners and are used for identification only.
-export const AIRLINE_CATALOG_SOURCE = Object.freeze({ repository: 'imgmongelli/airlines-logos-dataset', commit: '__SOURCE_COMMIT__', records: __RECORD_COUNT__, logos: __LOGO_COUNT__ });
+export const AIRLINE_CATALOG_SOURCE = Object.freeze({ records: __RECORD_COUNT__, logos: __ICON_COUNT__, officialLogos: __OFFICIAL_COUNT__, generatedIcons: __GENERATED_COUNT__ });
 
 const AIRLINES = __CATALOG_JSON__;
 const normalize = (value = '') => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
@@ -83,8 +194,8 @@ const BY_ICAO = new Map();
 const BY_IATA = new Map();
 const BY_NAME = new Map();
 for (const airline of AIRLINES) {
-  if (airline.icao) BY_ICAO.set(airline.icao, airline);
-  if (airline.iata) BY_IATA.set(airline.iata, airline);
+  if (airline.icao && !BY_ICAO.has(airline.icao)) BY_ICAO.set(airline.icao, airline);
+  if (airline.iata && !BY_IATA.has(airline.iata)) BY_IATA.set(airline.iata, airline);
   const key = normalize(airline.name);
   if (key && key.length >= 4 && !BY_NAME.has(key)) BY_NAME.set(key, airline);
 }
@@ -124,7 +235,7 @@ export function resolveAirlineIdentity(entry = {}) {
   }
   const rawAirline = String(entry.airline || entry.atcAirline || '').trim();
   const fallbackCode = compact(rawAirline).slice(0, 3) || compact(entry.callsign || entry.atcId).slice(0, 3) || 'AI';
-  return { name: rawAirline || 'Simulator traffic', iata: '', icao: fallbackCode, logo: '' };
+  return { name: rawAirline || 'Simulator traffic', iata: '', icao: fallbackCode, logo: '', logoKind: 'unknown' };
 }
 
 export function formatTrafficFlightNumber(entry = {}, identity = resolveAirlineIdentity(entry)) {
@@ -145,9 +256,10 @@ export function airlineCatalogStats() { return AIRLINE_CATALOG_SOURCE; }
 """
 catalog_js = (catalog_js
     .replace('__VERSION__', VERSION)
-    .replace('__SOURCE_COMMIT__', SOURCE_COMMIT)
     .replace('__RECORD_COUNT__', str(len(output_records)))
-    .replace('__LOGO_COUNT__', str(logo_count))
+    .replace('__ICON_COUNT__', str(len(output_records)))
+    .replace('__OFFICIAL_COUNT__', str(official_logo_count))
+    .replace('__GENERATED_COUNT__', str(generated_icon_count))
     .replace('__CATALOG_JSON__', catalog_json))
 write('public/airline-catalog.js', catalog_js)
 
@@ -199,7 +311,7 @@ html = html.replace('/si-operations.js?v=1.7.10', '/si-operations.js?v=1.7.11')
 html = html.replace('id="update-version">v1.7.10', 'id="update-version">v1.7.11', 1)
 html = html.replace('CURRENT v1.7.10', 'CURRENT v1.7.11', 1)
 anchor = '<div class="update-changelog"><section><b>1.7.10</b>'
-insert = '<div class="update-changelog"><section><b>1.7.11</b><div><strong>Complete local airline logo catalog</strong><ul><li>Ships the complete available airline/operator logo set from a pinned 1,500+ record ICAO/IATA catalog locally with the app.</li><li>Traffic resolves airline identity from ICAO/IATA codes, callsign, ATC airline, flight number and aircraft title.</li><li>Real airline logos replace generic code badges whenever a catalog logo exists; unknown traffic still receives a clean fallback badge.</li><li>Flight labels prefer IATA flight numbers such as LH123 or XQ456 when the simulator exposes enough identity data.</li><li>No external logo request is required during flight.</li></ul></div></section><section><b>1.7.10</b>'
+insert = '<div class="update-changelog"><section><b>1.7.11</b><div><strong>Complete local airline icon catalog</strong><ul><li>Merges two broad ICAO/IATA airline catalogs and ships every resulting airline/operator with a local icon.</li><li>Real airline logos are used whenever either pinned source provides one; records without an available official image receive a clean local code icon instead of a broken or empty placeholder.</li><li>Traffic resolves airline identity from ICAO/IATA codes, callsign, ATC airline, flight number and aircraft title.</li><li>Flight labels prefer IATA flight numbers such as LH123 or XQ456 when the simulator exposes enough identity data.</li><li>No external logo request is required during flight.</li></ul></div></section><section><b>1.7.10</b>'
 html = replace_once(html, anchor, insert, 'in-app changelog')
 write(p, html)
 
@@ -208,7 +320,7 @@ p = Path('public/styles.css')
 css = read(p)
 css += '''
 
-/* 1.7.11 — complete local airline logo catalog */
+/* 1.7.11 — complete local airline icon catalog */
 .traffic-airline-logo { width: 46px; height: 34px; flex-basis: 46px; border-radius: 9px; }
 .traffic-airline-logo img { inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; object-position: center; background: #fff; border-radius: 5px; }
 .traffic-airline-logo b { max-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -235,22 +347,22 @@ write(p, server)
 p = Path('CHANGELOG.md')
 changelog = read(p)
 marker = '# Flight Deck EFB changelog\n\n'
-section = f'''## 1.7.11 — Complete Airline Logos
+section = f'''## 1.7.11 — Complete Airline Icons
 
-- Bundles **all {logo_count} available logo files** from the pinned {len(output_records)}-record airline/operator catalog locally in the installer; no external logo service is needed during a flight.
+- Merges two pinned ICAO/IATA catalogs and ships **an icon for every one of the {len(output_records)} airline/operator records** in the resulting local catalog.
+- Uses **{official_logo_count} supplied airline logo images** where available; the remaining **{generated_icon_count} records** get a deterministic local code icon so the Traffic UI never has a missing/broken airline icon.
 - Resolves airline identity using **ICAO, IATA, callsign, ATC AIRLINE, flight number and aircraft title** instead of a tiny hand-maintained list.
-- Shows the real airline logo when available and a deterministic code badge only for traffic that genuinely cannot be mapped to a catalog logo.
 - Flight labels prefer familiar **IATA flight numbers** (for example `LH123`, `XQ456`) whenever the simulator exposes enough information.
-- Catalog source is pinned to `imgmongelli/airlines-logos-dataset@{SOURCE_COMMIT}` for reproducible builds. Airline names and logos remain trademarks/property of their respective owners and are used only to identify simulated traffic.
+- Sources are pinned to `imgmongelli/airlines-logos-dataset@{SOURCE_COMMIT}` and `spydogenesis/airlines-logo@{SOURCE_2_COMMIT}` for reproducible builds. Airline names and logos remain trademarks/property of their respective owners and are used only to identify simulated traffic.
 
 '''
-if '## 1.7.11 — Complete Airline Logos' not in changelog:
+if '## 1.7.11 — Complete Airline Icons' not in changelog:
     changelog = replace_once(changelog, marker, marker + section, 'changelog header')
 write(p, changelog)
 
 p = Path('README.md')
 readme = read(p)
-readme = readme.replace('**Current release: 1.7.10 — Airport Focus & Taxi Readability**', '**Current release: 1.7.11 — Complete Airline Logos**', 1)
+readme = readme.replace('**Current release: 1.7.10 — Airport Focus & Taxi Readability**', '**Current release: 1.7.11 — Complete Airline Icons**', 1)
 readme = readme.replace('## 1.7.10 highlights', '## 1.7.11 highlights', 1)
 readme = readme.replace('Flight-Deck-EFB-Setup-1.7.10.exe', 'Flight-Deck-EFB-Setup-1.7.11.exe')
 write(p, readme)
@@ -258,13 +370,13 @@ write(p, readme)
 p = Path('THIRD_PARTY_NOTICES.md')
 notices = read(p)
 notices = notices.replace('# Third-party notices — Flight Deck EFB 1.7.10', '# Third-party notices — Flight Deck EFB 1.7.11', 1)
-if '## Airline logo identification catalog' not in notices:
+if '## Airline logo identification catalogs' not in notices:
     notices += f'''
 
-## Airline logo identification catalog
+## Airline logo identification catalogs
 
-Flight Deck EFB 1.7.11 bundles the available airline/operator logo images and ICAO/IATA metadata from `imgmongelli/airlines-logos-dataset`, pinned to commit `{SOURCE_COMMIT}`. The repository describes its dataset under the MIT License. Airline names, logos, trade dress and trademarks remain the property of their respective owners; inclusion in Flight Deck EFB is solely for identification of simulated traffic and does not imply affiliation, sponsorship or endorsement. If a rights holder requests removal or correction, the corresponding asset can be removed from a future release.
+Flight Deck EFB 1.7.11 uses ICAO/IATA metadata and available airline/operator logo images from `imgmongelli/airlines-logos-dataset` pinned to `{SOURCE_COMMIT}`, supplemented by the `spydogenesis/airlines-logo` collection pinned to `{SOURCE_2_COMMIT}`. The first repository describes its dataset under the MIT License; the second explicitly notes that airline logos remain the property of their respective airlines. Flight Deck EFB uses these marks solely to identify simulated traffic and does not claim ownership, affiliation, sponsorship or endorsement. When neither source contains an image, Flight Deck EFB generates a neutral local code icon rather than reproducing another third-party mark. Rights holders can request correction or removal in a future release.
 '''
 write(p, notices)
 
-print(f'Prepared {len(output_records)} airline records with {logo_count} local logos')
+print(f'Prepared {len(output_records)} airline/operator records: {official_logo_count} supplied logos + {generated_icon_count} generated fallback icons')
