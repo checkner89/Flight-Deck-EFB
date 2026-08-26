@@ -1,0 +1,9 @@
+/* Flight Deck EFB 1.20 — airport-only taxi map and home ordering */
+#airport-focus-button{display:none!important}
+.map-stage #map{background:#06121b}
+.map-attribution{opacity:.38}
+.app-launcher-grid>[data-app-id="settings"]{order:9999!important}
+.app-launcher-grid>.news-app-tile{order:56!important}
+.app-launcher-grid>.pilot-scratchpad{order:57!important}
+.app-launcher-grid>.pilot-sim-session{order:58!important}
+html[data-theme="light"] .map-stage #map{background:#e7eef2}
