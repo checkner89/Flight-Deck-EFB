@@ -241,7 +241,8 @@
   background: rgba(83, 199, 197, .15);
 }
 
-#home-phase-card.flight-overlay-phase-hidden {
+#home-phase-card.flight-overlay-phase-hidden,
+label[for="show-phase-home"] {
   display: none !important;
 }
 
@@ -297,7 +298,21 @@ html[data-theme="light"] .flight-overlay-action.primary {
 
 @media (max-width: 900px) {
   .flight-summary.flight-overlay-host {
-    display: none !important;
+    min-width: 250px;
+  }
+
+  .flight-overlay-top {
+    grid-template-columns: minmax(88px, 1fr) minmax(90px, 1.15fr) minmax(68px, .7fr) minmax(62px, .65fr);
+    gap: 7px;
+  }
+
+  .flight-overlay-top small {
+    font-size: .53rem;
+  }
+
+  .flight-overlay-top-route strong,
+  .flight-overlay-top-stat strong {
+    font-size: .7rem;
   }
 
   .flight-overlay-clock-values {
@@ -323,6 +338,10 @@ html[data-theme="light"] .flight-overlay-action.primary {
 }
 
 @media (max-width: 620px) {
+  .flight-summary.flight-overlay-host {
+    display: none !important;
+  }
+
   .flight-overlay-home {
     padding: 15px 14px;
   }
