@@ -8,6 +8,7 @@ const nativeUi = await fs.readFile('public/sim-session-native.js', 'utf8');
 const html = await fs.readFile('public/index.html', 'utf8');
 const serverSource = await fs.readFile('src/server.mjs', 'utf8');
 const electronSource = await fs.readFile('src/electron-main.mjs', 'utf8');
+const releasePatch = await fs.readFile('scripts/apply-release-1.19.0.mjs', 'utf8');
 
 function requireText(source, token, message) {
   if (!source.includes(token)) throw new Error(message);
@@ -19,6 +20,10 @@ function rejectText(source, token, message) {
 
 requireText(pilot, 'function schedulePilotTileSync()', 'Pilot tile synchronization is not throttled.');
 requireText(pilot, 'pilotLabelSignature', 'Pilot tile labels are still rewritten on every observer callback.');
+requireText(pilot, 'const tileSignature =', 'Pilot tile signature guard is missing.');
+if ((pilot.match(/const tileSignature\s*=/g) || []).length !== 1) throw new Error('Pilot tile patch was applied more than once.');
+rejectText(pilot, 'const signature =', 'Legacy nested signature patch is present.');
+requireText(releasePatch, "!js.includes('pilotLabelSignature')", '1.19 pilot tile migration is not idempotent.');
 requireText(pilot, "if (heading.textContent !== nextLabel)", 'Flight Notes normalization is not mutation-safe.');
 requireText(pilot, 'legacyPilotTilesCleaned', 'Legacy tile cleanup is not one-shot.');
 rejectText(pilot, `const observer = new MutationObserver(() => {\n    installTiles();\n    normalizeExistingFlightNotes();`, 'Recursive MutationObserver renderer loop is still present.');
