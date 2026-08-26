@@ -1,0 +1,358 @@
+.flight-summary.flight-overlay-host {
+  flex: 1 1 620px;
+  min-width: 390px;
+  max-width: 820px;
+}
+
+.flight-summary.flight-overlay-host > #callsign,
+.flight-summary.flight-overlay-host > .route,
+.flight-summary.flight-overlay-host > #runway {
+  display: none !important;
+}
+
+.flight-overlay-top {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(120px, 1.15fr) minmax(150px, 1.65fr) minmax(92px, .75fr) minmax(82px, .65fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.flight-overlay-top-route,
+.flight-overlay-top-stat {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.flight-overlay-top small,
+.flight-overlay-route-copy small,
+.flight-overlay-route-stats small,
+.flight-overlay-metric small {
+  font-size: .61rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+  opacity: .58;
+}
+
+.flight-overlay-top-route strong {
+  font-size: .92rem;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+
+.flight-overlay-top-stat strong {
+  font-size: .79rem;
+  white-space: nowrap;
+}
+
+.flight-overlay-top-progress,
+.flight-overlay-home-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.flight-overlay-top-progress b,
+.flight-overlay-home-progress b {
+  min-width: 34px;
+  text-align: right;
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-overlay-progress-track {
+  position: relative;
+  display: block;
+  height: 5px;
+  flex: 1 1 auto;
+  min-width: 60px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(123, 145, 165, .22);
+}
+
+.flight-overlay-progress-track > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: #53c7c5;
+  transition: width .55s ease;
+}
+
+.home-time.flight-overlay-clock > #home-clock,
+.home-time.flight-overlay-clock > span {
+  display: none !important;
+}
+
+.home-time.flight-overlay-clock {
+  min-width: max-content;
+}
+
+.flight-overlay-clock-values {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.flight-overlay-clock-values strong {
+  font-size: 1.02rem;
+  letter-spacing: .045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-overlay-clock-values span {
+  font-size: .72rem;
+  font-weight: 700;
+  opacity: .62;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-flight-strip.flight-overlay-home-host {
+  display: block !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.home-flight-strip.flight-overlay-home-host > .home-flight-ident,
+.home-flight-strip.flight-overlay-home-host > .home-route-line,
+.home-flight-strip.flight-overlay-home-host > .home-flight-facts {
+  display: none !important;
+}
+
+.flight-overlay-home {
+  display: grid;
+  gap: 13px;
+  padding: 18px 20px 16px;
+}
+
+.flight-overlay-route-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.flight-overlay-route-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.flight-overlay-route-copy strong {
+  font-size: 1.22rem;
+  line-height: 1;
+  letter-spacing: .045em;
+}
+
+.flight-overlay-route-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 22px;
+}
+
+.flight-overlay-route-stats > span {
+  display: grid;
+  gap: 3px;
+  text-align: right;
+}
+
+.flight-overlay-route-stats b {
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-overlay-home-progress .flight-overlay-progress-track {
+  height: 7px;
+}
+
+.flight-overlay-home-progress b {
+  font-size: .74rem;
+}
+
+.flight-overlay-metrics {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid rgba(123, 145, 165, .17);
+  border-bottom: 1px solid rgba(123, 145, 165, .17);
+}
+
+.flight-overlay-metric {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 12px 13px;
+  border-right: 1px solid rgba(123, 145, 165, .14);
+}
+
+.flight-overlay-metric:first-child {
+  padding-left: 0;
+}
+
+.flight-overlay-metric:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.flight-overlay-metric strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .91rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.flight-overlay-action {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid rgba(83, 199, 197, .36);
+  border-radius: 9px;
+  background: rgba(83, 199, 197, .07);
+  color: inherit;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .055em;
+  cursor: pointer;
+}
+
+.flight-overlay-action:hover,
+.flight-overlay-action:focus-visible {
+  background: rgba(83, 199, 197, .15);
+  border-color: rgba(83, 199, 197, .72);
+}
+
+.flight-overlay-action.primary {
+  background: rgba(83, 199, 197, .15);
+}
+
+#home-phase-card.flight-overlay-phase-hidden {
+  display: none !important;
+}
+
+html[data-theme="light"] .flight-overlay-progress-track {
+  background: rgba(39, 80, 112, .15);
+}
+
+html[data-theme="light"] .flight-overlay-metrics {
+  border-color: rgba(39, 80, 112, .13);
+}
+
+html[data-theme="light"] .flight-overlay-metric {
+  border-color: rgba(39, 80, 112, .11);
+}
+
+html[data-theme="light"] .flight-overlay-action {
+  background: rgba(49, 157, 156, .055);
+  border-color: rgba(40, 143, 142, .34);
+}
+
+html[data-theme="light"] .flight-overlay-action.primary {
+  background: rgba(49, 157, 156, .12);
+}
+
+@media (max-width: 1180px) {
+  .flight-summary.flight-overlay-host {
+    min-width: 320px;
+  }
+
+  .flight-overlay-top {
+    grid-template-columns: minmax(105px, 1fr) minmax(120px, 1.25fr) minmax(76px, .65fr) minmax(70px, .6fr);
+    gap: 9px;
+  }
+
+  .flight-overlay-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .flight-overlay-metric:nth-child(4n) {
+    border-right: 0;
+  }
+
+  .flight-overlay-metric:nth-child(-n+4) {
+    border-bottom: 1px solid rgba(123, 145, 165, .14);
+  }
+
+  .flight-overlay-metric:first-child,
+  .flight-overlay-metric:last-child {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+}
+
+@media (max-width: 900px) {
+  .flight-summary.flight-overlay-host {
+    display: none !important;
+  }
+
+  .flight-overlay-clock-values {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+  }
+
+  .flight-overlay-route-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .flight-overlay-route-stats {
+    justify-content: flex-start;
+    gap: 26px;
+  }
+
+  .flight-overlay-route-stats > span {
+    text-align: left;
+  }
+}
+
+@media (max-width: 620px) {
+  .flight-overlay-home {
+    padding: 15px 14px;
+  }
+
+  .flight-overlay-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flight-overlay-metric,
+  .flight-overlay-metric:nth-child(4n),
+  .flight-overlay-metric:nth-child(-n+4) {
+    border-right: 0;
+    border-bottom: 1px solid rgba(123, 145, 165, .14);
+    padding: 11px 8px;
+  }
+
+  .flight-overlay-metric:nth-child(odd) {
+    border-right: 1px solid rgba(123, 145, 165, .14);
+  }
+
+  .flight-overlay-metric:nth-last-child(-n+2) {
+    border-bottom: 0;
+  }
+
+  .flight-overlay-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .flight-overlay-action {
+    padding: 0 8px;
+  }
+}
