@@ -54,6 +54,19 @@ function setRemoteStatus(page, state, label, detail = '') {
   if (copy) copy.textContent = detail;
 }
 
+function setRemoteSetupVisible(page, visible) {
+  const workspace = page.querySelector('#gsx-remote-workspace');
+  const connect = page.querySelector('.gsx-remote-connect-strip');
+  const toggle = page.querySelector('[data-gsx-setup-toggle]');
+  if (!workspace || !connect) return;
+  connect.hidden = !visible;
+  workspace.classList.toggle('remote-connected', !visible);
+  if (toggle) {
+    toggle.textContent = visible ? 'SETUP AUSBLENDEN' : 'VERBINDUNG';
+    toggle.setAttribute('aria-expanded', String(visible));
+  }
+}
+
 function loadGsxRemote(page, { force = false } = {}) {
   const input = page.querySelector('#gsx-remote-url');
   const frame = page.querySelector('#gsx-remote-frame');
@@ -62,6 +75,7 @@ function loadGsxRemote(page, { force = false } = {}) {
   const url = normalizeGsxRemoteUrl(input.value, currentHostname());
   if (!url) {
     input.classList.add('invalid');
+    setRemoteSetupVisible(page, true);
     setRemoteStatus(page, 'attention', 'CHECK URL', 'Bitte eine gültige HTTP/HTTPS-Adresse aus GSX Settings → Network eintragen.');
     return false;
   }
@@ -153,10 +167,14 @@ function buildRemoteWorkspace(page) {
   const toolbarCopy = node('span');
   toolbarCopy.append(node('small', '', 'LIVE GSX MENU'), node('strong', '', 'Official browser interface'));
   const toolbarActions = node('div');
+  const setupToggle = node('button', 'secondary-card-action', 'VERBINDUNG');
+  setupToggle.type = 'button';
+  setupToggle.dataset.gsxSetupToggle = '1';
+  setupToggle.setAttribute('aria-expanded', 'false');
   const frameReload = node('button', 'secondary-card-action', '↻ REFRESH');
   frameReload.type = 'button';
   frameReload.dataset.gsxFrameRefresh = '1';
-  toolbarActions.append(frameReload);
+  toolbarActions.append(setupToggle, frameReload);
   toolbar.append(toolbarCopy, toolbarActions);
   const frameShell = node('div', 'gsx-remote-frame-shell');
   const placeholder = node('div', 'gsx-remote-placeholder');
@@ -170,6 +188,7 @@ function buildRemoteWorkspace(page) {
   frame.addEventListener('load', () => {
     placeholder.hidden = true;
     setRemoteStatus(page, 'connected', 'LOADED', 'GSX Remote wurde im Ground-Services-Workspace geladen.');
+    setRemoteSetupVisible(page, false);
   });
   frameShell.append(placeholder, frame);
   frameCard.append(toolbar, frameShell);
@@ -179,6 +198,7 @@ function buildRemoteWorkspace(page) {
   load.addEventListener('click', () => loadGsxRemote(page, { force: true }));
   reload.addEventListener('click', () => loadGsxRemote(page, { force: true }));
   frameReload.addEventListener('click', () => loadGsxRemote(page, { force: true }));
+  setupToggle.addEventListener('click', () => setRemoteSetupVisible(page, connect.hidden));
   input.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
