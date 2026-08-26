@@ -4,6 +4,9 @@ const STORAGE = {
   launcher: 'flight-deck-sim-session-v1',
 };
 
+const PEN_COLORS = ['#13212d', '#1769aa', '#d33f49', '#16835d', '#7448b5'];
+const MARKER_COLORS = ['#f4d94e', '#68d391', '#5bc0eb', '#ff9f43', '#f783ac'];
+
 let latestState = null;
 let shell = null;
 let activeView = null;
@@ -15,8 +18,14 @@ let currentStroke = null;
 let redrawFrame = 0;
 let scratchTool = 'pen';
 let scratchWidth = 4;
+let penColor = PEN_COLORS[0];
+let markerColor = MARKER_COLORS[0];
 let paperMode = 'grid';
 let craftOpen = false;
+let scratchImages = [];
+let selectedImageId = null;
+let imageInteraction = null;
+const imageCache = new Map();
 
 function readJson(key, fallback) {
   try {
@@ -61,29 +70,33 @@ function labels() {
   return isGerman() ? {
     scratchpad: 'Scratchpad',
     scratchSubtitle: 'Mit Stift, Maus oder Touch schreiben',
-    session: 'Sim Session',
-    sessionSubtitle: 'Flight Deck & externe Tools starten',
+    scratchCategory: 'FLIGHT DECK TOOLS',
+    scratchDescription: 'Freihand-Notizen, Markierungen und Skizzen',
+    session: 'Flight Setup',
+    sessionSubtitle: 'Simulator, ATC und Add-ons vorbereiten',
+    sessionCategory: 'SYSTEM & SIM SETUP',
+    sessionDescription: 'Simulator, ATC und Add-ons vorbereiten',
     apps: 'APPS',
-    pen: 'STIFT', marker: 'MARKER', eraser: 'RADIERER',
+    pen: 'STIFT', marker: 'MARKER', eraser: 'RADIERER', image: 'BILD',
     undo: 'ZURÜCK', redo: 'WIEDERHOLEN', clear: 'LEEREN', savePng: 'PNG',
     paper: 'PAPIER', grid: 'RASTER', craft: 'CRAFT', auto: 'AUTO FILL',
+    removeImage: 'BILD LÖSCHEN',
     flightNotes: 'Flight Notes',
-    quickLaunch: 'Quick Launch', externalTools: 'Externe Tools', save: 'SPEICHERN', launch: 'STARTEN',
-    unsafe: 'Unsichere Schemes wie javascript:, data: und file: sind gesperrt.',
-    invalidUri: 'UNGÜLTIG', launched: 'GESTARTET',
   } : {
     scratchpad: 'Scratchpad',
     scratchSubtitle: 'Write with pen, mouse or touch',
-    session: 'Sim Session',
-    sessionSubtitle: 'Launch Flight Deck & external tools',
+    scratchCategory: 'FLIGHT DECK TOOLS',
+    scratchDescription: 'Freehand notes, highlights and sketches',
+    session: 'Flight Setup',
+    sessionSubtitle: 'Prepare simulator, ATC and add-ons',
+    sessionCategory: 'SYSTEM & SIM SETUP',
+    sessionDescription: 'Prepare simulator, ATC and add-ons',
     apps: 'APPS',
-    pen: 'PEN', marker: 'MARKER', eraser: 'ERASER',
+    pen: 'PEN', marker: 'MARKER', eraser: 'ERASER', image: 'IMAGE',
     undo: 'UNDO', redo: 'REDO', clear: 'CLEAR', savePng: 'PNG',
     paper: 'PAPER', grid: 'GRID', craft: 'CRAFT', auto: 'AUTO FILL',
+    removeImage: 'REMOVE IMAGE',
     flightNotes: 'Flight Notes',
-    quickLaunch: 'Quick Launch', externalTools: 'External tools', save: 'SAVE', launch: 'LAUNCH',
-    unsafe: 'Unsafe schemes such as javascript:, data: and file: are blocked.',
-    invalidUri: 'INVALID', launched: 'STARTED',
   };
 }
 
@@ -100,7 +113,7 @@ function tileIcon(type) {
   if (type === 'scratchpad') {
     return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 8h30v32H9zM15 15h17M15 22h10M15 29h14"/><path d="m29 34 8-8 4 4-8 8-6 2z"/></svg>';
   }
-  return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 8h25v32H11zM18 16h11M18 23h11M18 30h7"/><path d="m36 17 7 7-7 7M42 24H29"/></svg>';
+  return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 9h26v30H11zM17 16h14M17 23h8M17 30h11"/><path d="m34 16 7 7-7 7M40 23H27"/></svg>';
 }
 
 function installTiles() {
@@ -109,10 +122,10 @@ function installTiles() {
   grid.querySelectorAll('[data-ops-tool]').forEach((element) => element.remove());
   const dictionary = labels();
   const definitions = [
-    ['scratchpad', dictionary.scratchpad, dictionary.scratchSubtitle, 60],
-    ['sim-session', dictionary.session, dictionary.sessionSubtitle, 61],
+    ['scratchpad', dictionary.scratchpad, dictionary.scratchCategory, dictionary.scratchDescription, 60],
+    ['sim-session', dictionary.session, dictionary.sessionCategory, dictionary.sessionDescription, 61],
   ];
-  for (const [id, title, subtitle, order] of definitions) {
+  for (const [id, title, category, description, order] of definitions) {
     let button = grid.querySelector(`[data-pilot-tool="${id}"]`);
     if (!button) {
       button = document.createElement('button');
@@ -123,7 +136,10 @@ function installTiles() {
       button.addEventListener('click', () => openView(id));
       grid.append(button);
     }
-    button.innerHTML = `<span class="app-tile-icon">${tileIcon(id)}</span><span class="app-tile-copy"><small>${esc(subtitle)}</small><strong>${esc(title)}</strong><span>FLIGHT DECK</span></span><i class="app-open-arrow">›</i>`;
+    const signature = `${title}|${category}|${description}`;
+    if (button.dataset.tileSignature === signature) continue;
+    button.dataset.tileSignature = signature;
+    button.innerHTML = `<span class="app-tile-icon">${tileIcon(id)}</span><span class="app-tile-copy"><small>${esc(category)}</small><strong>${esc(title)}</strong><span>${esc(description)}</span></span><i class="app-open-arrow">›</i>`;
   }
 }
 
@@ -146,6 +162,7 @@ function closeView() {
   canvas = null;
   context = null;
   currentStroke = null;
+  imageInteraction = null;
 }
 
 function openView(view) {
@@ -166,13 +183,25 @@ function scratchpadState() {
   const saved = readJson(STORAGE.scratchpad, {});
   strokes = Array.isArray(saved.strokes) ? saved.strokes.slice(-2500) : [];
   redoStack = [];
-  scratchTool = ['pen', 'marker', 'eraser'].includes(saved.tool) ? saved.tool : 'pen';
+  scratchTool = ['pen', 'marker', 'eraser', 'image'].includes(saved.tool) ? saved.tool : 'pen';
   scratchWidth = [2, 4, 8].includes(Number(saved.width)) ? Number(saved.width) : 4;
+  penColor = /^#[0-9a-f]{6}$/i.test(saved.penColor || '') ? saved.penColor : PEN_COLORS[0];
+  markerColor = /^#[0-9a-f]{6}$/i.test(saved.markerColor || '') ? saved.markerColor : MARKER_COLORS[0];
   paperMode = saved.paper === 'paper' ? 'paper' : 'grid';
+  scratchImages = Array.isArray(saved.images) ? saved.images.filter((item) => item?.dataUrl && Number.isFinite(item.x) && Number.isFinite(item.y)).slice(-8) : [];
+  selectedImageId = null;
 }
 
 function saveScratchpadState() {
-  writeJson(STORAGE.scratchpad, { strokes, tool: scratchTool, width: scratchWidth, paper: paperMode });
+  writeJson(STORAGE.scratchpad, {
+    strokes,
+    images: scratchImages,
+    tool: scratchTool,
+    width: scratchWidth,
+    penColor,
+    markerColor,
+    paper: paperMode,
+  });
 }
 
 function craftState() {
@@ -207,21 +236,26 @@ function craftMarkup() {
   const dictionary = labels();
   const craft = craftState();
   const fields = [
-    ['C', 'clearance', 'CLEARANCE'],
-    ['R', 'route', 'ROUTE'],
-    ['A', 'altitude', 'ALTITUDE'],
-    ['F', 'frequency', 'FREQUENCY'],
-    ['T', 'transponder', 'TRANSPONDER'],
+    ['C', 'clearance', 'CLEARANCE'], ['R', 'route', 'ROUTE'], ['A', 'altitude', 'ALTITUDE'],
+    ['F', 'frequency', 'FREQUENCY'], ['T', 'transponder', 'TRANSPONDER'],
   ];
   return `<aside class="scratch-craft-drawer" ${craftOpen ? '' : 'hidden'}><header><div><small>ATC QUICK REFERENCE</small><strong>CRAFT</strong></div><button type="button" data-craft-auto>${dictionary.auto}</button></header><div class="scratch-craft-fields">${fields.map(([letter, key, label]) => `<label><span>${letter}</span><small>${label}</small><input data-craft-field="${key}" value="${esc(craft[key] || '')}" autocomplete="off"></label>`).join('')}</div><p>Optional reference only. The drawing area remains the primary scratchpad.</p></aside>`;
 }
 
+function colorPaletteMarkup() {
+  if (!['pen', 'marker'].includes(scratchTool)) return '';
+  const isMarker = scratchTool === 'marker';
+  const colors = isMarker ? MARKER_COLORS : PEN_COLORS;
+  const active = isMarker ? markerColor : penColor;
+  return `<div class="scratch-tool-group scratch-colors" aria-label="${isMarker ? 'Marker' : 'Pen'} colors">${colors.map((color) => `<button type="button" class="scratch-color ${color.toLowerCase() === active.toLowerCase() ? 'active' : ''}" data-scratch-color="${color}" data-color-kind="${scratchTool}" aria-label="${color}"><i style="--swatch:${color}"></i></button>`).join('')}<label class="scratch-custom-color" title="Custom color"><input type="color" data-scratch-custom-color="${scratchTool}" value="${esc(active)}"><span>+</span></label></div>`;
+}
+
 function scratchToolbar() {
   const dictionary = labels();
-  const toolButtons = [['pen', dictionary.pen], ['marker', dictionary.marker], ['eraser', dictionary.eraser]]
+  const toolButtons = [['pen', dictionary.pen], ['marker', dictionary.marker], ['eraser', dictionary.eraser], ['image', dictionary.image]]
     .map(([tool, label]) => `<button type="button" data-scratch-tool="${tool}" class="${scratchTool === tool ? 'active' : ''}">${label}</button>`).join('');
   const widthButtons = [2, 4, 8].map((width) => `<button type="button" data-scratch-width="${width}" class="scratch-width width-${width} ${scratchWidth === width ? 'active' : ''}" aria-label="Width ${width}"><i></i></button>`).join('');
-  return toolbarBase(dictionary.scratchpad, dictionary.scratchSubtitle, `<div class="scratch-toolbar-actions"><div class="scratch-tool-group">${toolButtons}</div><div class="scratch-tool-group scratch-widths">${widthButtons}</div><div class="scratch-tool-group"><button type="button" data-scratch-undo ${strokes.length ? '' : 'disabled'}>${dictionary.undo}</button><button type="button" data-scratch-redo ${redoStack.length ? '' : 'disabled'}>${dictionary.redo}</button><button type="button" data-scratch-paper>${paperMode === 'grid' ? dictionary.grid : dictionary.paper}</button><button type="button" data-scratch-craft class="${craftOpen ? 'active' : ''}">${dictionary.craft}</button><button type="button" data-scratch-export>${dictionary.savePng}</button><button type="button" data-scratch-clear class="danger-quiet">${dictionary.clear}</button></div></div>`);
+  return toolbarBase(dictionary.scratchpad, dictionary.scratchSubtitle, `<div class="scratch-toolbar-actions"><div class="scratch-tool-group">${toolButtons}</div>${colorPaletteMarkup()}<div class="scratch-tool-group scratch-widths">${widthButtons}</div><div class="scratch-tool-group scratch-actions"><button type="button" data-scratch-image-add>${dictionary.image}</button><button type="button" data-scratch-image-remove ${selectedImageId ? '' : 'disabled'}>${dictionary.removeImage}</button><button type="button" data-scratch-undo ${strokes.length ? '' : 'disabled'}>${dictionary.undo}</button><button type="button" data-scratch-redo ${redoStack.length ? '' : 'disabled'}>${dictionary.redo}</button><button type="button" data-scratch-paper>${paperMode === 'grid' ? dictionary.grid : dictionary.paper}</button><button type="button" data-scratch-craft class="${craftOpen ? 'active' : ''}">${dictionary.craft}</button><button type="button" data-scratch-export>${dictionary.savePng}</button><button type="button" data-scratch-clear class="danger-quiet">${dictionary.clear}</button></div></div>`);
 }
 
 function renderScratchpad() {
@@ -229,13 +263,14 @@ function renderScratchpad() {
   const toolbar = shell.querySelector('#pilot-tools-toolbar');
   const content = shell.querySelector('#pilot-tools-content');
   toolbar.innerHTML = scratchToolbar();
-  content.innerHTML = `<div class="scratchpad-workspace ${paperMode === 'grid' ? 'is-grid' : 'is-paper'}"><div class="scratchpad-paper"><canvas id="real-scratchpad-canvas" aria-label="Scratchpad drawing area"></canvas><span class="scratchpad-hint">PEN · TOUCH · MOUSE</span></div>${craftMarkup()}</div>`;
+  content.innerHTML = `<div class="scratchpad-workspace ${paperMode === 'grid' ? 'is-grid' : 'is-paper'}"><div class="scratchpad-paper" tabindex="0" data-scratch-dropzone><canvas id="real-scratchpad-canvas" aria-label="Scratchpad drawing area"></canvas><span class="scratchpad-hint">PEN · TOUCH · MOUSE · DROP / PASTE IMAGE</span><input type="file" accept="image/*" data-scratch-image-input hidden></div>${craftMarkup()}</div>`;
   wireCommonClose();
   wireScratchToolbar();
   wireCraft();
   canvas = content.querySelector('#real-scratchpad-canvas');
   context = canvas.getContext('2d', { alpha: true, desynchronized: true });
   wireCanvas();
+  wireImageDropzone();
   resizeCanvas();
   queueRedraw();
 }
@@ -257,12 +292,32 @@ function wireScratchToolbar() {
     scratchTool = button.dataset.scratchTool;
     saveScratchpadState();
     refreshScratchToolbar();
+    queueRedraw();
   }));
   shell.querySelectorAll('[data-scratch-width]').forEach((button) => button.addEventListener('click', () => {
     scratchWidth = Number(button.dataset.scratchWidth);
     saveScratchpadState();
     refreshScratchToolbar();
   }));
+  shell.querySelectorAll('[data-scratch-color]').forEach((button) => button.addEventListener('click', () => {
+    if (button.dataset.colorKind === 'marker') markerColor = button.dataset.scratchColor;
+    else penColor = button.dataset.scratchColor;
+    saveScratchpadState();
+    refreshScratchToolbar();
+  }));
+  shell.querySelectorAll('[data-scratch-custom-color]').forEach((input) => input.addEventListener('input', () => {
+    if (input.dataset.scratchCustomColor === 'marker') markerColor = input.value;
+    else penColor = input.value;
+    saveScratchpadState();
+    refreshScratchToolbar();
+  }));
+  shell.querySelector('[data-scratch-image-add]')?.addEventListener('click', () => shell.querySelector('[data-scratch-image-input]')?.click());
+  shell.querySelector('[data-scratch-image-input]')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (file) await addScratchImage(file);
+    event.target.value = '';
+  });
+  shell.querySelector('[data-scratch-image-remove]')?.addEventListener('click', removeSelectedImage);
   shell.querySelector('[data-scratch-undo]')?.addEventListener('click', undoStroke);
   shell.querySelector('[data-scratch-redo]')?.addEventListener('click', redoStroke);
   shell.querySelector('[data-scratch-paper]')?.addEventListener('click', () => {
@@ -270,6 +325,7 @@ function wireScratchToolbar() {
     saveScratchpadState();
     shell.querySelector('.scratchpad-workspace')?.classList.toggle('is-grid', paperMode === 'grid');
     shell.querySelector('.scratchpad-workspace')?.classList.toggle('is-paper', paperMode === 'paper');
+    queueRedraw();
     refreshScratchToolbar();
   });
   shell.querySelector('[data-scratch-craft]')?.addEventListener('click', () => {
@@ -279,16 +335,19 @@ function wireScratchToolbar() {
     refreshScratchToolbar();
   });
   shell.querySelector('[data-scratch-clear]')?.addEventListener('click', () => {
-    if (!strokes.length) return;
+    if (!strokes.length && !scratchImages.length) return;
     const accepted = window.confirm(isGerman() ? 'Scratchpad wirklich komplett leeren?' : 'Clear the entire scratchpad?');
     if (!accepted) return;
     strokes = [];
+    scratchImages = [];
+    selectedImageId = null;
     redoStack = [];
+    imageCache.clear();
     saveScratchpadState();
     queueRedraw();
     refreshScratchToolbar();
   });
-  shell.querySelector('[data-scratch-export]')?.addEventListener('click', exportScratchpadPng);
+  shell.querySelector('[data-scratch-export]')?.addEventListener('click', () => exportScratchpadPng().catch(() => {}));
 }
 
 function wireCraft() {
@@ -312,15 +371,66 @@ function pointFromEvent(event) {
   };
 }
 
+function hitImage(point) {
+  for (let index = scratchImages.length - 1; index >= 0; index -= 1) {
+    const item = scratchImages[index];
+    if (point.x >= item.x && point.x <= item.x + item.w && point.y >= item.y && point.y <= item.y + item.h) return item;
+  }
+  return null;
+}
+
+function imageResizeHit(item, point) {
+  if (!item) return false;
+  const dx = point.x - (item.x + item.w);
+  const dy = point.y - (item.y + item.h);
+  return Math.hypot(dx, dy) < 0.035;
+}
+
 function wireCanvas() {
   canvas.addEventListener('pointerdown', (event) => {
     if (event.button !== undefined && event.button !== 0 && event.pointerType === 'mouse') return;
     event.preventDefault();
     canvas.setPointerCapture?.(event.pointerId);
-    currentStroke = { tool: scratchTool, width: scratchWidth, points: [pointFromEvent(event)] };
+    const point = pointFromEvent(event);
+    if (scratchTool === 'image') {
+      const selected = scratchImages.find((item) => item.id === selectedImageId);
+      if (selected && imageResizeHit(selected, point)) {
+        imageInteraction = { mode: 'resize', id: selected.id, startX: point.x, startW: selected.w, startH: selected.h };
+      } else {
+        const item = hitImage(point);
+        selectedImageId = item?.id || null;
+        imageInteraction = item ? { mode: 'move', id: item.id, dx: point.x - item.x, dy: point.y - item.y } : null;
+      }
+      refreshScratchToolbar();
+      queueRedraw();
+      return;
+    }
+    currentStroke = {
+      tool: scratchTool,
+      width: scratchWidth,
+      color: scratchTool === 'marker' ? markerColor : penColor,
+      points: [point],
+    };
     queueRedraw();
   });
   canvas.addEventListener('pointermove', (event) => {
+    if (imageInteraction) {
+      event.preventDefault();
+      const point = pointFromEvent(event);
+      const item = scratchImages.find((entry) => entry.id === imageInteraction.id);
+      if (!item) return;
+      if (imageInteraction.mode === 'move') {
+        item.x = Math.max(0, Math.min(1 - item.w, point.x - imageInteraction.dx));
+        item.y = Math.max(0, Math.min(1 - item.h, point.y - imageInteraction.dy));
+      } else {
+        const nextW = Math.max(0.08, Math.min(0.95 - item.x, imageInteraction.startW + (point.x - imageInteraction.startX)));
+        item.w = nextW;
+        item.h = Math.max(0.06, nextW * (item.baseH / item.baseW));
+        if (item.y + item.h > 1) item.h = 1 - item.y;
+      }
+      queueRedraw();
+      return;
+    }
     if (!currentStroke) return;
     event.preventDefault();
     const point = pointFromEvent(event);
@@ -331,6 +441,13 @@ function wireCanvas() {
     queueRedraw();
   });
   const finish = (event) => {
+    if (imageInteraction) {
+      event?.preventDefault?.();
+      imageInteraction = null;
+      saveScratchpadState();
+      queueRedraw();
+      return;
+    }
     if (!currentStroke) return;
     event?.preventDefault?.();
     if (currentStroke.points.length === 1) currentStroke.points.push({ ...currentStroke.points[0], x: currentStroke.points[0].x + 0.0001 });
@@ -347,6 +464,105 @@ function wireCanvas() {
   canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
+function wireImageDropzone() {
+  const zone = shell.querySelector('[data-scratch-dropzone]');
+  if (!zone) return;
+  zone.addEventListener('dragover', (event) => { event.preventDefault(); zone.classList.add('is-dragging'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('is-dragging'));
+  zone.addEventListener('drop', async (event) => {
+    event.preventDefault();
+    zone.classList.remove('is-dragging');
+    const file = [...(event.dataTransfer?.files || [])].find((entry) => entry.type.startsWith('image/'));
+    if (file) await addScratchImage(file);
+  });
+  zone.addEventListener('paste', async (event) => {
+    const file = [...(event.clipboardData?.files || [])].find((entry) => entry.type.startsWith('image/'));
+    if (file) { event.preventDefault(); await addScratchImage(file); }
+  });
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Unable to read image.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(source) {
+  if (imageCache.has(source)) return Promise.resolve(imageCache.get(source));
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => { imageCache.set(source, image); resolve(image); };
+    image.onerror = () => reject(new Error('Unable to load image.'));
+    image.src = source;
+  });
+}
+
+async function compressedImage(file) {
+  const raw = await readFile(file);
+  const image = await loadImage(raw);
+  const limit = 1600;
+  const scale = Math.min(1, limit / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+  const width = Math.max(1, Math.round((image.naturalWidth || 1) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || 1) * scale));
+  const temp = document.createElement('canvas');
+  temp.width = width;
+  temp.height = height;
+  const ctx = temp.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+  return { dataUrl: temp.toDataURL('image/jpeg', 0.84), width, height };
+}
+
+async function addScratchImage(file) {
+  if (!file?.type?.startsWith('image/')) return;
+  try {
+    const prepared = await compressedImage(file);
+    const rect = canvas?.getBoundingClientRect();
+    const canvasRatio = Math.max(0.4, (rect?.width || 1200) / (rect?.height || 800));
+    const displayRatio = prepared.width / prepared.height;
+    let w = 0.56;
+    let h = (w * canvasRatio) / displayRatio;
+    if (h > 0.68) { h = 0.68; w = (h * displayRatio) / canvasRatio; }
+    const item = {
+      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      dataUrl: prepared.dataUrl,
+      x: Math.max(0.04, (1 - w) / 2),
+      y: Math.max(0.04, (1 - h) / 2),
+      w,
+      h,
+      baseW: w,
+      baseH: h,
+    };
+    scratchImages.push(item);
+    scratchImages = scratchImages.slice(-8);
+    selectedImageId = item.id;
+    scratchTool = 'image';
+    saveScratchpadState();
+    queueRedraw();
+    refreshScratchToolbar();
+  } catch { /* unsupported image */ }
+}
+
+function removeSelectedImage() {
+  if (!selectedImageId) return;
+  scratchImages = scratchImages.filter((item) => item.id !== selectedImageId);
+  selectedImageId = null;
+  saveScratchpadState();
+  queueRedraw();
+  refreshScratchToolbar();
+}
+
+function colorWithAlpha(color, alpha) {
+  const match = /^#([0-9a-f]{6})$/i.exec(String(color || ''));
+  if (!match) return color || `rgba(19,33,45,${alpha})`;
+  const value = Number.parseInt(match[1], 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 function drawStroke(ctx, stroke, width, height) {
   if (!stroke?.points?.length) return;
   const points = stroke.points;
@@ -354,7 +570,8 @@ function drawStroke(ctx, stroke, width, height) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
-  ctx.strokeStyle = stroke.tool === 'marker' ? 'rgba(20, 34, 46, 0.28)' : '#13212d';
+  const fallback = stroke.tool === 'marker' ? MARKER_COLORS[0] : PEN_COLORS[0];
+  ctx.strokeStyle = stroke.tool === 'marker' ? colorWithAlpha(stroke.color || fallback, 0.34) : (stroke.color || fallback);
   const pressure = points.reduce((sum, point) => sum + (Number(point.p) || 0.5), 0) / points.length;
   ctx.lineWidth = Math.max(1, Number(stroke.width || 4) * (stroke.tool === 'marker' ? 3.4 : stroke.tool === 'eraser' ? 4 : 1) * (0.75 + pressure * 0.5));
   ctx.beginPath();
@@ -372,6 +589,56 @@ function drawStroke(ctx, stroke, width, height) {
   ctx.restore();
 }
 
+function drawPaper(ctx, width, height) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#fbfaf6';
+  ctx.fillRect(0, 0, width, height);
+  if (paperMode === 'grid') {
+    ctx.strokeStyle = 'rgba(45,79,99,.10)';
+    ctx.lineWidth = 1;
+    const step = Math.max(24, Math.round(width / 46));
+    for (let x = 0; x <= width; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+    for (let y = 0; y <= height; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+function drawImageItem(ctx, item, width, height) {
+  const image = imageCache.get(item.dataUrl);
+  if (!image) {
+    loadImage(item.dataUrl).then(queueRedraw).catch(() => {});
+    return;
+  }
+  ctx.drawImage(image, item.x * width, item.y * height, item.w * width, item.h * height);
+}
+
+function drawSelection(ctx, width, height) {
+  if (scratchTool !== 'image' || !selectedImageId) return;
+  const item = scratchImages.find((entry) => entry.id === selectedImageId);
+  if (!item) return;
+  const x = item.x * width, y = item.y * height, w = item.w * width, h = item.h * height;
+  ctx.save();
+  ctx.strokeStyle = '#16b8ae';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([7, 5]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#16b8ae';
+  ctx.fillRect(x + w - 7, y + h - 7, 14, 14);
+  ctx.restore();
+}
+
+function drawStrokeLayer(width, height, includeCurrent = true) {
+  const layer = document.createElement('canvas');
+  layer.width = Math.max(1, Math.round(width));
+  layer.height = Math.max(1, Math.round(height));
+  const ctx = layer.getContext('2d');
+  for (const stroke of strokes) drawStroke(ctx, stroke, width, height);
+  if (includeCurrent && currentStroke) drawStroke(ctx, currentStroke, width, height);
+  return layer;
+}
+
 function redraw() {
   redrawFrame = 0;
   if (!canvas || !context) return;
@@ -379,8 +646,10 @@ function redraw() {
   const width = Math.max(1, rect.width);
   const height = Math.max(1, rect.height);
   context.clearRect(0, 0, width, height);
-  for (const stroke of strokes) drawStroke(context, stroke, width, height);
-  if (currentStroke) drawStroke(context, currentStroke, width, height);
+  drawPaper(context, width, height);
+  for (const item of scratchImages) drawImageItem(context, item, width, height);
+  context.drawImage(drawStrokeLayer(width, height), 0, 0, width, height);
+  drawSelection(context, width, height);
 }
 
 function queueRedraw() {
@@ -419,86 +688,38 @@ function redoStroke() {
   refreshScratchToolbar();
 }
 
-function exportScratchpadPng() {
+async function exportScratchpadPng() {
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
   const scale = Math.min(2, window.devicePixelRatio || 1);
   const width = Math.max(800, Math.round(rect.width * scale));
   const height = Math.max(500, Math.round(rect.height * scale));
-  const strokeCanvas = document.createElement('canvas');
-  strokeCanvas.width = width;
-  strokeCanvas.height = height;
-  const strokeContext = strokeCanvas.getContext('2d');
-  for (const stroke of strokes) drawStroke(strokeContext, stroke, width, height);
   const output = document.createElement('canvas');
   output.width = width;
   output.height = height;
   const outputContext = output.getContext('2d');
-  outputContext.fillStyle = '#f5f1e8';
-  outputContext.fillRect(0, 0, width, height);
-  if (paperMode === 'grid') {
-    outputContext.strokeStyle = 'rgba(38, 69, 92, 0.12)';
-    outputContext.lineWidth = 1;
-    const step = Math.max(24, Math.round(width / 44));
-    for (let x = 0; x <= width; x += step) { outputContext.beginPath(); outputContext.moveTo(x, 0); outputContext.lineTo(x, height); outputContext.stroke(); }
-    for (let y = 0; y <= height; y += step) { outputContext.beginPath(); outputContext.moveTo(0, y); outputContext.lineTo(width, y); outputContext.stroke(); }
+  drawPaper(outputContext, width, height);
+  for (const item of scratchImages) {
+    try {
+      const image = await loadImage(item.dataUrl);
+      outputContext.drawImage(image, item.x * width, item.y * height, item.w * width, item.h * height);
+    } catch {}
   }
-  outputContext.drawImage(strokeCanvas, 0, 0);
+  outputContext.drawImage(drawStrokeLayer(width, height, false), 0, 0, width, height);
   const anchor = document.createElement('a');
   anchor.download = `Flight-Deck-Scratchpad-${new Date().toISOString().slice(0, 10)}.png`;
   anchor.href = output.toDataURL('image/png');
   anchor.click();
 }
 
-function launcherConfig() {
-  const current = readJson(STORAGE.launcher, null);
-  if (current?.slots?.length) return current;
-  return {
-    slots: [
-      { name: 'MSFS 2024 (Steam)', uri: 'steam://rungameid/2537590' },
-      { name: 'Custom tool 1', uri: '' },
-      { name: 'Custom tool 2', uri: '' },
-    ],
-  };
-}
-
-function safeLaunchUri(uri) {
-  const value = String(uri || '').trim();
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(value) || /^(javascript|data|file):/i.test(value)) return false;
-  const anchor = document.createElement('a');
-  anchor.href = value;
-  anchor.target = '_blank';
-  anchor.rel = 'noreferrer';
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  return true;
-}
-
 function renderSimSession() {
   const dictionary = labels();
-  const config = launcherConfig();
   const toolbar = shell.querySelector('#pilot-tools-toolbar');
   const content = shell.querySelector('#pilot-tools-content');
   toolbar.innerHTML = toolbarBase(dictionary.session, dictionary.sessionSubtitle);
-  content.innerHTML = `<div class="sim-session-grid"><article class="sim-session-card sim-session-internal"><header><small>FLIGHT DECK</small><h2>${dictionary.quickLaunch}</h2></header><div class="sim-session-buttons">${[['Taxi','taxi','T'],['COM','com','C'],['Live Map','flight','M'],['ATC','atc','A'],['Ground','ground','G'],['Settings','settings','S']].map(([label, module, icon]) => `<button type="button" data-internal-module="${module}"><span>${icon}</span><strong>${label}</strong></button>`).join('')}</div></article><article class="sim-session-card sim-session-external"><header><small>WINDOWS / URI</small><h2>${dictionary.externalTools}</h2></header><div class="sim-session-slots">${config.slots.map((slot, index) => `<div><input data-launch-name="${index}" value="${esc(slot.name)}" aria-label="Tool name"><input data-launch-uri="${index}" value="${esc(slot.uri)}" placeholder="scheme://…" aria-label="Launch URI"><button type="button" data-launch-run="${index}" ${slot.uri ? '' : 'disabled'}>${dictionary.launch}</button></div>`).join('')}</div><footer><span>${dictionary.unsafe}</span><button type="button" data-launch-save>${dictionary.save}</button></footer></article></div>`;
+  content.innerHTML = '<div class="sim-session-grid flight-setup-grid"></div>';
   wireCommonClose();
-  content.querySelectorAll('[data-internal-module]').forEach((button) => button.addEventListener('click', () => {
-    closeView();
-    document.querySelector(`[data-open-module="${button.dataset.internalModule}"]`)?.click();
-  }));
-  content.querySelector('[data-launch-save]')?.addEventListener('click', () => {
-    config.slots = config.slots.map((slot, index) => ({
-      name: content.querySelector(`[data-launch-name="${index}"]`)?.value || slot.name,
-      uri: content.querySelector(`[data-launch-uri="${index}"]`)?.value || '',
-    }));
-    writeJson(STORAGE.launcher, config);
-    renderSimSession();
-  });
-  content.querySelectorAll('[data-launch-run]').forEach((button) => button.addEventListener('click', () => {
-    const slot = config.slots[Number(button.dataset.launchRun)];
-    button.textContent = safeLaunchUri(slot?.uri) ? dictionary.launched : dictionary.invalidUri;
-  }));
+  window.dispatchEvent(new CustomEvent('flightdeckflightsetupopen'));
 }
 
 function onState(event) {
@@ -507,11 +728,13 @@ function onState(event) {
 
 function onKeyDown(event) {
   if (!activeView) return;
-  if (event.key === 'Escape') {
-    closeView();
+  if (event.key === 'Escape') { closeView(); return; }
+  if (activeView !== 'scratchpad') return;
+  if ((event.key === 'Delete' || event.key === 'Backspace') && scratchTool === 'image' && selectedImageId) {
+    if (!/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { event.preventDefault(); removeSelectedImage(); }
     return;
   }
-  if (activeView !== 'scratchpad' || !(event.ctrlKey || event.metaKey)) return;
+  if (!(event.ctrlKey || event.metaKey)) return;
   if (event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redoStroke(); }
   else if (event.key.toLowerCase() === 'z') { event.preventDefault(); undoStroke(); }
 }
@@ -523,10 +746,12 @@ function start() {
   window.addEventListener('flightdeckstate', onState);
   window.addEventListener('resize', () => { if (activeView === 'scratchpad') resizeCanvas(); });
   document.addEventListener('keydown', onKeyDown);
-  const observer = new MutationObserver(() => {
-    installTiles();
-    normalizeExistingFlightNotes();
-  });
+  let tileFrame = 0;
+  const syncTiles = () => {
+    if (tileFrame) return;
+    tileFrame = requestAnimationFrame(() => { tileFrame = 0; installTiles(); normalizeExistingFlightNotes(); });
+  };
+  const observer = new MutationObserver(syncTiles);
   const home = document.querySelector('[data-page="home"]');
   if (home) observer.observe(home, { childList: true, subtree: true });
   const languageObserver = new MutationObserver(() => {
