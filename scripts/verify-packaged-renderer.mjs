@@ -10,9 +10,7 @@ async function waitForTarget() {
       const page = targets.find((entry) => entry.type === 'page' && /localhost|127\.0\.0\.1/.test(entry.url || ''))
         || targets.find((entry) => entry.type === 'page');
       if (page?.webSocketDebuggerUrl) return page;
-    } catch (error) {
-      lastError = error;
-    }
+    } catch (error) { lastError = error; }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`Electron renderer DevTools target did not become ready${lastError ? `: ${lastError.message}` : '.'}`);
@@ -58,26 +56,54 @@ const { command, runtimeEvents } = await session(socket);
 
 try {
   await command('Runtime.enable');
-  await new Promise((resolve) => setTimeout(resolve, 600));
+  await new Promise((resolve) => setTimeout(resolve, 700));
   const expression = `new Promise(async (resolve) => {
+    const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
     const app = document.querySelector('#app');
     const grid = document.querySelector('.app-launcher-grid');
     const pilotScript = document.querySelector('[data-pilot-tools]');
     const nativeScript = document.querySelector('[data-sim-session-native]');
     let pilotFetch = null;
     try {
-      const response = await fetch('/pilot-tools.js?v=1.19.0', { cache: 'no-store' });
+      const response = await fetch('/pilot-tools.js?v=1.20.2', { cache: 'no-store' });
       pilotFetch = { status: response.status, contentType: response.headers.get('content-type'), length: (await response.text()).length };
-    } catch (error) {
-      pilotFetch = { error: error.message };
+    } catch (error) { pilotFetch = { error: error.message }; }
+
+    const scratchTile = grid?.querySelector('[data-pilot-tool="scratchpad"]');
+    const setupTile = grid?.querySelector('[data-pilot-tool="sim-session"]');
+    const newsTile = grid?.querySelector('[data-news-app-tile]');
+    const establishedTile = [...(grid?.querySelectorAll('.efb-app-tile') || [])].find((tile) => !tile.matches('[data-pilot-tool],[data-news-app-tile]'));
+    const tileMetrics = (tile) => {
+      if (!tile) return null;
+      const rect = tile.getBoundingClientRect();
+      const icon = tile.querySelector('.app-tile-icon')?.getBoundingClientRect();
+      return { height: Math.round(rect.height), iconWidth: Math.round(icon?.width || 0), copySmall: Boolean(tile.querySelector('.app-tile-copy>small')), copyTitle: Boolean(tile.querySelector('.app-tile-copy>strong')), copyDescription: Boolean(tile.querySelector('.app-tile-copy>span')) };
+    };
+
+    let scratch = null;
+    if (scratchTile) {
+      scratchTile.click();
+      await sleep(180);
+      const canvas = document.querySelector('#real-scratchpad-canvas');
+      const paper = document.querySelector('.scratchpad-paper');
+      scratch = {
+        visible: Boolean(paper && paper.getBoundingClientRect().width > 300),
+        canvasBackground: canvas ? getComputedStyle(canvas).backgroundColor : null,
+        colorControls: document.querySelectorAll('[data-scratch-color]').length,
+        customColors: document.querySelectorAll('[data-scratch-custom-color]').length,
+        imageInsert: Boolean(document.querySelector('[data-scratch-image-add]')),
+      };
+      document.querySelector('[data-pilot-close]')?.click();
+      await sleep(80);
     }
+
     let mutations = 0;
     const observer = grid ? new MutationObserver((records) => { mutations += records.length; }) : null;
     if (observer && grid) observer.observe(grid, { childList: true, subtree: true, characterData: true });
     setTimeout(() => {
       observer?.disconnect();
       const rect = app?.getBoundingClientRect();
-      const resourceNames = performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => /pilot-tools|sim-session-native/.test(name));
+      const resourceNames = performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => /pilot-tools|sim-session-native|news-app|release-1\.20\.2/.test(name));
       resolve({
         readyState: document.readyState,
         title: document.title,
@@ -90,6 +116,8 @@ try {
         resourceNames,
         pilotFetch,
         mutations,
+        scratch,
+        tiles: { established: tileMetrics(establishedTile), scratchpad: tileMetrics(scratchTile), setup: tileMetrics(setupTile), news: tileMetrics(newsTile) },
       });
     }, 900);
   })`;
@@ -103,7 +131,7 @@ try {
       console.log(`Renderer exception: ${detail?.text || ''} ${detail?.exception?.description || ''}`.trim());
     } else if (event.method === 'Runtime.consoleAPICalled') {
       const text = (event.params?.args || []).map((arg) => arg.value || arg.description || '').join(' ');
-      if (/error|failed|pilot|scratch|session/i.test(text)) console.log(`Renderer console: ${text}`);
+      if (/error|failed|pilot|scratch|session|news/i.test(text)) console.log(`Renderer console: ${text}`);
     }
   }
   if (value.readyState !== 'complete') throw new Error(`Renderer did not finish loading: ${value.readyState}`);
@@ -114,7 +142,22 @@ try {
   if (value.pilotFetch?.status !== 200) throw new Error(`Pilot Tools asset is not served correctly: ${JSON.stringify(value.pilotFetch)}`);
   if (!value.pilotShell) throw new Error('Pilot Tools shell was not initialized.');
   if (value.mutations > 80) throw new Error(`Home launcher is mutating continuously (${value.mutations} mutations / 900 ms).`);
-  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, ${value.textLength} text chars, ${value.mutations} launcher mutations/900ms.`);
+  if (!value.scratch?.visible) throw new Error('Scratchpad did not open visibly in the packaged renderer.');
+  if (!value.scratch?.canvasBackground || /rgba?\(0,\s*0,\s*0(?:,\s*(?:0|1))?\)/.test(value.scratch.canvasBackground)) throw new Error(`Scratchpad canvas is still dark: ${value.scratch?.canvasBackground}`);
+  if (value.scratch.colorControls < 5 || value.scratch.customColors < 1) throw new Error('Scratchpad pen/marker color controls are missing.');
+  if (!value.scratch.imageInsert) throw new Error('Scratchpad image insert action is missing.');
+  for (const name of ['scratchpad', 'setup', 'news']) {
+    const metrics = value.tiles?.[name];
+    if (!metrics?.copySmall || !metrics?.copyTitle || !metrics?.copyDescription) throw new Error(`New app tile ${name} does not use the established tile content hierarchy.`);
+  }
+  const reference = value.tiles?.established;
+  if (reference) {
+    for (const name of ['scratchpad', 'setup', 'news']) {
+      const metrics = value.tiles?.[name];
+      if (Math.abs((metrics?.iconWidth || 0) - reference.iconWidth) > 3) throw new Error(`New app tile ${name} uses a different icon geometry.`);
+    }
+  }
+  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
 } finally {
   socket.close();
 }
