@@ -37,6 +37,8 @@ await updateFile('public/index.html', (source) => {
     '/si-operations.js',
     '/flight-overlay.js',
     '/flight-overlay.css',
+    '/com-polish.js',
+    '/com-polish.css',
   ]) html = updateAssetVersion(html, asset);
 
   const overlayCss = `<link rel="stylesheet" data-flight-overlay-style href="/flight-overlay.css?v=${version}">`;
@@ -46,11 +48,25 @@ await updateFile('public/index.html', (source) => {
     html = html.replace('</head>', `    ${overlayCss}\n  </head>`);
   }
 
+  const comCss = `<link rel="stylesheet" data-com-polish-style href="/com-polish.css?v=${version}">`;
+  if (/com-polish\.css\?v=/.test(html)) {
+    html = html.replace(/<link[^>]+com-polish\.css\?v=[^>]+>/, comCss);
+  } else {
+    html = html.replace('</head>', `    ${comCss}\n  </head>`);
+  }
+
   const overlayScript = `<script type="module" src="/flight-overlay.js?v=${version}"></script>`;
   if (/flight-overlay\.js\?v=/.test(html)) {
     html = html.replace(/<script[^>]+flight-overlay\.js\?v=[^>]+><\/script>/, overlayScript);
   } else {
     html = html.replace(/(<script type="module" src="\/app\.js\?v=[^"]+"><\/script>)/, `    ${overlayScript}\n    $1`);
+  }
+
+  const comScript = `<script type="module" src="/com-polish.js?v=${version}"></script>`;
+  if (/com-polish\.js\?v=/.test(html)) {
+    html = html.replace(/<script[^>]+com-polish\.js\?v=[^>]+><\/script>/, comScript);
+  } else {
+    html = html.replace(/(<script type="module" src="\/app\.js\?v=[^"]+"><\/script>)/, `$1\n    ${comScript}`);
   }
 
   html = html.replace(/(<span id="update-version">)v[^<]+/, `$1v${version}`);
@@ -82,6 +98,8 @@ await updateFile('public/service-worker.js', (source) => {
     '/live-traffic.js',
     '/flight-overlay.js',
     '/flight-overlay.css',
+    '/com-polish.js',
+    '/com-polish.css',
     '/airline-catalog.js',
     '/si-operations.js',
     '/i18n.js',
@@ -90,6 +108,9 @@ await updateFile('public/service-worker.js', (source) => {
 
   if (!sw.includes(`/flight-overlay.js?v=${version}`)) {
     sw = sw.replace(`  '/live-traffic.js?v=${version}',`, `  '/live-traffic.js?v=${version}',\n  '/flight-overlay.js?v=${version}',\n  '/flight-overlay.css?v=${version}',`);
+  }
+  if (!sw.includes(`/com-polish.js?v=${version}`)) {
+    sw = sw.replace(`  '/flight-overlay.css?v=${version}',`, `  '/flight-overlay.css?v=${version}',\n  '/com-polish.js?v=${version}',\n  '/com-polish.css?v=${version}',`);
   }
   return sw;
 });
