@@ -32,6 +32,7 @@ jobs:
           node --check scripts/apply-release-1.17.19.mjs
           node --check scripts/apply-release-1.7.19.mjs
           node --check scripts/prepare-operations-suite.mjs
+          node --check scripts/test-pilot-tools.mjs
           node --check src/local-path-discovery.mjs
           node --check src/simconnect-client.mjs
           node --check src/injected-traffic-client.mjs
@@ -45,7 +46,7 @@ jobs:
           node --check public/si-operations.js
           node --check public/gsx-profile-manager.js
           node --check public/release-1.7.19.js
-          node --check public/operations-suite.js
+          node --check public/pilot-tools.js
 
       - name: Run traffic and integration regressions
         shell: pwsh
@@ -54,20 +55,23 @@ jobs:
           if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
           node scripts/verify-msfs-efb-builder.mjs
           node scripts/test-gsx-profile-manager.mjs
-          node scripts/test-operations-suite.mjs
+          node scripts/test-pilot-tools.mjs
 
       - name: Verify release assets are wired
         shell: pwsh
         run: |
           $html = Get-Content 'public/index.html' -Raw
           if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired into index.html.' }
-          if ($html -notmatch 'operations-suite\.css\?v=1\.18\.0' -or $html -notmatch 'operations-suite\.js\?v=1\.18\.0') { throw '1.18.0 operations suite assets are not wired into index.html.' }
+          if ($html -notmatch 'pilot-tools\.css\?v=1\.18\.1' -or $html -notmatch 'pilot-tools\.js\?v=1\.18\.1') { throw '1.18.1 pilot tools are not wired into index.html.' }
+          if ($html -match 'operations-suite\.(?:js|css)\?v=') { throw 'Duplicate 1.18.0 operations suite is still wired into the app.' }
+          if ($html -notmatch 'data-i18n="flightNotes">Flight Notes</h3>') { throw 'Existing Flight Hub note area still claims to be the Scratchpad.' }
           $server = Get-Content 'src/server.mjs' -Raw
           if ($server -notmatch '/api/gsx/profile-library' -or $server -notmatch 'scanGsxProfileLibrary') { throw 'GSX automatic path discovery API is missing.' }
           $app = Get-Content 'public/app.js' -Raw
           if ($app -notmatch 'renderTaxiTraffic' -or $app -notmatch 'flightdeckstate') { throw 'Live map/taxi traffic integration is missing.' }
-          $ops = Get-Content 'public/operations-suite.js' -Raw
-          if ($ops -notmatch 'VATSIM_URL' -or $ops -notmatch 'SMART CHECKLISTS' -or $ops -notmatch 'Fuel Receipt') { throw 'Operations suite feature bundle is incomplete.' }
+          $pilot = Get-Content 'public/pilot-tools.js' -Raw
+          if ($pilot -notmatch 'pointerdown' -or $pilot -notmatch 'pointermove' -or $pilot -notmatch 'exportScratchpadPng') { throw 'Real drawing scratchpad is incomplete.' }
+          if ($pilot -match 'SMART CHECKLISTS|VATSIM_URL|currentFlightLog|Fuel Receipt') { throw 'A duplicate 1.18 feature is still bundled into Pilot Tools.' }
           $version = node -p "require('./package.json').version"
-          if ($version -ne '1.18.0') { throw "Unexpected package version: $version" }
-          Write-Host 'Release 1.18.0 validation passed.'
+          if ($version -ne '1.18.1') { throw "Unexpected package version: $version" }
+          Write-Host 'Release 1.18.1 validation passed.'
