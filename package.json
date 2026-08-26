@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.18.0",
+  "version": "1.18.1",
   "description": "Flight Deck EFB for MSFS with honest local Live Traffic, taxi guidance, native EFB bridging, flight intelligence, aircraft adapters, GSX and guarded simulator integrations.",
   "author": "Christoph Heckner",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "test:ground": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ground-ui.mjs",
     "test:ui": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ui-polish.mjs",
     "test:profiles": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs",
-    "test:ops": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-operations-suite.mjs",
+    "test:ops": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-pilot-tools.mjs",
     "prepare-data": "node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs && node scripts/build-ourairports.mjs"
   },
   "dependencies": {
