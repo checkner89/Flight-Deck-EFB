@@ -86,7 +86,8 @@ await update('src/server.mjs', (source) => {
     server = server.replace(portAnchor, `${portAnchor}\n  lanDiscovery = new LanDiscoveryService({ port: actualPort, addresses: localIpv4Addresses(), hostname: 'flightdeck' });\n  await lanDiscovery.start();`);
   }
 
-  if (!server.includes('simSession,\n    lanDiscovery,')) {
+  // Later releases may insert additional services between simSession and lanDiscovery.
+  if (!server.includes('    simSession,')) {
     requireAnchor(server, '    accessManager,\n    openInDefaultBrowser,', 'server return services');
     server = server.replace('    accessManager,\n    openInDefaultBrowser,', '    accessManager,\n    simSession,\n    lanDiscovery,\n    openInDefaultBrowser,');
   }
