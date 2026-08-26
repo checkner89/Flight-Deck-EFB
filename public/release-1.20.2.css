@@ -1,0 +1,98 @@
+/* Flight Deck EFB 1.20.2 — unified module design, bright Scratchpad, modern News */
+
+/* New home tiles use the exact existing EFB tile geometry; only the app accent changes. */
+.pilot-tool-tile,.news-app-tile{min-height:112px!important;padding:15px!important;border-radius:15px!important}
+.pilot-tool-tile .app-tile-copy>small,.news-app-tile .app-tile-copy>small{font-size:9px!important;font-weight:850!important;letter-spacing:.13em!important;line-height:1.25!important}
+.pilot-tool-tile .app-tile-copy>strong,.news-app-tile .app-tile-copy>strong{font-size:17px!important}
+.pilot-tool-tile .app-tile-copy>span,.news-app-tile .app-tile-copy>span{font-size:11px!important;line-height:1.42!important}
+.pilot-scratchpad .app-tile-icon{background:linear-gradient(145deg,#21a69f,#2868a2)!important;color:#fff!important;box-shadow:0 10px 24px rgba(27,122,153,.22)!important}
+.pilot-sim-session .app-tile-icon{background:linear-gradient(145deg,#4e82d8,#3155a5)!important;color:#fff!important;box-shadow:0 10px 24px rgba(55,89,164,.22)!important}
+.news-app-tile .app-tile-icon{background:linear-gradient(145deg,#2aa39c,#167087)!important;color:#fff!important;box-shadow:0 10px 24px rgba(27,122,153,.22)!important}
+.news-tile-badge{top:11px!important;right:11px!important;background:#16b9ae!important;color:#fff!important;box-shadow:0 4px 12px rgba(12,128,121,.22)!important}
+html[data-theme="light"] .pilot-scratchpad .app-tile-icon,html[data-theme="light"] .pilot-sim-session .app-tile-icon,html[data-theme="light"] .news-app-tile .app-tile-icon{filter:none!important;opacity:1!important}
+
+/* Shared full-screen module chrome */
+.pilot-tools-shell,.news-app-shell{background:var(--bg,#07121c)!important;color:var(--text,#f3f9fc)!important}
+.pilot-tools-toolbar,.news-toolbar{min-height:66px!important;padding:9px 16px!important;border-bottom:1px solid rgba(151,193,216,.16)!important;background:rgba(5,18,28,.97)!important;box-shadow:none!important}
+.pilot-tools-back,.pilot-tools-toolbar button,.news-toolbar>button,.news-toolbar nav button{min-height:36px!important;border:1px solid rgba(151,193,216,.20)!important;border-radius:8px!important;background:rgba(255,255,255,.035)!important;color:#dcebf1!important;font-size:10px!important;font-weight:850!important;box-shadow:none!important}
+.pilot-tools-title small,.news-toolbar>div small{color:#57dcd2!important;font-size:9px!important;font-weight:850!important;letter-spacing:.12em!important}
+.pilot-tools-title strong,.news-toolbar>div strong{color:#eef8fb!important;font-size:18px!important}
+
+/* Scratchpad */
+.scratchpad-workspace{padding:16px!important;background:#e7edf1!important}
+html[data-theme="dark"] .scratchpad-workspace{background:#091722!important}
+.scratchpad-paper{border:1px solid #c9d4da!important;border-radius:14px!important;background:#fbfaf6!important;box-shadow:0 14px 36px rgba(22,43,54,.18)!important}
+.scratchpad-paper canvas{background:#fbfaf6!important;color-scheme:light!important}
+.scratchpad-paper:before{color:#4d6875!important;opacity:.42!important}
+.scratchpad-hint{color:#526e7b!important;opacity:.7!important}
+.scratchpad-paper.is-dragging,.scratchpad-paper:focus-within{outline:3px solid rgba(22,185,174,.18)!important;outline-offset:-3px}
+.scratch-toolbar-actions{gap:7px!important}
+.scratch-tool-group{padding:4px!important;border:1px solid rgba(151,193,216,.18)!important;border-radius:8px!important;background:rgba(255,255,255,.025)!important}
+.scratch-tool-group button{min-height:32px!important;padding:7px 9px!important;border-radius:6px!important;color:#b8ccd5!important}
+.scratch-tool-group button.active{border-color:rgba(22,227,212,.38)!important;background:rgba(22,227,212,.11)!important;color:#affff8!important}
+.scratch-colors{gap:3px!important}
+.scratch-color{width:30px!important;min-width:30px!important;padding:5px!important;display:grid!important;place-items:center!important}
+.scratch-color i{display:block!important;width:18px!important;height:18px!important;border:2px solid rgba(255,255,255,.58)!important;border-radius:50%!important;background:var(--swatch)!important;box-shadow:0 0 0 1px rgba(0,0,0,.16)!important}
+.scratch-color.active{box-shadow:0 0 0 2px rgba(22,227,212,.22)!important}
+.scratch-custom-color{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:6px;overflow:hidden;cursor:pointer;color:#9db3be;font-size:15px;font-weight:800}
+.scratch-custom-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.scratch-custom-color span{pointer-events:none}
+.scratch-actions{margin-left:auto!important}
+.scratch-craft-drawer{border:1px solid rgba(151,193,216,.18)!important;border-radius:14px!important;background:linear-gradient(145deg,rgba(13,35,50,.98),rgba(7,23,34,.98))!important;box-shadow:0 16px 36px rgba(0,0,0,.20)!important}
+.scratch-craft-fields label{border-radius:8px!important;background:rgba(1,12,20,.30)!important}
+
+/* Flight Setup: same visual hierarchy as established EFB cards. */
+.sim-session-grid{padding:18px!important;background:var(--bg,#07121c)!important}
+.flight-setup-overview{gap:16px!important}
+.flight-setup-hero,.flight-setup-panel{border:1px solid rgba(151,193,216,.15)!important;border-radius:14px!important;background:linear-gradient(145deg,rgba(13,35,50,.97),rgba(7,23,34,.97))!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important;color:#edf8fb!important}
+.flight-setup-hero{padding:19px 20px!important}.flight-setup-panel{padding:18px!important}
+.flight-setup-hero:before{display:none!important}
+.flight-setup-hero h1{font-size:23px!important;letter-spacing:-.02em!important}.flight-setup-panel h2{font-size:18px!important}
+.flight-setup-hero p,.flight-setup-panel header p{color:#8da5b1!important;font-size:12px!important;line-height:1.55!important}
+.flight-setup-msfs,.flight-tool,.addon-row,.native-discovery-body,.native-screenshot-preview{border:1px solid rgba(151,193,216,.13)!important;border-radius:9px!important;background:rgba(1,12,20,.30)!important}
+.flight-tool{min-height:60px!important;padding:11px 12px!important}.flight-tool-main strong{font-size:12px!important}.flight-tool-main>small{color:#7893a0!important;font-size:9px!important}
+.addon-tabs button{min-height:30px!important;border-radius:7px!important}.addon-tabs button.active{border-color:rgba(22,227,212,.35)!important;background:rgba(22,227,212,.09)!important;color:#aafff7!important}
+.addon-row{min-height:52px!important}.addon-row>span{background:rgba(22,227,212,.08)!important;color:#6ee7de!important}
+
+/* News overview */
+.news-content{padding:16px 18px 18px!important;background:var(--bg,#07121c)!important}
+.news-filterbar{display:grid;gap:8px;margin-bottom:14px;padding:10px 12px;border:1px solid rgba(151,193,216,.13);border-radius:10px;background:rgba(1,12,20,.28)}
+.news-filter-primary,.news-filter-sources{display:flex;gap:6px;overflow:auto;scrollbar-width:thin}.news-filter-sources{padding-top:8px;border-top:1px solid rgba(151,193,216,.10)}
+.news-filterbar button{flex:0 0 auto;min-height:30px;padding:0 10px;border:1px solid rgba(151,193,216,.16);border-radius:7px;background:rgba(255,255,255,.025);color:#849fab;font-size:9px;font-weight:850;letter-spacing:.05em;cursor:pointer}
+.news-filterbar button.active{border-color:rgba(22,227,212,.36);background:rgba(22,227,212,.09);color:#aafff7}
+.news-stream{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))!important;gap:12px!important;align-content:start!important;padding:0 2px 10px 0!important}
+.news-card{display:flex!important;flex-direction:column!important;min-width:0!important;padding:0!important;overflow:hidden!important;border:1px solid rgba(151,193,216,.15)!important;border-radius:14px!important;background:linear-gradient(145deg,rgba(13,35,50,.97),rgba(7,23,34,.97))!important;box-shadow:0 10px 26px rgba(0,0,0,.14)!important;color:#eef8fb!important;cursor:pointer!important;transition:150ms ease!important}
+.news-card:hover{transform:translateY(-2px)!important;border-color:rgba(22,227,212,.34)!important;box-shadow:0 16px 34px rgba(0,0,0,.20)!important}
+.news-card.unread{border-color:rgba(43,184,221,.34)!important}
+.news-card-image{width:100%!important;height:160px!important;object-fit:cover!important;background:#0a1b27!important}
+.news-card-content{display:flex;flex:1;flex-direction:column;padding:14px 15px 15px!important}
+.news-card-source{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;margin-bottom:10px}.news-card-source>div{display:grid;gap:1px;min-width:0}.news-card-source>div strong{overflow:hidden;color:#57dcd2;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.news-card-source>div span{color:#718c9b;font-size:9px}.news-card-source>b{padding:3px 6px;border-radius:999px;background:rgba(22,227,212,.10);color:#78e9df;font-size:8px;letter-spacing:.08em}
+.news-source-logo,.news-library-logo,.news-reader-logo{position:relative;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(151,193,216,.15);border-radius:9px;background:linear-gradient(145deg,#168f9d,#255f92);color:#fff;font-size:9px;font-weight:900;letter-spacing:.03em}.news-source-logo{width:34px;height:34px}.news-library-logo{width:38px;height:38px}.news-reader-logo{width:34px;height:34px}.news-reader-logo.large{width:46px;height:46px;border-radius:11px}.news-source-logo img,.news-library-logo img,.news-reader-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px;background:#fff}
+.news-card h2{margin:0 0 8px!important;color:#f0f8fb!important;font-size:16px!important;line-height:1.28!important}.news-card p{display:-webkit-box;margin:0 0 12px!important;overflow:hidden;color:#91a9b5!important;font-size:11px!important;line-height:1.55!important;-webkit-box-orient:vertical;-webkit-line-clamp:3}.news-card .news-read{align-self:flex-start;margin-top:auto!important;padding:0!important;border:0!important;background:transparent!important;color:#57dcd2!important;font-size:9px!important;font-weight:900!important;letter-spacing:.06em!important;cursor:pointer}.news-card .news-read span{font-size:15px;vertical-align:-1px}
+.news-empty{grid-column:1/-1!important;min-height:220px!important;border:1px dashed rgba(151,193,216,.18)!important;border-radius:12px!important}
+.news-drawer{background:rgba(5,18,28,.985)!important}.news-notify{border-radius:9px!important}.news-notify>div{display:grid;gap:3px}.news-notify small{color:#7893a0;font-size:9px}.news-library article{border-radius:9px!important}
+
+/* News reader */
+.news-reader{background:var(--bg,#07121c)!important}
+.news-reader-toolbar{min-height:62px!important;padding:9px 16px!important;border-bottom:1px solid rgba(151,193,216,.16)!important;background:rgba(5,18,28,.985)!important}
+.news-reader-toolbar-title{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important}.news-reader-toolbar-title>div{display:grid;gap:1px;min-width:0}.news-reader-toolbar-title small{color:#57dcd2!important;font-size:9px!important}.news-reader-toolbar-title strong{font-size:13px!important}
+.news-reader-scroll{padding:28px 24px 42px!important;background:radial-gradient(circle at 50% 0,rgba(40,127,166,.07),transparent 34%),var(--bg,#07121c)!important}
+.news-reader-article{width:min(980px,100%)!important;margin:0 auto!important;padding:0 0 28px!important;overflow:hidden!important;border:1px solid rgba(151,193,216,.15)!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(13,35,50,.98),rgba(7,23,34,.98))!important;box-shadow:0 16px 42px rgba(0,0,0,.20)!important}
+.news-reader-hero{display:block!important;width:100%!important;max-height:480px!important;object-fit:cover!important;background:#0a1b27!important}
+.news-reader-heading{padding:28px 42px 8px!important}.news-reader-source{display:flex;align-items:center;gap:11px;margin-bottom:18px}.news-reader-source>div{display:grid;gap:2px}.news-reader-source b{color:#57dcd2;font-size:10px}.news-reader-source span{color:#7d98a5;font-size:10px}.news-reader-heading h1{margin:0!important;color:#f2f9fb!important;font-size:clamp(28px,3vw,42px)!important;line-height:1.12!important;letter-spacing:-.025em!important}
+.news-reader-body{padding:10px 42px 4px!important;color:#c2d3da!important;font-size:15px!important;line-height:1.76!important;white-space:normal!important}.news-reader-body p{margin:0 0 1.2em}.news-reader-body h2{margin:1.65em 0 .55em;color:#edf8fb;font-size:22px;line-height:1.25}.news-reader-body blockquote{margin:1.25em 0;padding:12px 18px;border-left:3px solid #35bdb3;background:rgba(22,227,212,.055);color:#cfe0e5;font-style:italic}.news-reader-list-item{display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:start;margin:0 0 .75em}.news-reader-list-item i{width:5px;height:5px;margin-top:.7em;border-radius:50%;background:#57dcd2}.news-reader-image{margin:24px 0}.news-reader-image img{display:block;width:100%;max-height:620px;border-radius:10px;object-fit:contain;background:#07121c}.news-reader-image figcaption{margin-top:7px;color:#718c9b;font-size:10px;text-align:center}.news-reader-note{margin:24px 42px 0!important;padding-top:16px!important;border-top:1px solid rgba(151,193,216,.13)!important;color:#718c9b!important;font-size:10px!important;line-height:1.5!important}.news-reader-loading{display:flex;align-items:center;gap:10px;margin:22px 42px 0;padding:11px 13px;border:1px solid rgba(151,193,216,.13);border-radius:8px;background:rgba(255,255,255,.025);color:#91a9b5;font-size:10px}.news-reader-loading i{width:12px;height:12px;border:2px solid rgba(87,220,210,.25);border-top-color:#57dcd2;border-radius:50%;animation:news-spin .8s linear infinite}@keyframes news-spin{to{transform:rotate(360deg)}}
+
+/* Light theme */
+html[data-theme="light"] .pilot-tools-shell,html[data-theme="light"] .news-app-shell,html[data-theme="light"] .sim-session-grid,html[data-theme="light"] .news-content,html[data-theme="light"] .news-reader{background:#e8eef2!important;color:#172631!important}
+html[data-theme="light"] .pilot-tools-toolbar,html[data-theme="light"] .news-toolbar,html[data-theme="light"] .news-reader-toolbar{border-color:#c7d3da!important;background:rgba(245,248,250,.985)!important}
+html[data-theme="light"] .pilot-tools-title strong,html[data-theme="light"] .news-toolbar>div strong{color:#18303c!important}
+html[data-theme="light"] .pilot-tools-back,html[data-theme="light"] .pilot-tools-toolbar button,html[data-theme="light"] .news-toolbar>button,html[data-theme="light"] .news-toolbar nav button{border-color:#bdccd4!important;background:#f9fbfc!important;color:#17303c!important}
+html[data-theme="light"] .scratch-tool-group{border-color:#c3d0d7!important;background:rgba(255,255,255,.60)!important}html[data-theme="light"] .scratch-tool-group button{color:#46616e!important}html[data-theme="light"] .scratch-tool-group button.active{border-color:rgba(16,148,140,.32)!important;background:rgba(16,148,140,.09)!important;color:#096e68!important}
+html[data-theme="light"] .scratch-craft-drawer,html[data-theme="light"] .flight-setup-hero,html[data-theme="light"] .flight-setup-panel,html[data-theme="light"] .news-card,html[data-theme="light"] .news-reader-article{border-color:rgba(54,92,112,.20)!important;background:linear-gradient(145deg,#f8fafb,#e4ebef)!important;color:#172631!important;box-shadow:0 10px 28px rgba(39,67,80,.10)!important}
+html[data-theme="light"] .flight-setup-hero h1,html[data-theme="light"] .flight-setup-panel h2,html[data-theme="light"] .flight-tool-main strong,html[data-theme="light"] .news-card h2,html[data-theme="light"] .news-reader-heading h1,html[data-theme="light"] .news-reader-body h2{color:#10232e!important}
+html[data-theme="light"] .flight-setup-msfs,html[data-theme="light"] .flight-tool,html[data-theme="light"] .addon-row,html[data-theme="light"] .native-discovery-body,html[data-theme="light"] .news-filterbar,html[data-theme="light"] .news-notify,html[data-theme="light"] .news-library article{border-color:rgba(54,92,112,.18)!important;background:rgba(255,255,255,.62)!important;color:#17303c!important}
+html[data-theme="light"] .news-filter-sources{border-color:rgba(54,92,112,.13)!important}.news-filterbar button{transition:120ms ease}html[data-theme="light"] .news-filterbar button{border-color:#c6d2d8!important;background:#f7fafb!important;color:#54707d!important}html[data-theme="light"] .news-filterbar button.active{border-color:rgba(16,148,140,.30)!important;background:rgba(16,148,140,.08)!important;color:#086d68!important}
+html[data-theme="light"] .news-card-source>div strong,html[data-theme="light"] .news-card .news-read,html[data-theme="light"] .news-reader-source b{color:#0b948b!important}html[data-theme="light"] .news-card-source>div span,html[data-theme="light"] .news-card p,html[data-theme="light"] .news-reader-source span,html[data-theme="light"] .news-reader-note{color:#506b79!important}
+html[data-theme="light"] .news-reader-scroll{background:radial-gradient(circle at 50% 0,rgba(20,170,180,.08),transparent 34%),#e8eef2!important}html[data-theme="light"] .news-reader-body{color:#334f5c!important}html[data-theme="light"] .news-reader-body blockquote{background:rgba(16,148,140,.06)!important;color:#36525e!important}html[data-theme="light"] .news-reader-image img{background:#e4ebef!important}
+
+@media(max-width:1050px){.news-stream{grid-template-columns:repeat(2,minmax(0,1fr))!important}.scratch-toolbar-actions{width:100%!important;overflow-x:auto!important;justify-content:flex-start!important}.scratch-actions{margin-left:0!important}}
+@media(max-width:700px){.news-stream{grid-template-columns:1fr!important}.news-content{padding:10px!important}.news-filterbar{padding:8px!important}.news-reader-scroll{padding:12px 9px 28px!important}.news-reader-heading{padding:20px 19px 6px!important}.news-reader-body{padding:8px 19px!important;font-size:14px!important}.news-reader-note,.news-reader-loading{margin-left:19px!important;margin-right:19px!important}.news-reader-toolbar-title strong{max-width:42vw!important}.scratchpad-workspace{padding:7px!important}.scratchpad-paper{border-radius:10px!important}.scratch-colors{display:none!important}}
