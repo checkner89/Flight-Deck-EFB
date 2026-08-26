@@ -19,11 +19,15 @@ await update('public/index.html', (source) => {
   html = html.replace(/\s*<script[^>]+operations-suite\.js\?v=[^>]+><\/script>\s*/g, '\n');
   html = html.replace(/\s*<link[^>]+pilot-tools\.css\?v=[^>]+>\s*/g, '\n');
   html = html.replace(/\s*<script[^>]+pilot-tools\.js\?v=[^>]+><\/script>\s*/g, '\n');
+  html = html.replace(/\s*<link[^>]+sim-session-native\.css\?v=[^>]+>\s*/g, '\n');
+  html = html.replace(/\s*<script[^>]+sim-session-native\.js\?v=[^>]+><\/script>\s*/g, '\n');
   html = html.replace(/<h3\s+data-i18n="scratchpad">Scratchpad<\/h3>/g, '<h3 data-i18n="flightNotes">Flight Notes</h3>');
-  const css = `<link rel="stylesheet" data-pilot-tools-style href="/pilot-tools.css?v=${version}">`;
-  const script = `<script type="module" data-pilot-tools src="/pilot-tools.js?v=${version}"></script>`;
-  html = html.replace('</head>', `    ${css}\n  </head>`);
-  html = html.replace('</body>', `    ${script}\n  </body>`);
+  const pilotCss = `<link rel="stylesheet" data-pilot-tools-style href="/pilot-tools.css?v=${version}">`;
+  const nativeCss = `<link rel="stylesheet" data-sim-session-native-style href="/sim-session-native.css?v=${version}">`;
+  const pilotScript = `<script type="module" data-pilot-tools src="/pilot-tools.js?v=${version}"></script>`;
+  const nativeScript = `<script type="module" data-sim-session-native src="/sim-session-native.js?v=${version}"></script>`;
+  html = html.replace('</head>', `    ${pilotCss}\n    ${nativeCss}\n  </head>`);
+  html = html.replace('</body>', `    ${pilotScript}\n    ${nativeScript}\n  </body>`);
   return html;
 });
 
@@ -31,10 +35,11 @@ await update('public/service-worker.js', (source) => {
   let sw = source;
   sw = sw.replace(/^\s*['"]\/operations-suite\.(?:js|css)\?v=[^'"\s,]+['"],?\s*$/gm, '');
   sw = sw.replace(/^\s*['"]\/pilot-tools\.(?:js|css)\?v=[^'"\s,]+['"],?\s*$/gm, '');
+  sw = sw.replace(/^\s*['"]\/sim-session-native\.(?:js|css)\?v=[^'"\s,]+['"],?\s*$/gm, '');
   const anchor = `  '/manifest.webmanifest',`;
-  const entries = `  '/pilot-tools.js?v=${version}',\n  '/pilot-tools.css?v=${version}',\n`;
+  const entries = `  '/pilot-tools.js?v=${version}',\n  '/pilot-tools.css?v=${version}',\n  '/sim-session-native.js?v=${version}',\n  '/sim-session-native.css?v=${version}',\n`;
   if (sw.includes(anchor)) sw = sw.replace(anchor, `${entries}${anchor}`);
   return sw.replace(/\n{3,}/g, '\n\n');
 });
 
-console.log(`Prepared deduplicated pilot tools for ${version}.`);
+console.log(`Prepared deduplicated pilot tools + native Sim Session for ${version}.`);
