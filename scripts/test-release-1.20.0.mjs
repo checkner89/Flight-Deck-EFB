@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import { CURATED_NEWS_FEEDS, NewsFeedService } from '../src/news-feed-service.mjs';
 
+const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
+const version = String(pkg.version || '1.20.0');
 const app = await fs.readFile('public/app.js', 'utf8');
 const pilot = await fs.readFile('public/pilot-tools.js', 'utf8');
 const pilotCss = await fs.readFile('public/pilot-tools.css', 'utf8');
@@ -36,8 +38,8 @@ need(news, '/api/news/catalog', 'News app catalog integration is missing.');
 need(news, '/api/news/subscriptions', 'News feed installation UI is missing.');
 need(news, 'dataset.newsSignature', 'News tile does not guard repeated DOM writes.');
 need(news, 'if(b.dataset.newsSignature===sig)return', 'News tile observer is not idempotent.');
-need(html, 'news-app.js?v=1.20.0', 'News app script is not wired for 1.20.0.');
-need(html, 'news-app.css?v=1.20.0', 'News app styles are not wired for 1.20.0.');
+need(html, `news-app.js?v=${version}`, `News app script is not wired for ${version}.`);
+need(html, `news-app.css?v=${version}`, `News app styles are not wired for ${version}.`);
 need(server, "pathname === '/api/news/feed'", 'News feed API route is missing.');
 need(server, 'const newsService = new NewsFeedService', 'News service is not initialized by the host.');
 need(electron, 'notifyFlightDeckNews', 'Native Windows news notifications are missing.');
@@ -51,4 +53,4 @@ for (const id of ['fselite', 'cruiselevel', 'msfsaddons', 'threshold', 'flightsi
 const service = new NewsFeedService({ storageDirectory: '.tmp-news-test' });
 if (!Array.isArray(service.catalog()) || service.catalog().length !== 20) throw new Error('News catalog is not available without a network refresh.');
 
-console.log('Flight Deck EFB 1.20.0 airport-only, Flight Setup, MSFS scanner and News regression checks passed.');
+console.log(`Flight Deck EFB ${version} airport-only, Flight Setup, MSFS scanner and News regression checks passed.`);
