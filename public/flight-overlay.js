@@ -2,6 +2,8 @@ const OVERLAY_TOKEN_KEY = 'si-taxi-token';
 
 let overlayStateTimer = null;
 let overlayClockTimer = null;
+let previousOnGround = null;
+let departureGateBaseline = null;
 
 function overlayToken() {
   const fromUrl = new URL(window.location.href).searchParams.get('token');
@@ -49,6 +51,11 @@ function formatSpeed(aircraft = {}) {
   if (!Number.isFinite(ias) && !Number.isFinite(gs)) return '—';
   if (Number.isFinite(ias) && Number.isFinite(gs)) return `IAS ${Math.round(ias)} · GS ${Math.round(gs)} kt`;
   return Number.isFinite(ias) ? `IAS ${Math.round(ias)} kt` : `GS ${Math.round(gs)} kt`;
+}
+
+function formatRunway(value) {
+  const runway = String(value || '').trim().replace(/^RWY\s*/i, '').toUpperCase();
+  return runway ? `RWY ${runway}` : '—';
 }
 
 function normalizedIcao(value) {
@@ -161,8 +168,8 @@ function ensureHomeFlightPanel() {
     makeMetric('GATE', 'flight-overlay-gate'),
     makeMetric('ALTITUDE', 'flight-overlay-altitude'),
     makeMetric('SPEED', 'flight-overlay-speed', 'wide'),
-    makeMetric('COM1 ACTIVE', 'flight-overlay-com-active'),
-    makeMetric('COM1 STANDBY', 'flight-overlay-com-standby'),
+    makeMetric('RADIO ACTIVE', 'flight-overlay-com-active'),
+    makeMetric('RADIO STANDBY', 'flight-overlay-com-standby'),
   );
 
   const actions = overlayNode('div', { className: 'flight-overlay-actions' });
@@ -214,13 +221,28 @@ function renderFlightOverlay(state = {}) {
   const departureRunway = flight.departureRunway || plan.departureRunway;
   const arrivalRunway = flight.arrivalRunway || plan.arrivalRunway;
   const runway = airborne || atDestination ? (arrivalRunway || departureRunway) : (departureRunway || arrivalRunway);
-  const explicitGate = state.gate?.name || null;
-  const gate = explicitGate || (!airborne ? overlayValue('#home-gate', '—') : '—');
+
+  const explicitGate = String(state.gate?.name || '').trim() || null;
+  const visibleGroundGate = explicitGate || overlayValue('#home-gate', '—');
+  if (previousOnGround === true && airborne) departureGateBaseline = explicitGate || visibleGroundGate || null;
+  if (!airborne && atDestination) departureGateBaseline = null;
+  const gate = airborne
+    ? explicitGate && explicitGate !== departureGateBaseline ? explicitGate : '—'
+    : visibleGroundGate;
+  previousOnGround = aircraft.onGround;
+
   const callsign = flight.callsign || plan.callsign || overlayValue('#home-callsign', '—');
+  const plannedFlightNumber = plan.flightNumber
+    ? `${plan.airlineIata || plan.airlineIcao || ''}${plan.flightNumber}`
+    : null;
+  const flightNumber = flight.flightNumber || plannedFlightNumber || callsign;
   const progress = routeProgress();
   const route = `${origin} → ${destination}`;
   const progressLabel = progress.percent === null ? '—' : `${Math.round(progress.percent)}%`;
   const progressWidth = `${progress.percent ?? 0}%`;
+  const activeRadio = com.com2Transmit && !com.com1Transmit ? 2 : 1;
+  const activeFrequency = activeRadio === 2 ? com.com2Active : com.com1Active;
+  const standbyFrequency = activeRadio === 2 ? com.com2Standby : com.com1Standby;
 
   overlaySet('flight-overlay-top-route', route);
   overlaySet('flight-overlay-top-remaining', progress.remaining);
@@ -235,14 +257,14 @@ function renderFlightOverlay(state = {}) {
   if (topFill) topFill.style.width = progressWidth;
   if (homeFill) homeFill.style.width = progressWidth;
 
-  overlaySet('flight-overlay-flight-number', callsign);
+  overlaySet('flight-overlay-flight-number', flightNumber);
   overlaySet('flight-overlay-airport', airport);
-  overlaySet('flight-overlay-runway', runway ? `RWY ${runway}` : '—');
+  overlaySet('flight-overlay-runway', formatRunway(runway));
   overlaySet('flight-overlay-gate', gate);
   overlaySet('flight-overlay-altitude', formatAltitude(aircraft.altitudeFeet));
   overlaySet('flight-overlay-speed', formatSpeed(aircraft));
-  overlaySet('flight-overlay-com-active', formatFrequency(com.com1Active));
-  overlaySet('flight-overlay-com-standby', formatFrequency(com.com1Standby));
+  overlaySet('flight-overlay-com-active', `COM${activeRadio} · ${formatFrequency(activeFrequency)}`);
+  overlaySet('flight-overlay-com-standby', `COM${activeRadio} · ${formatFrequency(standbyFrequency)}`);
 }
 
 async function refreshFlightOverlay() {
@@ -265,5 +287,7 @@ function startFlightOverlay() {
   overlayStateTimer = setInterval(refreshFlightOverlay, 2_000);
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startFlightOverlay, { once: true });
-else startFlightOverlay();
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startFlightOverlay, { once: true });
+  else startFlightOverlay();
+}
