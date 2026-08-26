@@ -57,6 +57,12 @@ assert.match(uiFixes, /adapter-overview-card\s*>\s*\.primary-card-action[\s\S]*m
 
 assert.match(electronMain, /flightdeck:\/\/clear-msfs-cache/);
 for (const cache of ['GLCache', 'DXCache', 'ComputeCache', 'D3DSCache']) assert.match(electronMain, new RegExp(cache));
+assert.match(electronMain, /process\.env\.LOCALAPPDATA/);
+assert.match(electronMain, /process\.env\.APPDATA/);
+assert.match(electronMain, /path\.join\(localAppData, 'NVIDIA', 'GLCache'\)/);
+assert.match(electronMain, /path\.join\(localAppData, 'NVIDIA', 'DXCache'\)/);
+assert.match(electronMain, /path\.join\(roamingAppData, 'NVIDIA', 'ComputeCache'\)/);
+assert.match(electronMain, /path\.join\(localAppData, 'D3DSCache'\)/);
 assert.match(electronMain, /MSFS-Rolling-Cache/);
 
 console.log('GSX Profile Manager, GSX Remote, Settings and MSFS cache regression checks passed.');
