@@ -50,7 +50,6 @@ await update('public/service-worker.js', (source) => {
   return sw.replace(/\n{3,}/g, '\n\n');
 });
 
-await update('CHANGELOG.md', async (source) => source);
 const changelogPath = path.join(root, 'CHANGELOG.md');
 const releaseNotesPath = path.join(root, 'release-notes', '1.20.2.md');
 const changelog = await fs.readFile(changelogPath, 'utf8');
