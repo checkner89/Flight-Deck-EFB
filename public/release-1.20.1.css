@@ -1,0 +1,70 @@
+/* Flight Deck EFB 1.20.1 — theme-safe styling for Scratchpad, Flight Setup and News */
+.pilot-tools-shell,.news-app-shell{background:var(--bg,#07121c)!important;color:var(--text,#f3f9fc)!important}
+.pilot-tools-toolbar,.news-toolbar{min-height:66px;padding:9px 16px;border-color:var(--line,rgba(151,193,216,.18));background:var(--panel-strong,rgba(5,18,28,.97))!important;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.pilot-tools-title small,.news-toolbar>div small,.flight-setup-hero small,.flight-setup-panel header small{color:var(--cyan,#16e3d4)!important;font-size:9px!important;font-weight:850;letter-spacing:.13em}
+.pilot-tools-title strong,.news-toolbar>div strong,.flight-setup-hero h1,.flight-setup-panel h2{color:var(--text,#f3f9fc)!important}
+.pilot-tools-back,.pilot-tools-toolbar button,.news-toolbar>button,.news-toolbar nav button,.flight-setup-msfs button,.flight-setup-refresh,.flight-setup-panel header button,.flight-tool-launch,.flight-tool-config button{min-height:36px;border:1px solid var(--line,rgba(151,193,216,.18))!important;border-radius:8px!important;background:rgba(255,255,255,.035)!important;color:var(--text,#f3f9fc)!important;box-shadow:none!important}
+.pilot-tools-back:hover,.pilot-tools-toolbar button:hover,.news-toolbar>button:hover,.news-toolbar nav button:hover,.flight-setup-refresh:hover,.flight-tool-launch:hover:not(:disabled){border-color:rgba(22,227,212,.45)!important;background:rgba(22,227,212,.08)!important;color:#bafff9!important}
+
+/* Scratchpad */
+.scratchpad-workspace{padding:16px!important;background:var(--bg,#07121c)!important}
+.scratchpad-paper{border:1px solid rgba(42,71,88,.16)!important;border-radius:12px!important;background:#fbfaf6!important;box-shadow:0 12px 30px rgba(0,0,0,.22)!important}
+.scratchpad-workspace.is-grid .scratchpad-paper{background-color:#fbfaf6!important;background-image:linear-gradient(rgba(45,79,99,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(45,79,99,.09) 1px,transparent 1px)!important;background-size:28px 28px!important}
+.scratchpad-paper:before{color:#58717d!important;opacity:.38}
+.scratchpad-hint{color:#607986!important;opacity:.55}
+.scratch-tool-group{padding:4px;border:1px solid var(--line,rgba(151,193,216,.18))!important;border-radius:8px!important;background:rgba(255,255,255,.025)!important}
+.scratch-tool-group button{color:var(--text,#f3f9fc)!important}
+.scratch-tool-group button.active{border-color:rgba(22,227,212,.46)!important;background:rgba(22,227,212,.13)!important;color:#aafff7!important}
+.scratch-craft-drawer{border:1px solid var(--line,rgba(151,193,216,.18))!important;border-radius:12px!important;background:var(--panel,rgba(8,24,36,.92))!important;color:var(--text,#f3f9fc)!important;box-shadow:0 14px 36px rgba(0,0,0,.22)!important}
+.scratch-craft-drawer header small,.scratch-craft-fields small,.scratch-craft-drawer p{color:var(--muted,#8faaba)!important}
+.scratch-craft-fields label{border-color:var(--line,rgba(151,193,216,.18))!important;border-radius:8px!important;background:rgba(1,12,20,.28)!important}
+.scratch-craft-fields label>span{background:rgba(22,227,212,.08)!important;color:var(--cyan,#16e3d4)!important}
+.scratch-craft-fields input{border-color:var(--line,rgba(151,193,216,.18))!important;color:var(--text,#f3f9fc)!important}
+
+/* Flight Setup — same card language as existing modules */
+.sim-session-grid{padding:18px!important;background:var(--bg,#07121c)!important;color:var(--text,#f3f9fc)!important}
+.flight-setup-overview{gap:16px!important}
+.flight-setup-hero,.flight-setup-panel{border:1px solid var(--line,rgba(151,193,216,.18))!important;border-radius:12px!important;background:linear-gradient(145deg,rgba(13,35,50,.97),rgba(7,23,34,.97))!important;box-shadow:0 12px 32px rgba(0,0,0,.18)!important;color:var(--text,#f3f9fc)!important}
+.flight-setup-hero{padding:20px!important}
+.flight-setup-panel{padding:18px!important}
+.flight-setup-hero:before{background:rgba(22,227,212,.06)!important}
+.flight-setup-hero p,.flight-setup-panel header p,.flight-tool-main>small,.flight-tool-config summary,.native-empty,.native-screenshot-preview p,.native-discovery-body p,.native-discovery-body small{color:var(--muted,#8faaba)!important}
+.flight-setup-msfs,.flight-tool,.addon-row,.native-discovery-body,.native-screenshot-preview{border:1px solid rgba(151,193,216,.13)!important;border-radius:8px!important;background:rgba(1,12,20,.30)!important;color:var(--text,#f3f9fc)!important}
+.flight-tool-main strong,.addon-row strong,.native-discovery-body strong,.flight-setup-msfs div strong{color:var(--text,#f3f9fc)!important}
+.flight-tool-main b{color:var(--muted,#8faaba)!important}
+.flight-tool.running .flight-tool-main b{color:var(--green,#4af2b3)!important}.flight-tool.ready .flight-tool-main b{color:#73cfff!important}.flight-tool.sim-installed .flight-tool-main b{color:#c2aaff!important}
+.addon-tabs button{border:1px solid var(--line,rgba(151,193,216,.18))!important;background:rgba(255,255,255,.025)!important;color:var(--muted,#8faaba)!important}
+.addon-tabs button.active{border-color:rgba(22,227,212,.4)!important;background:rgba(22,227,212,.1)!important;color:#aafff7!important}
+.flight-tool-config input{border:1px solid var(--line,rgba(151,193,216,.18))!important;background:rgba(1,12,20,.35)!important;color:var(--text,#f3f9fc)!important}
+
+/* News — native Flight Deck cards + in-app reader */
+.news-content{padding:18px!important;background:var(--bg,#07121c)!important;color:var(--text,#f3f9fc)!important}
+.news-filters{padding:0 0 14px!important}
+.news-filters button{border:1px solid var(--line,rgba(151,193,216,.18))!important;background:rgba(255,255,255,.025)!important;color:var(--muted,#8faaba)!important}
+.news-filters button.active{border-color:rgba(22,227,212,.4)!important;background:rgba(22,227,212,.1)!important;color:#aafff7!important}
+.news-stream{gap:11px!important}
+.news-card{border:1px solid rgba(151,193,216,.15)!important;border-radius:12px!important;background:linear-gradient(145deg,rgba(13,35,50,.97),rgba(7,23,34,.97))!important;box-shadow:0 12px 28px rgba(0,0,0,.16)!important;color:var(--text,#f3f9fc)!important;cursor:pointer;transition:150ms ease}
+.news-card:hover{transform:translateY(-1px);border-color:rgba(22,227,212,.38)!important;background:linear-gradient(145deg,rgba(17,46,62,.99),rgba(8,28,40,.99))!important}
+.news-card.unread{border-color:rgba(45,184,255,.34)!important}
+.news-card-mark{border-radius:10px!important;background:linear-gradient(145deg,#168f9d,#255f92)!important;color:#efffff!important}
+.news-card-meta,.news-card p{color:var(--muted,#8faaba)!important}
+.news-card-meta span{color:var(--cyan,#16e3d4)!important}.news-card h2{color:var(--text,#f3f9fc)!important}.news-card button.news-read{padding:0;border:0;background:transparent;color:var(--cyan,#16e3d4);font-size:10px;font-weight:900;letter-spacing:.06em;cursor:pointer}
+.news-drawer{border-color:var(--line,rgba(151,193,216,.18))!important;background:var(--panel-strong,rgba(5,18,28,.97))!important;color:var(--text,#f3f9fc)!important}
+.news-drawer h2,.news-library article strong,.news-notify strong{color:var(--text,#f3f9fc)!important}.news-drawer header p,.news-drawer header small,.news-library article small{color:var(--muted,#8faaba)!important}
+.news-notify,.news-library article{border:1px solid rgba(151,193,216,.14)!important;border-radius:8px!important;background:rgba(1,12,20,.28)!important}
+.news-reader{position:absolute;z-index:7;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:var(--bg,#07121c);color:var(--text,#f3f9fc)}
+.news-reader[hidden]{display:none}.news-reader-toolbar{display:flex;align-items:center;gap:12px;min-height:58px;padding:9px 16px;border-bottom:1px solid var(--line,rgba(151,193,216,.18));background:var(--panel-strong,rgba(5,18,28,.97))}.news-reader-toolbar button,.news-reader-toolbar a{display:inline-flex;align-items:center;min-height:36px;padding:0 11px;border:1px solid var(--line,rgba(151,193,216,.18));border-radius:8px;background:rgba(255,255,255,.035);color:var(--text,#f3f9fc);font-size:10px;font-weight:850;text-decoration:none;cursor:pointer}.news-reader-toolbar a{margin-left:auto}.news-reader-toolbar div{display:grid;gap:2px;min-width:0}.news-reader-toolbar small{color:var(--cyan,#16e3d4);font-size:9px;font-weight:850;letter-spacing:.1em}.news-reader-toolbar strong{overflow:hidden;color:var(--text,#f3f9fc);font-size:14px;text-overflow:ellipsis;white-space:nowrap}.news-reader-scroll{overflow:auto;padding:28px}.news-reader-article{width:min(880px,100%);margin:0 auto;padding:28px;border:1px solid var(--line,rgba(151,193,216,.18));border-radius:12px;background:linear-gradient(145deg,rgba(13,35,50,.97),rgba(7,23,34,.97));box-shadow:0 14px 34px rgba(0,0,0,.18)}.news-reader-article>img{width:100%;max-height:360px;margin-bottom:22px;border-radius:9px;object-fit:cover}.news-reader-meta{display:flex;gap:9px;align-items:center;color:var(--muted,#8faaba);font-size:10px}.news-reader-meta b{color:var(--cyan,#16e3d4)}.news-reader-article h1{margin:12px 0 18px;color:var(--text,#f3f9fc);font-size:clamp(25px,3vw,38px);line-height:1.12}.news-reader-body{color:#c3d4dc;font-size:15px;line-height:1.75;white-space:pre-line}.news-reader-note{margin-top:24px;padding-top:16px;border-top:1px solid var(--line,rgba(151,193,216,.18));color:var(--muted,#8faaba);font-size:11px}
+
+/* Light theme: never combine dark hard-coded panels with dark text */
+html[data-theme="light"] .pilot-tools-shell,html[data-theme="light"] .news-app-shell,html[data-theme="light"] .scratchpad-workspace,html[data-theme="light"] .sim-session-grid,html[data-theme="light"] .news-content,html[data-theme="light"] .news-reader{background:#e8eef2!important;color:#172631!important}
+html[data-theme="light"] .pilot-tools-toolbar,html[data-theme="light"] .news-toolbar,html[data-theme="light"] .news-reader-toolbar{border-color:#c7d3da!important;background:rgba(245,248,250,.98)!important;box-shadow:0 8px 24px rgba(39,67,80,.08)!important}
+html[data-theme="light"] .pilot-tools-title strong,html[data-theme="light"] .news-toolbar>div strong,html[data-theme="light"] .flight-setup-hero h1,html[data-theme="light"] .flight-setup-panel h2,html[data-theme="light"] .flight-tool-main strong,html[data-theme="light"] .addon-row strong,html[data-theme="light"] .native-discovery-body strong,html[data-theme="light"] .news-card h2,html[data-theme="light"] .news-drawer h2,html[data-theme="light"] .news-library article strong,html[data-theme="light"] .news-reader-toolbar strong,html[data-theme="light"] .news-reader-article h1{color:#10232e!important}
+html[data-theme="light"] .pilot-tools-back,html[data-theme="light"] .pilot-tools-toolbar button,html[data-theme="light"] .news-toolbar>button,html[data-theme="light"] .news-toolbar nav button,html[data-theme="light"] .flight-setup-refresh,html[data-theme="light"] .flight-tool-launch,html[data-theme="light"] .news-reader-toolbar button,html[data-theme="light"] .news-reader-toolbar a{border-color:#bdccd4!important;background:#f9fbfc!important;color:#17303c!important}
+html[data-theme="light"] .scratch-craft-drawer,html[data-theme="light"] .flight-setup-hero,html[data-theme="light"] .flight-setup-panel,html[data-theme="light"] .news-card,html[data-theme="light"] .news-reader-article{border-color:rgba(54,92,112,.20)!important;background:linear-gradient(145deg,#f8fafb,#e4ebef)!important;color:#172631!important;box-shadow:0 10px 28px rgba(39,67,80,.10)!important}
+html[data-theme="light"] .scratch-craft-fields label,html[data-theme="light"] .flight-setup-msfs,html[data-theme="light"] .flight-tool,html[data-theme="light"] .addon-row,html[data-theme="light"] .native-discovery-body,html[data-theme="light"] .news-notify,html[data-theme="light"] .news-library article{border-color:rgba(54,92,112,.18)!important;background:rgba(255,255,255,.62)!important;color:#17303c!important}
+html[data-theme="light"] .flight-setup-hero p,html[data-theme="light"] .flight-setup-panel header p,html[data-theme="light"] .flight-tool-main>small,html[data-theme="light"] .addon-row small,html[data-theme="light"] .native-discovery-body p,html[data-theme="light"] .native-discovery-body small,html[data-theme="light"] .news-card-meta,html[data-theme="light"] .news-card p,html[data-theme="light"] .news-drawer header p,html[data-theme="light"] .news-drawer header small,html[data-theme="light"] .news-library article small,html[data-theme="light"] .news-reader-meta,html[data-theme="light"] .news-reader-note{color:#506b79!important}
+html[data-theme="light"] .news-reader-body{color:#334f5c!important}
+html[data-theme="light"] .news-drawer{border-color:#c7d3da!important;background:#edf3f6!important;color:#172631!important}
+html[data-theme="light"] .flight-tool-config input,html[data-theme="light"] .scratch-craft-fields input{border-color:#bdccd4!important;background:#f9fbfc!important;color:#172631!important}
+
+@media(max-width:700px){.news-reader-scroll{padding:12px}.news-reader-article{padding:18px}.news-reader-toolbar strong{max-width:46vw}.news-reader-article h1{font-size:25px}.news-reader-body{font-size:14px}.scratchpad-workspace{padding:8px!important}.sim-session-grid,.news-content{padding:10px!important}}
