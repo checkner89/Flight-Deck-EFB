@@ -1,0 +1,586 @@
+/* Flight Deck EFB global visual quality pass */
+
+/* Modern form controls ---------------------------------------------------- */
+.ui-polish-v2 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.ui-polish-v2 textarea,
+.ui-polish-v2 select {
+  box-sizing: border-box;
+  min-height: 42px;
+  border: 1px solid rgba(135, 174, 194, .30) !important;
+  border-radius: 10px !important;
+  outline: 0;
+  background: linear-gradient(180deg, rgba(8, 25, 36, .96), rgba(5, 19, 29, .96)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 1px 1px rgba(0,0,0,.16);
+  color: var(--text) !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  line-height: 1.35;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.ui-polish-v2 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  padding: 0 13px !important;
+}
+
+.ui-polish-v2 textarea {
+  min-height: 92px;
+  padding: 11px 13px !important;
+  resize: vertical;
+}
+
+.ui-polish-v2 select {
+  padding: 0 36px 0 13px !important;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.ui-polish-v2 input::placeholder,
+.ui-polish-v2 textarea::placeholder {
+  color: rgba(157, 181, 193, .66) !important;
+  opacity: 1;
+}
+
+.ui-polish-v2 input:focus,
+.ui-polish-v2 textarea:focus,
+.ui-polish-v2 select:focus {
+  border-color: rgba(27, 192, 181, .72) !important;
+  box-shadow: 0 0 0 3px rgba(22, 227, 212, .09), inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.ui-polish-v2 input:disabled,
+.ui-polish-v2 textarea:disabled,
+.ui-polish-v2 select:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+html[data-theme="light"].ui-polish-v2 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+html[data-theme="light"].ui-polish-v2 textarea,
+html[data-theme="light"].ui-polish-v2 select {
+  border-color: #b9c9d1 !important;
+  background: linear-gradient(180deg, #ffffff, #f5f9fa) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(30, 55, 68, .06);
+  color: #14313d !important;
+  color-scheme: light;
+}
+
+html[data-theme="light"].ui-polish-v2 input::placeholder,
+html[data-theme="light"].ui-polish-v2 textarea::placeholder {
+  color: #78909d !important;
+}
+
+/* Ground Services -------------------------------------------------------- */
+.ground-polished .ground-layout[hidden],
+.ground-polished .gsx-remote-workspace[hidden] {
+  display: none !important;
+}
+
+.ground-polished .ground-layout {
+  gap: 18px !important;
+}
+
+.ground-polished .ground-overview,
+.ground-polished .turnaround-card,
+.ground-polished .gsx-live-service-card,
+.ground-polished .ground-safety-card,
+.ground-polished .gsx-payload-card {
+  border-radius: 16px;
+}
+
+.ground-polished .ground-overview,
+.ground-polished .turnaround-card {
+  padding: 22px !important;
+}
+
+.ground-polished .ground-overview .bridge-facts,
+.ground-polished .gsx-payload-card .bridge-facts {
+  gap: 8px;
+}
+
+.ground-polished .ground-overview .bridge-facts > span,
+.ground-polished .gsx-payload-card .bridge-facts > span {
+  min-height: 50px;
+  padding: 10px 11px;
+  border: 1px solid rgba(136, 165, 180, .16);
+  border-radius: 10px;
+  background: rgba(91, 112, 125, .10);
+}
+
+.ground-polished .ground-overview .bridge-facts small,
+.ground-polished .gsx-payload-card .bridge-facts small {
+  font-size: 7px;
+  letter-spacing: .12em;
+}
+
+.ground-polished .ground-overview .bridge-facts b,
+.ground-polished .gsx-payload-card .bridge-facts b {
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.ground-polished .ground-overview.gsx-installed .setup-steps > .complete {
+  display: none;
+}
+
+.ground-polished .ground-overview.gsx-installed .connector-actions .external-action {
+  display: none;
+}
+
+.ground-polished .ground-overview.gsx-installed .setup-steps {
+  margin-top: 12px;
+}
+
+.ground-polished .ground-overview.gsx-installed .setup-steps > div {
+  min-height: 29px;
+}
+
+.ground-polished .turnaround-card.turnaround-inactive .turnaround-progress-track {
+  opacity: .32;
+}
+
+.ground-polished .turnaround-card.turnaround-inactive .turnaround-stage > b {
+  color: var(--muted);
+}
+
+.ground-polished .gsx-live-service-card {
+  padding: 18px 20px !important;
+}
+
+.ground-polished .gsx-live-service-card .service-grid {
+  gap: 14px !important;
+  margin-top: 14px;
+}
+
+.ground-polished .gsx-live-service-card .service-grid > * {
+  min-height: 52px;
+  padding: 10px 11px;
+  border: 1px solid rgba(136, 165, 180, .13);
+  border-radius: 10px;
+  background: rgba(91, 112, 125, .055);
+}
+
+.ground-polished .gsx-payload-card.payload-empty .bridge-facts {
+  opacity: .58;
+}
+
+.ground-polished .gsx-payload-card.payload-empty {
+  min-height: 0 !important;
+}
+
+/* Live Traffic offline state ------------------------------------------- */
+.live-traffic-table #flightboard-list .traffic-offline-state {
+  display: grid !important;
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 2px;
+  min-height: 92px;
+  margin: 0 !important;
+  padding: 16px 18px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  text-align: left;
+}
+
+.live-traffic-table #flightboard-list .traffic-offline-state .traffic-offline-icon {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(21, 181, 171, .30);
+  border-radius: 12px;
+  background: rgba(21, 181, 171, .08);
+  color: var(--cyan);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.live-traffic-table #flightboard-list .traffic-offline-state strong {
+  align-self: end;
+  font-size: 12px;
+}
+
+.live-traffic-table #flightboard-list .traffic-offline-state span {
+  align-self: start;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+/* Taxi Airport Focus: hide surrounding basemap cleanly instead of grey veil */
+.leaflet-airportFocusMask-pane path {
+  fill: #06121b !important;
+  fill-opacity: .995 !important;
+  transition: fill-opacity .16s ease;
+}
+
+html[data-theme="light"] .leaflet-airportFocusMask-pane path {
+  fill: #edf3f6 !important;
+  fill-opacity: .995 !important;
+}
+
+/* Aircraft & EFB -------------------------------------------------------- */
+[data-page="fenix"][data-stable-aircraft-view="fenix"] [data-aircraft-view="fenix"],
+[data-page="fenix"][data-stable-aircraft-view="pmdg"] [data-aircraft-view="pmdg"],
+[data-page="fenix"][data-stable-aircraft-view="status"] [data-aircraft-view="status"] {
+  display: block !important;
+}
+
+[data-page="fenix"][data-stable-aircraft-view="fenix"] [data-aircraft-view]:not([data-aircraft-view="fenix"]),
+[data-page="fenix"][data-stable-aircraft-view="pmdg"] [data-aircraft-view]:not([data-aircraft-view="pmdg"]),
+[data-page="fenix"][data-stable-aircraft-view="status"] [data-aircraft-view]:not([data-aircraft-view="status"]) {
+  display: none !important;
+}
+
+[data-page="fenix"] .aircraft-view-stack {
+  width: 100%;
+}
+
+[data-page="fenix"] .pmdg-adapter-card,
+[data-page="fenix"] .adapter-overview-card {
+  width: 100%;
+  min-height: 300px;
+  padding: 26px !important;
+  border-radius: 16px;
+}
+
+[data-page="fenix"] .pmdg-adapter-card > p,
+[data-page="fenix"] .adapter-overview-card > p {
+  max-width: 900px;
+  margin: 18px 0 22px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+[data-page="fenix"] .pmdg-adapter-card .bridge-facts,
+[data-page="fenix"] .adapter-overview-card .bridge-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+[data-page="fenix"] .pmdg-adapter-card .bridge-facts > span,
+[data-page="fenix"] .adapter-overview-card .bridge-facts > span {
+  min-height: 78px;
+  padding: 14px;
+  border: 1px solid rgba(132, 165, 181, .16);
+  border-radius: 12px;
+  background: rgba(80, 104, 118, .08);
+}
+
+[data-page="fenix"] .pmdg-adapter-card .bridge-facts small,
+[data-page="fenix"] .adapter-overview-card .bridge-facts small {
+  color: var(--cyan);
+  font-size: 7px;
+  letter-spacing: .12em;
+}
+
+[data-page="fenix"] .pmdg-adapter-card .bridge-facts b,
+[data-page="fenix"] .adapter-overview-card .bridge-facts b {
+  margin-top: 9px;
+  font-size: 12px;
+}
+
+/* Settings -------------------------------------------------------------- */
+[data-page="settings"].settings-polished {
+  width: min(1380px, calc(100% - 44px));
+  max-width: none;
+}
+
+.settings-polished .settings-grid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.settings-polished .settings-card {
+  min-width: 0;
+  border-radius: 16px;
+}
+
+.settings-polished .settings-card[hidden] {
+  display: none !important;
+}
+
+.settings-polished #settings-health,
+.settings-polished #settings-msfs-efb-builder,
+.settings-polished .app-customization-card,
+.settings-polished .new-flight-card,
+.settings-polished .update-changelog-card,
+.settings-polished .legal-card {
+  grid-column: 1 / -1;
+}
+
+.settings-polished #settings-devices,
+.settings-polished .backup-card,
+.settings-polished #settings-appearance,
+.settings-polished [data-settings-panel="appearance"].preference-card:not(#settings-appearance),
+.settings-polished #settings-flight,
+.settings-polished .settings-alerts-card,
+.settings-polished .settings-connector-config,
+.settings-polished .settings-data-sources,
+.settings-polished .settings-primary-tile {
+  grid-column: span 6;
+}
+
+.settings-polished .settings-primary-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 205px;
+  padding: 22px !important;
+}
+
+.settings-polished .setup-assistant-card > div,
+.settings-polished #settings-updates > div:first-child {
+  min-width: 0;
+}
+
+.settings-polished .setup-assistant-card h2,
+.settings-polished #settings-updates h2 {
+  margin-bottom: 8px;
+}
+
+.settings-polished .setup-assistant-card p,
+.settings-polished #settings-updates > p {
+  max-width: 540px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.settings-polished .update-changelog-card,
+.settings-polished .legal-card {
+  padding: 22px !important;
+}
+
+.settings-polished .update-changelog {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.settings-polished .update-changelog > section {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(130, 160, 176, .14);
+  border-radius: 12px;
+  background: rgba(80, 104, 118, .055);
+}
+
+.settings-polished .update-changelog > section[hidden] {
+  display: none !important;
+}
+
+.settings-polished .update-changelog > section > b {
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.settings-polished .update-changelog strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.settings-polished .update-changelog ul,
+.changelog-modal-content ul,
+.update-dialog-notes ul {
+  margin: 0;
+  padding-left: 19px !important;
+  list-style: disc outside !important;
+}
+
+.settings-polished .update-changelog li,
+.changelog-modal-content li,
+.update-dialog-notes li {
+  display: list-item !important;
+  margin: 5px 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.settings-polished .update-changelog li::marker,
+.changelog-modal-content li::marker,
+.update-dialog-notes li::marker {
+  color: var(--cyan);
+}
+
+.changelog-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.settings-polished .legal-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 132px;
+}
+
+.settings-polished .legal-card > div {
+  max-width: 860px;
+}
+
+/* Update dialog --------------------------------------------------------- */
+.update-dialog-notes {
+  display: grid;
+  gap: 8px;
+}
+
+.update-dialog-notes .update-note-heading {
+  display: block;
+  margin: 3px 0 4px;
+  font-size: 12px;
+}
+
+.update-dialog-notes p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.update-dialog-notes ul {
+  display: block !important;
+}
+
+/* Legal and changelog dialogs ------------------------------------------ */
+#legal-dialog,
+#changelog-dialog {
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+#legal-dialog .legal-shell,
+#changelog-dialog .changelog-modal-shell {
+  box-sizing: border-box;
+  width: min(980px, calc(100vw - 48px));
+  max-width: 980px;
+  max-height: min(88vh, 820px);
+  margin: 0;
+  padding: 26px;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+#legal-dialog .modal-heading,
+#changelog-dialog .modal-heading {
+  margin: 0 36px 18px 0;
+}
+
+#legal-dialog .legal-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-height: calc(min(88vh, 820px) - 145px);
+  padding: 2px 4px 4px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#legal-dialog .legal-content > section {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid rgba(131, 159, 174, .16);
+  border-radius: 12px;
+  background: rgba(79, 101, 114, .05);
+}
+
+#legal-dialog .legal-content p {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+#legal-dialog .confirm-actions {
+  margin-top: 16px;
+}
+
+#changelog-dialog .changelog-modal-content {
+  display: grid;
+  gap: 10px;
+  max-height: calc(min(88vh, 820px) - 100px);
+  padding-right: 7px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#changelog-dialog .changelog-modal-content > section {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 18px;
+  padding: 15px 17px;
+  border: 1px solid rgba(131, 159, 174, .16);
+  border-radius: 12px;
+  background: rgba(79, 101, 114, .05);
+}
+
+#changelog-dialog .changelog-modal-content > section > b {
+  color: var(--cyan);
+}
+
+#changelog-dialog .changelog-modal-content strong {
+  display: block;
+  margin-bottom: 7px;
+}
+
+@media (max-width: 980px) {
+  [data-page="settings"].settings-polished {
+    width: calc(100% - 28px);
+  }
+  .settings-polished .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-polished .settings-card {
+    grid-column: 1 !important;
+  }
+  [data-page="fenix"] .pmdg-adapter-card .bridge-facts,
+  [data-page="fenix"] .adapter-overview-card .bridge-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  #legal-dialog .legal-shell,
+  #changelog-dialog .changelog-modal-shell {
+    width: calc(100vw - 24px);
+    max-height: 92vh;
+    padding: 19px;
+  }
+  #legal-dialog .legal-content {
+    grid-template-columns: 1fr;
+    max-height: calc(92vh - 135px);
+  }
+  .settings-polished .update-changelog > section,
+  #changelog-dialog .changelog-modal-content > section {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  [data-page="fenix"] .pmdg-adapter-card .bridge-facts,
+  [data-page="fenix"] .adapter-overview-card .bridge-facts {
+    grid-template-columns: 1fr;
+  }
+  .live-traffic-table #flightboard-list .traffic-offline-state {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .live-traffic-table #flightboard-list .traffic-offline-state .traffic-offline-icon {
+    grid-row: auto;
+  }
+}
