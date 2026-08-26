@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { matchSimPackages, scanMsfsAddons } from './msfs-addon-scanner.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -19,8 +20,7 @@ function defaultTools() {
   return [
     {
       id: 'msfs2024', label: 'Microsoft Flight Simulator 2024', processHints: ['flightsimulator2024.exe'],
-      builtinUri: 'steam://rungameid/2537590',
-      candidates: [],
+      builtinUri: 'steam://rungameid/2537590', candidates: [], simPackageHints: [],
     },
     {
       id: 'sayintentions', label: 'SayIntentions', processHints: ['sayintentions', 'skynet'],
@@ -28,7 +28,7 @@ function defaultTools() {
         candidate(local, 'Programs', 'SayIntentionsAI', 'SayIntentionsAI.exe'),
         candidate(local, 'SayIntentionsAI', 'SayIntentionsAI.exe'),
         candidate(programFiles, 'SayIntentionsAI', 'SayIntentionsAI.exe'),
-      ],
+      ], simPackageHints: ['sayintentions', 'skynet'],
     },
     {
       id: 'beyondatc', label: 'BeyondATC', processHints: ['beyondatc.exe', 'beyondatc'],
@@ -36,7 +36,7 @@ function defaultTools() {
         candidate(local, 'Programs', 'BeyondATC', 'BeyondATC.exe'),
         candidate(local, 'BeyondATC', 'BeyondATC.exe'),
         candidate(programFiles, 'BeyondATC', 'BeyondATC.exe'),
-      ],
+      ], simPackageHints: ['beyondatc'],
     },
     {
       id: 'vpilot', label: 'vPilot', processHints: ['vpilot.exe'],
@@ -44,7 +44,7 @@ function defaultTools() {
         candidate(local, 'vPilot', 'vPilot.exe'),
         candidate(local, 'Programs', 'vPilot', 'vPilot.exe'),
         candidate(programFilesX86, 'vPilot', 'vPilot.exe'),
-      ],
+      ], simPackageHints: [],
     },
     {
       id: 'simlink', label: 'Navigraph Simlink', processHints: ['navigraph simlink.exe', 'simlink.exe'],
@@ -52,14 +52,12 @@ function defaultTools() {
         candidate(local, 'Programs', 'Navigraph Simlink', 'Navigraph Simlink.exe'),
         candidate(roaming, 'Navigraph Simlink', 'Navigraph Simlink.exe'),
         candidate(programFiles, 'Navigraph Simlink', 'Navigraph Simlink.exe'),
-      ],
+      ], simPackageHints: [],
     },
     {
       id: 'volanta', label: 'Volanta', processHints: ['volanta.exe'],
-      candidates: [
-        candidate(local, 'Programs', 'Volanta', 'Volanta.exe'),
-        candidate(local, 'Volanta', 'Volanta.exe'),
-      ],
+      candidates: [candidate(local, 'Programs', 'Volanta', 'Volanta.exe'), candidate(local, 'Volanta', 'Volanta.exe')],
+      simPackageHints: [],
     },
     {
       id: 'littlenavmap', label: 'Little Navmap', processHints: ['littlenavmap.exe'],
@@ -67,7 +65,7 @@ function defaultTools() {
         candidate(local, 'Programs', 'Little Navmap', 'littlenavmap.exe'),
         candidate(programFiles, 'Little Navmap', 'littlenavmap.exe'),
         candidate(programFilesX86, 'Little Navmap', 'littlenavmap.exe'),
-      ],
+      ], simPackageHints: [],
     },
     {
       id: 'couatl', label: 'GSX / Couatl', processHints: ['couatl64_msfs.exe', 'couatl64'],
@@ -75,13 +73,14 @@ function defaultTools() {
         candidate(programFilesX86, 'Addon Manager', 'couatl64', 'couatl64_MSFS.exe'),
         candidate(programFilesX86, 'Addon Manager', 'couatl64_MSFS.exe'),
         candidate(programFiles, 'Addon Manager', 'couatl64', 'couatl64_MSFS.exe'),
-      ],
+      ], simPackageHints: ['fsdreamteam', 'gsx', 'couatl'],
     },
   ].map((tool) => ({ ...tool, candidates: tool.candidates.filter(Boolean) }));
 }
 
-function publicTool(tool, runningProcesses = [], detectedPath = null) {
+function publicTool(tool, runningProcesses = [], detectedPath = null, simScan = null) {
   const running = tool.processHints.some((hint) => runningProcesses.some((name) => name.includes(hint.toLowerCase())));
+  const simMatches = matchSimPackages(simScan, tool.simPackageHints || []);
   return {
     id: tool.id,
     label: tool.label,
@@ -90,17 +89,14 @@ function publicTool(tool, runningProcesses = [], detectedPath = null) {
     detected: Boolean(detectedPath),
     path: detectedPath,
     launchMode: detectedPath ? 'executable' : tool.builtinUri ? 'uri' : null,
+    simInstalled: simMatches.length > 0,
+    simPackages: simMatches.slice(0, 5).map((entry) => ({ id: entry.id, title: entry.title, source: entry.source, version: entry.version })),
   };
 }
 
 async function fileExists(filename) {
   if (!filename) return false;
-  try {
-    const stat = await fs.stat(filename);
-    return stat.isFile();
-  } catch {
-    return false;
-  }
+  try { return (await fs.stat(filename)).isFile(); } catch { return false; }
 }
 
 async function firstExisting(candidates) {
@@ -114,6 +110,25 @@ function normalizeConfiguredPath(value) {
   return resolved;
 }
 
+function publicSimScan(scan) {
+  return {
+    supported: Boolean(scan?.supported),
+    root: scan?.root || null,
+    userCfg: scan?.userCfg || null,
+    communityCount: Number(scan?.communityCount || 0),
+    officialCount: Number(scan?.officialCount || 0),
+    updatedAt: scan?.updatedAt || null,
+    packages: (scan?.packages || []).slice(0, 250).map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      creator: entry.creator,
+      version: entry.version,
+      source: entry.source,
+      contentType: entry.contentType,
+    })),
+  };
+}
+
 export class WindowsSimSessionService {
   constructor({ storageDirectory, now = () => new Date() } = {}) {
     this.storageDirectory = storageDirectory || path.join(os.homedir(), '.flight-deck-efb', 'sim-session');
@@ -123,6 +138,8 @@ export class WindowsSimSessionService {
     this.overrides = {};
     this.statusCache = null;
     this.statusCacheAt = 0;
+    this.simScanCache = null;
+    this.simScanCacheAt = 0;
   }
 
   async start() {
@@ -153,17 +170,25 @@ export class WindowsSimSessionService {
     return firstExisting(tool.candidates);
   }
 
+  async #scanSimulator({ force = false } = {}) {
+    if (!force && this.simScanCache && Date.now() - this.simScanCacheAt < 60_000) return this.simScanCache;
+    try { this.simScanCache = await scanMsfsAddons(); }
+    catch { this.simScanCache = { supported: process.platform === 'win32', packages: [], communityCount: 0, officialCount: 0, root: null, userCfg: null, updatedAt: this.now().toISOString() }; }
+    this.simScanCacheAt = Date.now();
+    return this.simScanCache;
+  }
+
   async status({ force = false } = {}) {
     if (!force && this.statusCache && Date.now() - this.statusCacheAt < 4_000) return this.statusCache;
     if (process.platform !== 'win32') {
-      this.statusCache = { supported: false, platform: process.platform, tools: [], updatedAt: this.now().toISOString() };
+      this.statusCache = { supported: false, platform: process.platform, tools: [], sim: publicSimScan(null), updatedAt: this.now().toISOString() };
       this.statusCacheAt = Date.now();
       return this.statusCache;
     }
-    const runningProcesses = await this.#processNames();
+    const [runningProcesses, simScan] = await Promise.all([this.#processNames(), this.#scanSimulator({ force })]);
     const tools = [];
-    for (const tool of this.tools) tools.push(publicTool(tool, runningProcesses, await this.#detectedPath(tool)));
-    this.statusCache = { supported: true, platform: process.platform, tools, updatedAt: this.now().toISOString() };
+    for (const tool of this.tools) tools.push(publicTool(tool, runningProcesses, await this.#detectedPath(tool), simScan));
+    this.statusCache = { supported: true, platform: process.platform, tools, sim: publicSimScan(simScan), updatedAt: this.now().toISOString() };
     this.statusCacheAt = Date.now();
     return this.statusCache;
   }
