@@ -50,4 +50,15 @@ await update('public/service-worker.js', (source) => {
   return sw.replace(/\n{3,}/g, '\n\n');
 });
 
+await update('CHANGELOG.md', async (source) => source);
+const changelogPath = path.join(root, 'CHANGELOG.md');
+const releaseNotesPath = path.join(root, 'release-notes', '1.20.2.md');
+const changelog = await fs.readFile(changelogPath, 'utf8');
+if (!/^## 1\.20\.2\b/m.test(changelog)) {
+  const notes = (await fs.readFile(releaseNotesPath, 'utf8')).trim();
+  const withoutDisclaimer = notes.replace(/\n?> Flight simulation use only — not for real-world navigation\.\s*$/i, '').trim();
+  const next = changelog.replace(/^# Flight Deck EFB changelog\s*/i, (header) => `${header.trim()}\n\n${withoutDisclaimer}\n\n`);
+  await fs.writeFile(changelogPath, next, 'utf8');
+}
+
 console.log(`Applied Flight Deck EFB ${version} UI consolidation and enhanced News reader integration.`);
