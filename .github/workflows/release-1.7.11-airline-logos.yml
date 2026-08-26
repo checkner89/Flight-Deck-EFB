@@ -22,14 +22,17 @@ jobs:
         with:
           node-version: 24
 
-      - name: Fetch pinned airline logo catalog
+      - name: Fetch pinned airline logo catalogs
         run: |
           git clone --quiet https://github.com/imgmongelli/airlines-logos-dataset.git "$RUNNER_TEMP/airlines-logos-dataset"
           git -C "$RUNNER_TEMP/airlines-logos-dataset" checkout --quiet 7b001fb8d5d0a2f875d57b2b5a8a8056b2fbc63a
+          git clone --quiet https://github.com/spydogenesis/airlines-logo.git "$RUNNER_TEMP/airlines-logo-secondary"
+          git -C "$RUNNER_TEMP/airlines-logo-secondary" checkout --quiet 8c5f1ae3d25538bd1b649a7ad85b902528c612b6
 
       - name: Apply 1.7.11 patch
         env:
           AIRLINE_SOURCE: ${{ runner.temp }}/airlines-logos-dataset
+          AIRLINE_SOURCE_2: ${{ runner.temp }}/airlines-logo-secondary
         run: |
           python scripts/apply-1.7.11.py
           npm version 1.7.11 --no-git-tag-version
@@ -45,16 +48,17 @@ jobs:
           import { airlineCatalogStats, formatTrafficFlightNumber, resolveAirlineIdentity } from './public/airline-catalog.js';
           const stats = airlineCatalogStats();
           assert.ok(stats.records >= 1500, `expected >=1500 records, got ${stats.records}`);
-          assert.ok(stats.logos >= 1000, `expected >=1000 logos, got ${stats.logos}`);
+          assert.equal(stats.logos, stats.records, 'every airline/operator record must have a local icon');
+          assert.ok(stats.officialLogos >= 900, `expected >=900 supplied logos, got ${stats.officialLogos}`);
           const lufthansa = resolveAirlineIdentity({ callsign: 'DLH123' });
           assert.equal(lufthansa.icao, 'DLH');
           assert.equal(lufthansa.iata, 'LH');
-          assert.ok(lufthansa.logo.endsWith('/DLH.png'));
+          assert.ok(lufthansa.logo.includes('/assets/airlines/'));
           assert.equal(formatTrafficFlightNumber({ callsign: 'DLH123' }, lufthansa), 'LH123');
           const sunexpress = resolveAirlineIdentity({ title: 'AIGAM SunExpress Boeing 737-800', airline: 'SunExpress', flightNumber: '456' });
           assert.equal(sunexpress.icao, 'SXS');
           assert.equal(sunexpress.iata, 'XQ');
-          assert.ok(sunexpress.logo.endsWith('/SXS.png'));
+          assert.ok(sunexpress.logo.includes('/assets/airlines/'));
           assert.equal(formatTrafficFlightNumber({ flightNumber: '456' }, sunexpress), 'XQ456');
           const british = resolveAirlineIdentity({ callsign: 'BAW947' });
           assert.equal(british.iata, 'BA');
@@ -67,7 +71,7 @@ jobs:
           test -f public/assets/airlines/BAW.png
           grep -q 'airline-catalog.js?v=1.7.11' public/app.js
           grep -q "'/airline-catalog.js?v=1.7.11'" public/service-worker.js
-          grep -q 'Complete Airline Logos' CHANGELOG.md
+          grep -q 'Complete Airline Icons' CHANGELOG.md
           node -e "const p=require('./package.json'); if(p.version!=='1.7.11') throw new Error('wrong version')"
 
       - name: Commit release source
@@ -77,5 +81,5 @@ jobs:
           git rm .github/workflows/release-1.7.11-airline-logos.yml
           git rm scripts/apply-1.7.11.py
           git add -A
-          git commit -m 'Release 1.7.11 Complete Airline Logos'
+          git commit -m 'Release 1.7.11 Complete Airline Icons'
           git push origin HEAD:main
