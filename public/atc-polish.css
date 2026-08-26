@@ -1,0 +1,157 @@
+/* ATC Center layout corrections and SayIntentions session controls */
+
+[data-page="atc"] .combined-atc-layout > .si-atc-ops-card {
+  grid-column: span 7;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin-top: 0;
+  padding: 22px;
+  align-self: stretch;
+}
+
+[data-page="atc"] .si-atc-ops-card .section-title {
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+[data-page="atc"] .si-atc-ops-card .section-title h2 {
+  margin: 2px 0 0;
+  font-size: 17px;
+}
+
+[data-page="atc"] .si-atc-ops-card #si-session-state {
+  white-space: nowrap;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-pause-row {
+  margin: 0 0 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(151, 193, 216, 0.14);
+  border-radius: 11px;
+  background: rgba(127, 146, 164, 0.055);
+}
+
+[data-page="atc"] .si-atc-ops-card .si-pause-row > div {
+  min-width: 0;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-pause-row strong {
+  font-size: 11px;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-pause-row small {
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-pause-row > button {
+  flex: 0 0 auto;
+  min-width: 132px;
+  margin: 0;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-message-block {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.65fr) minmax(0, 1.35fr);
+  grid-template-rows: auto auto auto auto;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-message-block select {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 42px;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-message-block textarea {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 94px;
+  resize: vertical;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-message-block > button {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-action-note,
+[data-page="atc"] .si-atc-ops-card .si-operation-status {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-action-note {
+  display: block;
+  margin: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+[data-page="atc"] .si-atc-ops-card .si-operation-status {
+  margin: 0;
+  min-height: 18px;
+}
+
+html[data-theme="light"] [data-page="atc"] .si-atc-ops-card .si-pause-row {
+  border-color: rgba(47, 79, 94, 0.16);
+  background: rgba(255, 255, 255, 0.56);
+}
+
+html[data-theme="light"] [data-page="atc"] .si-atc-ops-card select,
+html[data-theme="light"] [data-page="atc"] .si-atc-ops-card textarea {
+  border-color: #aebfc8;
+  background: #fbfdfe;
+  color: #173440;
+  color-scheme: light;
+}
+
+@media (max-width: 1180px) {
+  [data-page="atc"] .combined-atc-layout > .si-atc-ops-card {
+    grid-column: span 6;
+  }
+
+  [data-page="atc"] .si-atc-ops-card .si-message-block {
+    grid-template-columns: minmax(145px, 0.6fr) minmax(0, 1.4fr);
+  }
+}
+
+@media (max-width: 980px) {
+  [data-page="atc"] .combined-atc-layout > .si-atc-ops-card {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-page="atc"] .si-atc-ops-card {
+    padding: 17px;
+  }
+
+  [data-page="atc"] .si-atc-ops-card .si-pause-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  [data-page="atc"] .si-atc-ops-card .si-pause-row > button {
+    width: 100%;
+  }
+
+  [data-page="atc"] .si-atc-ops-card .si-message-block {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  [data-page="atc"] .si-atc-ops-card .si-message-block select,
+  [data-page="atc"] .si-atc-ops-card .si-message-block textarea,
+  [data-page="atc"] .si-atc-ops-card .si-message-block > button,
+  [data-page="atc"] .si-atc-ops-card .si-action-note,
+  [data-page="atc"] .si-atc-ops-card .si-operation-status {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
