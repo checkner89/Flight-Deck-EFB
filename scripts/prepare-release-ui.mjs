@@ -41,6 +41,8 @@ await updateFile('public/index.html', (source) => {
     '/com-polish.css',
     '/atc-polish.js',
     '/atc-polish.css',
+    '/ground-polish.js',
+    '/ground-polish.css',
   ]) html = updateAssetVersion(html, asset);
 
   const overlayCss = `<link rel="stylesheet" data-flight-overlay-style href="/flight-overlay.css?v=${version}">`;
@@ -64,6 +66,13 @@ await updateFile('public/index.html', (source) => {
     html = html.replace('</head>', `    ${atcCss}\n  </head>`);
   }
 
+  const groundCss = `<link rel="stylesheet" data-ground-polish-style href="/ground-polish.css?v=${version}">`;
+  if (/ground-polish\.css\?v=/.test(html)) {
+    html = html.replace(/<link[^>]+ground-polish\.css\?v=[^>]+>/, groundCss);
+  } else {
+    html = html.replace('</head>', `    ${groundCss}\n  </head>`);
+  }
+
   const overlayScript = `<script type="module" src="/flight-overlay.js?v=${version}"></script>`;
   if (/flight-overlay\.js\?v=/.test(html)) {
     html = html.replace(/<script[^>]+flight-overlay\.js\?v=[^>]+><\/script>/, overlayScript);
@@ -83,6 +92,13 @@ await updateFile('public/index.html', (source) => {
     html = html.replace(/<script[^>]+atc-polish\.js\?v=[^>]+><\/script>/, atcScript);
   } else {
     html = html.replace('</body>', `    ${atcScript}\n  </body>`);
+  }
+
+  const groundScript = `<script type="module" src="/ground-polish.js?v=${version}"></script>`;
+  if (/ground-polish\.js\?v=/.test(html)) {
+    html = html.replace(/<script[^>]+ground-polish\.js\?v=[^>]+><\/script>/, groundScript);
+  } else {
+    html = html.replace('</body>', `    ${groundScript}\n  </body>`);
   }
 
   html = html.replace(/(<span id="update-version">)v[^<]+/, `$1v${version}`);
@@ -118,6 +134,8 @@ await updateFile('public/service-worker.js', (source) => {
     '/com-polish.css',
     '/atc-polish.js',
     '/atc-polish.css',
+    '/ground-polish.js',
+    '/ground-polish.css',
     '/airline-catalog.js',
     '/si-operations.js',
     '/i18n.js',
@@ -132,6 +150,9 @@ await updateFile('public/service-worker.js', (source) => {
   }
   if (!sw.includes(`/atc-polish.js?v=${version}`)) {
     sw = sw.replace(`  '/com-polish.css?v=${version}',`, `  '/com-polish.css?v=${version}',\n  '/atc-polish.js?v=${version}',\n  '/atc-polish.css?v=${version}',`);
+  }
+  if (!sw.includes(`/ground-polish.js?v=${version}`)) {
+    sw = sw.replace(`  '/atc-polish.css?v=${version}',`, `  '/atc-polish.css?v=${version}',\n  '/ground-polish.js?v=${version}',\n  '/ground-polish.css?v=${version}',`);
   }
   return sw;
 });
