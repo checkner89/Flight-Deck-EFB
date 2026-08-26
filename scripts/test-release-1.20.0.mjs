@@ -34,7 +34,7 @@ need(session, "from './msfs-addon-scanner.mjs'", 'Windows scanner does not use M
 need(session, 'sim: publicSimScan(simScan)', 'Sim package scan is not included in Flight Setup status.');
 need(news, '/api/news/catalog', 'News app catalog integration is missing.');
 need(news, '/api/news/subscriptions', 'News feed installation UI is missing.');
-need(news, 'data.newsSignature', 'News tile does not guard repeated DOM writes.');
+need(news, 'dataset.newsSignature', 'News tile does not guard repeated DOM writes.');
 need(news, 'if(b.dataset.newsSignature===sig)return', 'News tile observer is not idempotent.');
 need(html, 'news-app.js?v=1.20.0', 'News app script is not wired for 1.20.0.');
 need(html, 'news-app.css?v=1.20.0', 'News app styles are not wired for 1.20.0.');
