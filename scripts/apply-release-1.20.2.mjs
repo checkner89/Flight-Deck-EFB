@@ -18,6 +18,15 @@ function replaceRequired(source, from, to, label) {
   return source.replace(from, to);
 }
 
+await update('public/pilot-tools.js', (source) => {
+  let js = source;
+  const old = `    const signature = \`${'${title}'}|${'${category}'}|${'${description}'}\`;\n    if (button.dataset.tileSignature === signature) continue;\n    button.dataset.tileSignature = signature;`;
+  if (js.includes(old)) {
+    js = js.replace(old, `    const tileSignature = \`${'${title}'}|${'${category}'}|${'${description}'}\`;\n    if (button.dataset.pilotLabelSignature === tileSignature) continue;\n    button.dataset.pilotLabelSignature = tileSignature;`);
+  }
+  return js;
+});
+
 await update('src/server.mjs', (source) => {
   if (source.includes("pathname === '/api/news/article'")) return source;
   const anchor = "      if (pathname === '/api/news/subscriptions' && request.method === 'POST') {";
