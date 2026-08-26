@@ -14,12 +14,43 @@ let shutdownStarted = false;
 let isQuitting = false;
 let updateService;
 
-function normalizeReleaseNotes(value) {
-  if (typeof value === 'string') return value.slice(0, 12000);
-  if (Array.isArray(value)) return value.map((entry) => typeof entry === 'string' ? entry : entry?.note || '').filter(Boolean).join('\n').slice(0, 12000);
-  return '';
+function decodeReleaseEntities(value = '') {
+  return String(value)
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/gi, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#(\d+);/g, (_, code) => {
+      const value = Number(code);
+      return Number.isInteger(value) && value > 0 && value <= 0x10ffff ? String.fromCodePoint(value) : _;
+    });
 }
 
+function normalizeReleaseNotes(value) {
+  const source = typeof value === 'string'
+    ? value
+    : Array.isArray(value)
+      ? value.map((entry) => typeof entry === 'string' ? entry : entry?.note || '').filter(Boolean).join('\n')
+      : '';
+  if (!source) return '';
+  return decodeReleaseEntities(source
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(?:ul|ol)[^>]*>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '\n- ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<h([1-6])[^>]*>/gi, (_, level) => `\n${'#'.repeat(Math.min(4, Number(level) || 2))} `)
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' '))
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 12000);
+}
 
 async function fetchGitHubReleaseNotes(version) {
   const normalized = String(version || '').trim().replace(/^v/i, '');
