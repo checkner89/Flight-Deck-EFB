@@ -39,7 +39,7 @@ const helperEnd = legacy.indexOf('\n\nawait patchFile', helperStart);
 if (helperStart < 0 || helperEnd < 0) throw new Error('Legacy migration helper block could not be located.');
 
 const robustHelpers = String.raw`function escapeMigrationRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return String(value).replace(/[.*+?^\x24{}()|[\]\\]/g, '\\$&');
 }
 
 function whitespaceMigrationPattern(search, global = false) {
@@ -51,14 +51,14 @@ function whitespaceMigrationPattern(search, global = false) {
 function replaceRequired(source, search, replacement, label) {
   if (source.includes(search)) return source.replace(search, replacement);
   const pattern = whitespaceMigrationPattern(search);
-  if (!pattern.test(source)) throw new Error(`Missing migration anchor: ${label}`);
+  if (!pattern.test(source)) throw new Error('Missing migration anchor: ' + label);
   return source.replace(pattern, () => replacement);
 }
 
 function replaceAllRequired(source, search, replacement, label) {
   if (source.includes(search)) return source.replaceAll(search, replacement);
   const pattern = whitespaceMigrationPattern(search, true);
-  if (!pattern.test(source)) throw new Error(`Missing migration anchor: ${label}`);
+  if (!pattern.test(source)) throw new Error('Missing migration anchor: ' + label);
   pattern.lastIndex = 0;
   return source.replace(pattern, () => replacement);
 }`;
