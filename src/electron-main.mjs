@@ -167,10 +167,11 @@ async function clearMsfsGraphicsCaches() {
   if (confirmation.response !== 1) return;
 
   const localAppData = process.env.LOCALAPPDATA || path.join(app.getPath('home'), 'AppData', 'Local');
+  const roamingAppData = process.env.APPDATA || path.join(app.getPath('home'), 'AppData', 'Roaming');
   const targets = [
     path.join(localAppData, 'NVIDIA', 'GLCache'),
     path.join(localAppData, 'NVIDIA', 'DXCache'),
-    path.join(localAppData, 'NVIDIA', 'ComputeCache'),
+    path.join(roamingAppData, 'NVIDIA', 'ComputeCache'),
     path.join(localAppData, 'D3DSCache'),
   ];
   const results = await Promise.all(targets.map(clearDirectoryContents));
