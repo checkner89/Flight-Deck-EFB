@@ -19,6 +19,15 @@ export function normalizeTrafficState(value = '') {
   return String(value || '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+export function isGenericPassiveTraffic(entry = {}) {
+  const title = String(entry.title || entry.aircraftTitle || '').replace(/[_-]+/g, ' ').trim();
+  const atcId = String(entry.atcId || entry.callsign || '').replace(/\s+/g, '').toUpperCase();
+  const genericTitle = /\b(?:asobo\s+)?passive\s*aircraft\b/i.test(title)
+    || /\bpassiveaircraft\b/i.test(title);
+  const genericId = !atcId || /^(?:AS-?GEN|ASOBO|PASSIVE|TRAFFIC-\d+|AI-\d+)$/i.test(atcId);
+  return genericTitle && genericId;
+}
+
 export function trafficDistanceNm(entry = {}, ownship = {}) {
   const lat1 = finite(ownship.lat);
   const lon1 = finite(ownship.lon);
@@ -53,18 +62,25 @@ export function classifyLiveTraffic(entry = {}, ownship = {}) {
     return { kind: 'taxi', label: 'TAXI', inferred: true, distanceNm };
   }
 
-  if (/landing/.test(state)) return { kind: 'landing', label: 'LANDING', ...provenance };
-  if (/approach/.test(state)) return { kind: 'arriving', label: 'ARRIVING', ...provenance };
-  if (/takeoff|depart|climb/.test(state)) return { kind: 'climb', label: 'CLIMB', ...provenance };
-  if (/enroute|cruise|simple flight|flt plan|waypoint|pattern/.test(state)) return { kind: 'enroute', label: 'ENROUTE', ...provenance };
+  // Enriched traffic-state data is authoritative. Plain SimConnect traffic often receives a
+  // synthesized "enroute" state, so movement/altitude must be evaluated before that fallback.
+  if (reported) {
+    if (/landing/.test(state)) return { kind: 'landing', label: 'LANDING', ...provenance };
+    if (/approach/.test(state)) return { kind: 'arriving', label: 'ARRIVING', ...provenance };
+    if (/takeoff|depart|climb/.test(state)) return { kind: 'climb', label: 'CLIMB', ...provenance };
+    if (/enroute|cruise|simple flight|flt plan|waypoint|pattern/.test(state)) return { kind: 'enroute', label: 'ENROUTE', ...provenance };
+  }
 
   const plausiblyArriving = Number.isFinite(distanceNm)
     && distanceNm <= LIVE_TRAFFIC_LIMITS.arrivingRadiusNm
-    && verticalSpeed <= -150
+    && verticalSpeed <= -100
     && altitude > 0
-    && altitude <= 12_000;
-  if (plausiblyArriving) return { kind: 'arriving', label: 'ARRIVING', inferred: true, distanceNm };
-  if (verticalSpeed >= 500 && altitude < 18_000) return { kind: 'climb', label: 'CLIMB', inferred: true, distanceNm };
+    && altitude <= 15_000;
+  if (plausiblyArriving) return { kind: /landing/.test(state) ? 'landing' : 'arriving', label: /landing/.test(state) ? 'LANDING' : 'ARRIVING', inferred: true, distanceNm };
+  if (/landing/.test(state)) return { kind: 'landing', label: 'LANDING', inferred: true, distanceNm };
+  if (/approach/.test(state)) return { kind: 'arriving', label: 'ARRIVING', inferred: true, distanceNm };
+  if (/takeoff|depart|climb/.test(state) || verticalSpeed >= 500 && altitude < 18_000) return { kind: 'climb', label: 'CLIMB', inferred: true, distanceNm };
+  if (/enroute|cruise|simple flight|flt plan|waypoint|pattern/.test(state)) return { kind: 'enroute', label: 'ENROUTE', inferred: true, distanceNm };
   return { kind: 'airborne', label: 'AIRBORNE', inferred: true, distanceNm };
 }
 
@@ -74,10 +90,12 @@ function within(distanceNm, radiusNm) {
 
 export function buildLiveTrafficModel(entries = [], ownship = {}, view = 'nearby') {
   const normalizedView = ['ground', 'arriving', 'nearby'].includes(view) ? view : 'nearby';
-  const all = (Array.isArray(entries) ? entries : []).map((entry) => ({
-    ...entry,
-    liveStatus: classifyLiveTraffic(entry, ownship),
-  }));
+  const all = (Array.isArray(entries) ? entries : [])
+    .filter((entry) => !isGenericPassiveTraffic(entry))
+    .map((entry) => ({
+      ...entry,
+      liveStatus: classifyLiveTraffic(entry, ownship),
+    }));
 
   const ground = all.filter((entry) => entry.onGround && within(entry.liveStatus.distanceNm, LIVE_TRAFFIC_LIMITS.groundRadiusNm));
   const arriving = all.filter((entry) => !entry.onGround
