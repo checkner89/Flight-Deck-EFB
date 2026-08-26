@@ -16,7 +16,7 @@
     "test:atc": "node scripts/prepare-release-ui.mjs && node scripts/test-atc-ui.mjs",
     "test:ground": "node scripts/prepare-release-ui.mjs && node scripts/test-ground-ui.mjs",
     "test:ui": "node scripts/prepare-release-ui.mjs && node scripts/test-ui-polish.mjs",
-    "prepare-data": "node scripts/prepare-release-ui.mjs && node scripts/test-com-ui.mjs && node scripts/test-atc-ui.mjs && node scripts/test-ground-ui.mjs && node scripts/build-ourairports.mjs"
+    "prepare-data": "node scripts/prepare-release-ui.mjs && node scripts/build-ourairports.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
