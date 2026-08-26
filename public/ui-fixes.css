@@ -1,0 +1,196 @@
+/* Flight Deck EFB 1.7.18 targeted UI corrections ------------------------ */
+
+/* Settings: setup card must align exactly like Updates. */
+.settings-polished .setup-assistant-card {
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+.settings-polished .setup-assistant-card > div {
+  width: 100%;
+  text-align: left !important;
+}
+
+.settings-polished .setup-assistant-card .primary-card-action {
+  align-self: flex-start !important;
+  margin: 0 !important;
+}
+
+/* Changelog: larger readable copy and stronger contrast. */
+.settings-polished .update-changelog > section {
+  padding: 18px 20px !important;
+  background: rgba(71, 98, 113, .075) !important;
+}
+
+.settings-polished .update-changelog > section > b {
+  padding-top: 1px;
+  font-size: 11.5px !important;
+}
+
+.settings-polished .update-changelog strong,
+#changelog-dialog .update-changelog strong {
+  color: var(--text) !important;
+  font-size: 13px !important;
+  line-height: 1.35;
+}
+
+.settings-polished .update-changelog li,
+#changelog-dialog .update-changelog li {
+  margin: 7px 0 !important;
+  color: color-mix(in srgb, var(--text) 76%, var(--muted)) !important;
+  font-size: 10.5px !important;
+  line-height: 1.58 !important;
+}
+
+html[data-theme="light"] .settings-polished .update-changelog > section {
+  border-color: #c8d6dc !important;
+  background: #f7fafb !important;
+}
+
+html[data-theme="light"] .settings-polished .update-changelog li,
+html[data-theme="light"] #changelog-dialog .update-changelog li {
+  color: #365463 !important;
+}
+
+/* Older changelog dialog: one centered shell, one internal scrollbar. */
+#changelog-dialog {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+#changelog-dialog[open] {
+  position: fixed !important;
+  inset: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 28px !important;
+}
+
+#changelog-dialog::backdrop {
+  background: rgba(4, 13, 20, .70) !important;
+  backdrop-filter: blur(5px);
+}
+
+#changelog-dialog .changelog-modal-shell {
+  position: relative !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  box-sizing: border-box !important;
+  width: min(1040px, calc(100vw - 56px)) !important;
+  max-width: 1040px !important;
+  height: min(84vh, 820px) !important;
+  max-height: min(84vh, 820px) !important;
+  margin: 0 !important;
+  padding: 26px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(129, 162, 178, .22) !important;
+  border-radius: 20px !important;
+  background: var(--card) !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .42) !important;
+}
+
+#changelog-dialog .changelog-modal-heading {
+  padding: 0 44px 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#changelog-dialog .modal-close {
+  top: 22px !important;
+  right: 22px !important;
+}
+
+#changelog-dialog .changelog-modal-content {
+  display: grid !important;
+  align-content: start;
+  gap: 12px !important;
+  min-width: 0;
+  min-height: 0;
+  max-height: none !important;
+  margin-top: 16px;
+  padding: 0 9px 0 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable;
+}
+
+#changelog-dialog .changelog-modal-content > section {
+  display: grid !important;
+  grid-template-columns: 82px minmax(0, 1fr) !important;
+  gap: 18px !important;
+  width: auto !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 17px 18px !important;
+  border: 1px solid rgba(130, 160, 176, .16) !important;
+  border-radius: 13px !important;
+  background: rgba(70, 96, 111, .065) !important;
+}
+
+#changelog-dialog .changelog-modal-content > section > b {
+  color: var(--cyan) !important;
+  font-size: 11.5px !important;
+}
+
+html[data-theme="light"] #changelog-dialog .changelog-modal-shell {
+  border-color: #c5d4db !important;
+  background: #f8fbfc !important;
+  box-shadow: 0 28px 76px rgba(20, 42, 53, .28) !important;
+}
+
+html[data-theme="light"] #changelog-dialog .changelog-modal-content > section {
+  border-color: #cedbe0 !important;
+  background: #ffffff !important;
+}
+
+/* Aircraft adapter: give the action breathing room. */
+[data-page="fenix"] .adapter-overview-card > .primary-card-action {
+  align-self: flex-start !important;
+  margin-top: 22px !important;
+}
+
+[data-page="fenix"] .adapter-overview-card .bridge-facts {
+  margin-bottom: 0 !important;
+}
+
+/* System maintenance card. */
+.settings-polished .msfs-cache-tools-card {
+  grid-column: span 6;
+  min-height: 210px;
+  padding: 22px !important;
+}
+
+.settings-polished .msfs-cache-tools-card > p {
+  max-width: 620px;
+  margin: 12px 0 18px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.settings-polished .msfs-cache-tools-card .safety-note {
+  display: block;
+  margin-top: 13px;
+}
+
+@media (max-width: 860px) {
+  #changelog-dialog[open] { padding: 16px !important; }
+  #changelog-dialog .changelog-modal-shell {
+    width: calc(100vw - 32px) !important;
+    height: min(90vh, 900px) !important;
+    max-height: 90vh !important;
+    padding: 20px !important;
+  }
+  #changelog-dialog .changelog-modal-content > section {
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+  }
+  .settings-polished .msfs-cache-tools-card { grid-column: 1 / -1; }
+}
