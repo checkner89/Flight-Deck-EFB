@@ -124,6 +124,77 @@ function showMainWindow() {
   mainWindow.focus();
 }
 
+async function clearDirectoryContents(directory) {
+  let entries;
+  try {
+    entries = await fs.readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { directory, removed: 0, skipped: true, failures: [] };
+    return { directory, removed: 0, skipped: false, failures: [error.message] };
+  }
+  let removed = 0;
+  const failures = [];
+  for (const entry of entries) {
+    try {
+      await fs.rm(path.join(directory, entry.name), { recursive: true, force: true, maxRetries: 2, retryDelay: 120 });
+      removed += 1;
+    } catch (error) {
+      failures.push(`${entry.name}: ${error.message}`);
+    }
+  }
+  return { directory, removed, skipped: false, failures };
+}
+
+async function clearMsfsGraphicsCaches() {
+  if (process.platform !== 'win32') {
+    await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'MSFS 2024 Grafikcache',
+      message: 'Dieses Wartungstool ist nur unter Windows verfügbar.',
+    });
+    return;
+  }
+  const confirmation = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: 'MSFS 2024 Grafik-/Shadercache leeren',
+    message: 'Microsoft Flight Simulator 2024 sollte vollständig geschlossen sein.',
+    detail: 'Flight Deck leert NVIDIA GLCache, DXCache, ComputeCache und den Windows D3DSCache. Der MSFS-Rolling-Cache und deine Simulator-Einstellungen bleiben unangetastet. Einige aktuell gesperrte Dateien können übersprungen werden.',
+    buttons: ['ABBRECHEN', 'CACHE LEEREN'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (confirmation.response !== 1) return;
+
+  const localAppData = process.env.LOCALAPPDATA || path.join(app.getPath('home'), 'AppData', 'Local');
+  const targets = [
+    path.join(localAppData, 'NVIDIA', 'GLCache'),
+    path.join(localAppData, 'NVIDIA', 'DXCache'),
+    path.join(localAppData, 'NVIDIA', 'ComputeCache'),
+    path.join(localAppData, 'D3DSCache'),
+  ];
+  const results = await Promise.all(targets.map(clearDirectoryContents));
+  const removed = results.reduce((sum, result) => sum + result.removed, 0);
+  const failures = results.flatMap((result) => result.failures);
+  await dialog.showMessageBox(mainWindow, {
+    type: failures.length ? 'warning' : 'info',
+    title: 'MSFS 2024 Grafikcache',
+    message: failures.length ? 'Cache wurde teilweise geleert.' : 'Grafik-/Shadercache wurde geleert.',
+    detail: failures.length
+      ? `${removed} Cache-Einträge entfernt. ${failures.length} Eintrag/Einträge waren gesperrt oder konnten nicht gelöscht werden. Starte Windows bei Bedarf neu und versuche es erneut.`
+      : `${removed} Cache-Einträge entfernt. Beim nächsten Start bauen Windows/NVIDIA die benötigten Shaderdaten neu auf.`,
+  });
+}
+
+function handleFlightDeckAction(url) {
+  const normalized = String(url || '').replace(/\/$/, '');
+  if (normalized === 'flightdeck://clear-msfs-cache') {
+    clearMsfsGraphicsCaches().catch((error) => dialog.showErrorBox('Flight Deck EFB', `Der Grafikcache konnte nicht geleert werden.\n\n${error.message}`));
+    return true;
+  }
+  return false;
+}
+
 function createTray() {
   if (tray) return;
   const source = nativeImage.createFromPath(fileURLToPath(new URL('../public/assets/app-icon-512.png', import.meta.url)));
@@ -192,10 +263,15 @@ async function createWindow() {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (handleFlightDeckAction(url)) return { action: 'deny' };
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (handleFlightDeckAction(url)) {
+      event.preventDefault();
+      return;
+    }
     try {
       if (new URL(url).origin === new URL(taxiServer.localhostUrl).origin) return;
     } catch {
