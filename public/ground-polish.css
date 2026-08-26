@@ -1,0 +1,391 @@
+[data-page="ground"].ground-polished {
+  width: min(1380px, calc(100% - 44px));
+  max-width: none;
+}
+
+.ground-polished .ground-subnav {
+  margin: 16px auto 18px;
+}
+
+.ground-polished .ground-layout {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  grid-auto-rows: max-content !important;
+}
+
+.ground-polished .ground-layout > * {
+  min-width: 0;
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: start;
+}
+
+.ground-polished .ground-overview {
+  grid-column: span 5;
+}
+
+.ground-polished .turnaround-card {
+  grid-column: span 7;
+}
+
+.ground-polished .gsx-live-service-card {
+  grid-column: 1 / -1;
+  order: 3;
+}
+
+.ground-polished .ground-safety-card {
+  grid-column: span 6;
+  order: 4;
+}
+
+.ground-polished .gsx-payload-card {
+  grid-column: span 6;
+  order: 5;
+}
+
+.ground-polished .ground-overview,
+.ground-polished .turnaround-card,
+.ground-polished .ground-safety-card,
+.ground-polished .gsx-payload-card,
+.ground-polished .service-panel {
+  padding: 20px;
+}
+
+.ground-polished .ground-brand {
+  align-items: center;
+}
+
+.ground-polished .ground-brand > span {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+.ground-polished .ground-overview .bridge-facts,
+.ground-polished .gsx-payload-card .bridge-facts {
+  margin-top: 14px;
+}
+
+.ground-polished .setup-steps {
+  margin-top: 14px;
+}
+
+.ground-polished .setup-steps > div {
+  min-height: 30px;
+}
+
+.ground-polished .service-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ground-polished .service-grid > * {
+  min-width: 0;
+}
+
+.ground-polished .turnaround-stage {
+  margin-top: 12px;
+}
+
+.ground-polished .turnaround-next {
+  margin-top: 12px;
+}
+
+.gsx-remote-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.gsx-remote-connect-strip,
+.gsx-remote-frame-card {
+  min-width: 0;
+  padding: 20px;
+}
+
+.gsx-remote-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.gsx-remote-intro > div {
+  min-width: 0;
+}
+
+.gsx-remote-intro small,
+.gsx-remote-url-field > span,
+.gsx-remote-facts small,
+.gsx-remote-frame-toolbar small {
+  display: block;
+  color: var(--cyan);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.gsx-remote-intro h2 {
+  margin: 4px 0 5px;
+  font-size: 21px;
+}
+
+.gsx-remote-intro p {
+  max-width: 820px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.gsx-remote-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.gsx-remote-facts > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(127, 146, 164, .055);
+}
+
+.gsx-remote-facts b {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsx-remote-controls {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) auto auto auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.gsx-remote-url-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gsx-remote-url-field input {
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid rgba(151, 193, 216, .22);
+  border-radius: 9px;
+  outline: 0;
+  background: rgba(4, 17, 27, .68);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+}
+
+.gsx-remote-url-field input:focus {
+  border-color: rgba(22, 227, 212, .58);
+  box-shadow: 0 0 0 3px rgba(22, 227, 212, .07);
+}
+
+.gsx-remote-url-field input.invalid {
+  border-color: rgba(255, 92, 108, .75);
+}
+
+.gsx-remote-status-detail {
+  margin: 12px 0 8px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.gsx-remote-frame-card {
+  padding-bottom: 14px;
+}
+
+.gsx-remote-frame-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.gsx-remote-frame-toolbar > span {
+  display: grid;
+  gap: 3px;
+}
+
+.gsx-remote-frame-toolbar strong {
+  font-size: 14px;
+}
+
+.gsx-remote-frame-shell {
+  position: relative;
+  min-height: 560px;
+  height: min(72vh, 860px);
+  overflow: hidden;
+  border: 1px solid rgba(151, 193, 216, .18);
+  border-radius: 14px;
+  background: #07121c;
+}
+
+#gsx-remote-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #07121c;
+}
+
+.gsx-remote-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 30px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(22, 227, 212, .08), transparent 36%),
+    linear-gradient(180deg, rgba(8, 25, 37, .97), rgba(5, 16, 25, .99));
+  text-align: center;
+}
+
+.gsx-remote-placeholder strong {
+  color: #dffffa;
+  font-size: 15px;
+  letter-spacing: .08em;
+}
+
+.gsx-remote-placeholder span {
+  max-width: 580px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] .gsx-remote-url-field input {
+  border-color: #aebfc8;
+  background: #fbfdfe;
+  color: #173440;
+  color-scheme: light;
+}
+
+html[data-theme="light"] .gsx-remote-frame-shell,
+html[data-theme="light"] #gsx-remote-frame {
+  background: #eef4f6;
+}
+
+html[data-theme="light"] .gsx-remote-placeholder {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(24, 168, 158, .10), transparent 36%),
+    linear-gradient(180deg, #f7fbfc, #edf4f6);
+}
+
+html[data-theme="light"] .gsx-remote-placeholder strong {
+  color: #12333d;
+}
+
+@media (max-width: 1180px) {
+  [data-page="ground"].ground-polished {
+    width: min(1180px, calc(100% - 30px));
+  }
+
+  .ground-polished .ground-overview,
+  .ground-polished .turnaround-card,
+  .ground-polished .ground-safety-card,
+  .ground-polished .gsx-payload-card {
+    grid-column: span 6;
+  }
+
+  .ground-polished .service-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gsx-remote-controls {
+    grid-template-columns: minmax(260px, 1fr) auto auto;
+  }
+
+  #gsx-remote-open {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  [data-page="ground"].ground-polished {
+    width: calc(100% - 22px);
+  }
+
+  .ground-polished .ground-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ground-polished .ground-layout > * {
+    grid-column: 1 !important;
+  }
+
+  .ground-polished .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gsx-remote-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .gsx-remote-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gsx-remote-url-field {
+    grid-column: 1 / -1;
+  }
+
+  #gsx-remote-open {
+    grid-column: auto;
+  }
+
+  .gsx-remote-frame-shell {
+    min-height: 500px;
+    height: 68vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .ground-polished .service-grid,
+  .gsx-remote-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .gsx-remote-intro,
+  .gsx-remote-frame-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #gsx-remote-open,
+  .gsx-remote-url-field {
+    grid-column: 1;
+  }
+
+  .gsx-remote-controls > button {
+    width: 100%;
+  }
+
+  .gsx-remote-frame-shell {
+    min-height: 440px;
+    height: 64vh;
+  }
+}
