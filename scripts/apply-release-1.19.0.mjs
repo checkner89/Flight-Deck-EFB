@@ -33,8 +33,8 @@ await update('public/pilot-tools.js', (source) => {
   }
 
   const oldInner = `    button.innerHTML = \`<span class="app-tile-icon">\${tileIcon(id)}</span><span class="app-tile-copy"><small>\${esc(subtitle)}</small><strong>\${esc(title)}</strong><span>FLIGHT DECK</span></span><i class="app-open-arrow">›</i>\`;`;
-  if (js.includes(oldInner)) {
-    js = js.replace(oldInner, `    const signature = \`\${title}|\${subtitle}\`;\n    if (button.dataset.pilotLabelSignature !== signature) {\n      button.dataset.pilotLabelSignature = signature;\n      button.innerHTML = \`<span class="app-tile-icon">\${tileIcon(id)}</span><span class="app-tile-copy"><small>\${esc(subtitle)}</small><strong>\${esc(title)}</strong><span>FLIGHT DECK</span></span><i class="app-open-arrow">›</i>\`;\n    }`);
+  if (!js.includes('pilotLabelSignature') && js.includes(oldInner)) {
+    js = js.replace(oldInner, `    const tileSignature = \`\${title}|\${subtitle}\`;\n    if (button.dataset.pilotLabelSignature !== tileSignature) {\n      button.dataset.pilotLabelSignature = tileSignature;\n      button.innerHTML = \`<span class="app-tile-icon">\${tileIcon(id)}</span><span class="app-tile-copy"><small>\${esc(subtitle)}</small><strong>\${esc(title)}</strong><span>FLIGHT DECK</span></span><i class="app-open-arrow">›</i>\`;\n    }`);
   }
 
   if (!js.includes('function schedulePilotTileSync()')) {
