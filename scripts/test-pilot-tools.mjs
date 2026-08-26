@@ -26,7 +26,9 @@ for (const token of ['pointerdown', 'pointermove', 'pointerup', 'data-scratch-to
 for (const duplicate of ['SMART CHECKLISTS', 'VATSIM_URL', 'currentFlightLog', 'Fuel Receipt']) {
   if (js.includes(duplicate)) throw new Error(`Duplicate 1.18 feature leaked into pilot-tools.js: ${duplicate}`);
 }
-requireMatch(js, /data-pilot-tool="\$\{id\}"/, 'Pilot tool tiles are not installed');
+requireMatch(js, /button\.dataset\.pilotTool\s*=\s*id/, 'Pilot tool tiles are not installed');
+requireMatch(js, /\['scratchpad',[^\]]+60\]/, 'Scratchpad tile definition is missing');
+requireMatch(js, /\['sim-session',[^\]]+61\]/, 'Sim Session tile definition is missing');
 requireMatch(css, /touch-action:none/, 'Scratchpad does not explicitly support touch/pen drawing');
 requireMatch(css, /scratchpad-paper/, 'Scratchpad paper styling is missing');
 
