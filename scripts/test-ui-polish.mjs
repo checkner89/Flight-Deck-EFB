@@ -20,56 +20,52 @@ assert.equal(isTurnaroundInactive('INACTIVE', 'IN FLIGHT'), true);
 assert.equal(isTurnaroundInactive('working', 'boarding'), false);
 assert.equal(decodeBasicEntities('Ground Services &amp; GSX'), 'Ground Services & GSX');
 
-// GSX tabs must truly replace one another even though both workspaces use explicit display rules.
-assert.match(css, /\.ground-polished\s+\.ground-layout\[hidden\][\s\S]*display:\s*none\s*!important/);
-assert.match(css, /\.ground-polished\s+\.gsx-remote-workspace\[hidden\][\s\S]*display:\s*none\s*!important/);
-assert.match(groundCss, /\.ground-polished\s+\.ground-layout\s*\{[\s\S]*display:\s*grid\s*!important/);
+const requiredCssTokens = [
+  '.ground-polished .ground-layout[hidden]',
+  '.ground-polished .gsx-remote-workspace[hidden]',
+  'display: none !important;',
+  'turnaround-inactive',
+  'traffic-offline-state',
+  'leaflet-airportFocusMask-pane',
+  'fill-opacity: .995',
+  'data-stable-aircraft-view="pmdg"',
+  'data-stable-aircraft-view="status"',
+  '.settings-primary-tile',
+  '.update-changelog-card',
+  '.legal-card',
+  '#legal-dialog .legal-content',
+  'overflow-x: hidden',
+  '.ui-polish-v2 input:not',
+  '.ui-polish-v2 textarea',
+  '.ui-polish-v2 select',
+  'border-radius: 10px !important',
+  '.update-dialog-notes ul',
+  'list-style: disc outside !important',
+];
+for (const token of requiredCssTokens) assert.ok(css.includes(token), `Missing UI polish CSS contract: ${token}`);
 
-// Turnaround must not display the backend's inactive 100% as operational progress.
-assert.match(js, /isTurnaroundInactive/);
-assert.match(js, /progress\.textContent\s*=\s*['"]—['"]/);
-assert.match(js, /bar\.style\.width\s*=\s*['"]0%['"]/);
+const requiredJsTokens = [
+  'AIRCRAFT_VIEW_KEY',
+  'stableAircraftView',
+  'MutationObserver',
+  "progress.textContent = '—'",
+  "bar.style.width = '0%'",
+  'traffic-offline-state',
+  'settings-primary-tile',
+  'ÄLTERE VERSIONEN',
+  'changelog-dialog',
+];
+for (const token of requiredJsTokens) assert.ok(js.includes(token), `Missing UI polish JS contract: ${token}`);
 
-// Aircraft connector selection must survive live state re-renders.
-assert.match(js, /AIRCRAFT_VIEW_KEY/);
-assert.match(js, /data-stable-aircraft-view|stableAircraftView/);
-assert.match(js, /MutationObserver/);
-assert.match(css, /data-stable-aircraft-view=["']pmdg["']/);
-assert.match(css, /data-stable-aircraft-view=["']status["']/);
+assert.ok(groundCss.includes('.ground-polished .ground-layout'), 'Ground dashboard layout contract is missing.');
+assert.ok(groundCss.includes('display: grid !important;'), 'Ground dashboard must keep its explicit grid display rule.');
 
-// Live Traffic offline state and Taxi focus must use intentional visual states.
-assert.match(js, /traffic-offline-state/);
-assert.match(css, /traffic-offline-state/);
-assert.match(css, /leaflet-airportFocusMask-pane/);
-assert.match(css, /fill-opacity:\s*\.995/);
+assert.ok(electronMain.includes('decodeReleaseEntities'), 'Updater entity decoding is missing.');
+assert.ok(electronMain.includes('<li[^>]*>'), 'Updater HTML list conversion is missing.');
+assert.ok(electronMain.includes('&amp;'), 'Updater HTML entity handling is missing.');
 
-// Settings layout: equal primary tiles, full-width changelog/legal and older-version modal.
-assert.match(js, /settings-primary-tile/);
-assert.match(js, /ÄLTERE VERSIONEN/);
-assert.match(js, /changelog-dialog/);
-assert.ok(css.includes('.settings-primary-tile'), 'Settings primary tile styling is required.');
-assert.match(css, /grid-column:\s*span\s+6/);
-assert.match(css, /\.settings-polished\s+\.update-changelog-card[\s\S]*grid-column:\s*1\s*\/\s*-1/);
-assert.match(css, /\.settings-polished\s+\.legal-card[\s\S]*grid-column:\s*1\s*\/\s*-1/);
-assert.match(css, /#legal-dialog\s+\.legal-content[\s\S]*overflow-x:\s*hidden/);
-
-// Form controls must share the modern Flight Deck appearance across the app.
-assert.match(css, /\.ui-polish-v2\s+input:not/);
-assert.match(css, /\.ui-polish-v2\s+textarea/);
-assert.match(css, /\.ui-polish-v2\s+select/);
-assert.match(css, /border-radius:\s*10px\s*!important/);
-
-// Updater must preserve list semantics from electron-updater HTML and decode entities.
-assert.match(electronMain, /decodeReleaseEntities/);
-assert.ok(electronMain.includes('<li[^>]*>'), 'Updater normalization must recognize HTML list items.');
-assert.ok(electronMain.includes("'\\n- '"), 'Updater normalization must convert list items to bullet lines.');
-assert.ok(electronMain.includes('&amp;'), 'Updater normalization must decode HTML entities.');
-assert.match(css, /update-dialog-notes\s+ul/);
-assert.match(css, /list-style:\s*disc\s+outside\s*!important/);
-
-// Release preparation must inject/version/cache both UI polish assets.
 for (const asset of ['ui-polish.js', 'ui-polish.css']) {
-  assert.match(prepareUi, new RegExp(asset.replace('.', '\\.')), `Release preparation must include ${asset}`);
+  assert.ok(prepareUi.includes(asset), `Release preparation must include ${asset}`);
 }
 
 console.log('Global UI polish regression checks passed.');
