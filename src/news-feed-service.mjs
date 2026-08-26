@@ -145,6 +145,7 @@ export class NewsFeedService {
     this.onNewItems = onNewItems;
     this.now = now;
     this.installed = [...DEFAULT_INSTALLED];
+    this.notificationsEnabled = true;
     this.knownIds = {};
     this.cache = null;
     this.cacheAt = 0;
@@ -155,6 +156,7 @@ export class NewsFeedService {
     try {
       const saved = JSON.parse(await fs.readFile(this.stateFile, 'utf8'));
       if (Array.isArray(saved?.installed)) this.installed = saved.installed.filter((id) => CURATED_NEWS_FEEDS.some((feed) => feed.id === id));
+      if (typeof saved?.notificationsEnabled === 'boolean') this.notificationsEnabled = saved.notificationsEnabled;
       if (saved?.knownIds && typeof saved.knownIds === 'object') this.knownIds = saved.knownIds;
     } catch {}
     this.timer = setInterval(() => this.refresh({ notify: true }).catch(() => {}), REFRESH_MS);
@@ -167,9 +169,17 @@ export class NewsFeedService {
     return CURATED_NEWS_FEEDS.map((feed) => ({ ...feed, installed: this.installed.includes(feed.id) }));
   }
 
+  preferences() { return { notificationsEnabled: this.notificationsEnabled }; }
+
   async #save() {
     await fs.mkdir(this.storageDirectory, { recursive: true });
-    await fs.writeFile(this.stateFile, `${JSON.stringify({ installed: this.installed, knownIds: this.knownIds }, null, 2)}\n`, 'utf8');
+    await fs.writeFile(this.stateFile, `${JSON.stringify({ installed: this.installed, notificationsEnabled: this.notificationsEnabled, knownIds: this.knownIds }, null, 2)}\n`, 'utf8');
+  }
+
+  async setNotifications(enabled) {
+    this.notificationsEnabled = Boolean(enabled);
+    await this.#save();
+    return this.preferences();
   }
 
   async setInstalled(ids) {
@@ -187,7 +197,7 @@ export class NewsFeedService {
   }
 
   async refresh({ force = false, notify = false } = {}) {
-    if (!force && this.cache && Date.now() - this.cacheAt < CACHE_MS) return this.cache;
+    if (!force && this.cache && Date.now() - this.cacheAt < CACHE_MS) return { ...this.cache, notificationsEnabled: this.notificationsEnabled };
     const sources = CURATED_NEWS_FEEDS.filter((feed) => this.installed.includes(feed.id));
     const results = await Promise.all(sources.map(async (source) => {
       try {
@@ -208,9 +218,9 @@ export class NewsFeedService {
     await this.#save().catch(() => {});
     this.cache = { installed: [...this.installed], sources: results.map(({ source, status, error }) => ({ id: source.id, name: source.name, language: source.language, site: source.site, feedUrl: source.feedUrl || null, status, error })), items, updatedAt: this.now().toISOString() };
     this.cacheAt = Date.now();
-    if (newItems.length && typeof this.onNewItems === 'function') {
+    if (this.notificationsEnabled && newItems.length && typeof this.onNewItems === 'function') {
       try { await this.onNewItems(newItems.slice(0, 8)); } catch {}
     }
-    return this.cache;
+    return { ...this.cache, notificationsEnabled: this.notificationsEnabled };
   }
 }
