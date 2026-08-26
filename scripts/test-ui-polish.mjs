@@ -60,9 +60,9 @@ assert.match(css, /border-radius:\s*10px\s*!important/);
 
 // Updater must preserve list semantics from electron-updater HTML and decode entities.
 assert.match(electronMain, /decodeReleaseEntities/);
-assert.match(electronMain, /<li\[\^>\]\*>/);
-assert.match(electronMain, /\\n- /);
-assert.match(electronMain, /&amp;/);
+assert.ok(electronMain.includes('<li[^>]*>'), 'Updater normalization must recognize HTML list items.');
+assert.ok(electronMain.includes("'\\n- '"), 'Updater normalization must convert list items to bullet lines.');
+assert.ok(electronMain.includes('&amp;'), 'Updater normalization must decode HTML entities.');
 assert.match(css, /update-dialog-notes\s+ul/);
 assert.match(css, /list-style:\s*disc\s+outside\s*!important/);
 
