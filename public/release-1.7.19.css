@@ -1,0 +1,202 @@
+/* Flight Deck EFB 1.7.19 — traffic, focus mode, map traffic and System layout */
+
+/* Distinct operational traffic states */
+.traffic-status.status-taxi,
+.traffic-status.status-pushback {
+  border-color: rgba(30, 214, 190, .42);
+  background: rgba(15, 132, 120, .14);
+  color: #63ead8;
+}
+.traffic-status.status-parking,
+.traffic-status.status-preflight {
+  border-color: rgba(224, 173, 77, .42);
+  background: rgba(154, 107, 25, .14);
+  color: #f1c66f;
+}
+.traffic-status.status-enroute,
+.traffic-status.status-airborne {
+  border-color: rgba(73, 159, 245, .42);
+  background: rgba(35, 91, 151, .15);
+  color: #87c8ff;
+}
+.traffic-status.status-arriving,
+.traffic-status.status-landing {
+  border-color: rgba(180, 117, 248, .45);
+  background: rgba(105, 61, 153, .16);
+  color: #d2adff;
+}
+.traffic-status.status-climb {
+  border-color: rgba(104, 192, 255, .45);
+  background: rgba(41, 115, 166, .16);
+  color: #a7dcff;
+}
+.traffic-status > span::before {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45em;
+  margin-right: .35em;
+  font-size: .92em;
+  font-weight: 900;
+}
+.traffic-status.status-taxi > span::before { content: '↗'; }
+.traffic-status.status-pushback > span::before { content: '↙'; }
+.traffic-status.status-parking > span::before,
+.traffic-status.status-preflight > span::before { content: '▣'; }
+.traffic-status.status-enroute > span::before,
+.traffic-status.status-airborne > span::before { content: '✈'; }
+.traffic-status.status-arriving > span::before,
+.traffic-status.status-landing > span::before { content: '↓'; }
+.traffic-status.status-climb > span::before { content: '↑'; }
+
+/* Moving simulator traffic on the taxi map */
+.taxi-traffic-wrapper {
+  background: none !important;
+  border: 0 !important;
+}
+.taxi-traffic-marker {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 78px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .45));
+}
+.taxi-traffic-marker > i {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(97, 224, 213, .65);
+  border-radius: 50%;
+  background: rgba(4, 25, 34, .9);
+  color: #69e9dd;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1;
+}
+.taxi-traffic-marker > b {
+  display: inline-block;
+  padding: 3px 6px;
+  border: 1px solid rgba(100, 161, 182, .34);
+  border-radius: 5px;
+  background: rgba(4, 20, 28, .88);
+  color: #dcecf1;
+  font-size: 9px;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+
+/* Focus Mode is global in 1.7.19 */
+.release-focus-toggle {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--line, rgba(130, 170, 190, .28));
+  border-radius: 7px;
+  background: var(--panel-soft, rgba(14, 35, 45, .72));
+  color: var(--text, #e9f3f6);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+html[data-focus-mode="true"] .release-focus-toggle {
+  border-color: rgba(48, 218, 193, .55);
+  background: rgba(24, 137, 121, .18);
+  color: #71ead9;
+}
+html[data-focus-mode="true"] .topbar {
+  min-height: 48px;
+}
+html[data-focus-mode="true"] .brand-copy small,
+html[data-focus-mode="true"] .app-toolbar-identity small,
+html[data-focus-mode="true"] #app-toolbar-context,
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .page-heading p,
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .home-launcher-heading p,
+html[data-focus-mode="true"] .efb-page:not([hidden]) .help-text:not(.safety-note) {
+  display: none !important;
+}
+html[data-focus-mode="true"] .app-toolbar {
+  min-height: 48px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+html[data-focus-mode="true"] .efb-pages {
+  padding-top: 12px;
+}
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .page-heading,
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .home-launcher-heading {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+}
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .page-heading h1,
+html[data-focus-mode="true"] .efb-page:not([hidden]) > .home-launcher-heading h1 {
+  font-size: clamp(20px, 2vw, 28px);
+}
+html[data-focus-mode="true"] .efb-card {
+  scroll-margin-top: 62px;
+}
+html[data-focus-mode="true"] .floating-section-nav {
+  margin-bottom: 10px;
+  padding: 3px;
+}
+html[data-focus-mode="true"] .floating-section-nav button {
+  min-height: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* Cleaner System layout */
+[data-page="settings"] .settings-grid {
+  align-items: start;
+  gap: 16px;
+}
+[data-page="settings"] #settings-health[data-settings-panel="system"],
+[data-page="settings"] #settings-msfs-efb-builder[data-settings-panel="system"] {
+  min-width: 0;
+}
+[data-page="settings"] #settings-health .integration-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-page="settings"] #settings-health .integration-list > div {
+  min-width: 0;
+  border: 1px solid rgba(120, 165, 185, .14);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(10, 28, 37, .22);
+}
+[data-page="settings"] #settings-msfs-efb-builder .builder-path-grid {
+  grid-template-columns: 1fr;
+}
+[data-page="settings"] #settings-msfs-efb-builder .builder-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+[data-page="settings"] #settings-msfs-efb-builder .builder-actions > * {
+  min-width: 0;
+}
+
+@media (min-width: 1180px) {
+  [data-page="settings"] .settings-grid:has(#settings-health:not([hidden])) {
+    grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr);
+  }
+  [data-page="settings"] #settings-health[data-settings-panel="system"] {
+    grid-column: 1;
+  }
+  [data-page="settings"] #settings-msfs-efb-builder[data-settings-panel="system"] {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 820px) {
+  [data-page="settings"] #settings-health .integration-list,
+  [data-page="settings"] #settings-msfs-efb-builder .builder-actions {
+    grid-template-columns: 1fr;
+  }
+  .release-focus-toggle span { display: none; }
+  .release-focus-toggle::before { content: '◎'; font-size: 15px; }
+}
