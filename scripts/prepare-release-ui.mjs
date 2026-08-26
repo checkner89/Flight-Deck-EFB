@@ -39,6 +39,8 @@ await updateFile('public/index.html', (source) => {
     '/flight-overlay.css',
     '/com-polish.js',
     '/com-polish.css',
+    '/atc-polish.js',
+    '/atc-polish.css',
   ]) html = updateAssetVersion(html, asset);
 
   const overlayCss = `<link rel="stylesheet" data-flight-overlay-style href="/flight-overlay.css?v=${version}">`;
@@ -55,6 +57,13 @@ await updateFile('public/index.html', (source) => {
     html = html.replace('</head>', `    ${comCss}\n  </head>`);
   }
 
+  const atcCss = `<link rel="stylesheet" data-atc-polish-style href="/atc-polish.css?v=${version}">`;
+  if (/atc-polish\.css\?v=/.test(html)) {
+    html = html.replace(/<link[^>]+atc-polish\.css\?v=[^>]+>/, atcCss);
+  } else {
+    html = html.replace('</head>', `    ${atcCss}\n  </head>`);
+  }
+
   const overlayScript = `<script type="module" src="/flight-overlay.js?v=${version}"></script>`;
   if (/flight-overlay\.js\?v=/.test(html)) {
     html = html.replace(/<script[^>]+flight-overlay\.js\?v=[^>]+><\/script>/, overlayScript);
@@ -67,6 +76,13 @@ await updateFile('public/index.html', (source) => {
     html = html.replace(/<script[^>]+com-polish\.js\?v=[^>]+><\/script>/, comScript);
   } else {
     html = html.replace(/(<script type="module" src="\/app\.js\?v=[^"]+"><\/script>)/, `$1\n    ${comScript}`);
+  }
+
+  const atcScript = `<script type="module" src="/atc-polish.js?v=${version}"></script>`;
+  if (/atc-polish\.js\?v=/.test(html)) {
+    html = html.replace(/<script[^>]+atc-polish\.js\?v=[^>]+><\/script>/, atcScript);
+  } else {
+    html = html.replace('</body>', `    ${atcScript}\n  </body>`);
   }
 
   html = html.replace(/(<span id="update-version">)v[^<]+/, `$1v${version}`);
@@ -100,6 +116,8 @@ await updateFile('public/service-worker.js', (source) => {
     '/flight-overlay.css',
     '/com-polish.js',
     '/com-polish.css',
+    '/atc-polish.js',
+    '/atc-polish.css',
     '/airline-catalog.js',
     '/si-operations.js',
     '/i18n.js',
@@ -111,6 +129,9 @@ await updateFile('public/service-worker.js', (source) => {
   }
   if (!sw.includes(`/com-polish.js?v=${version}`)) {
     sw = sw.replace(`  '/flight-overlay.css?v=${version}',`, `  '/flight-overlay.css?v=${version}',\n  '/com-polish.js?v=${version}',\n  '/com-polish.css?v=${version}',`);
+  }
+  if (!sw.includes(`/atc-polish.js?v=${version}`)) {
+    sw = sw.replace(`  '/com-polish.css?v=${version}',`, `  '/com-polish.css?v=${version}',\n  '/atc-polish.js?v=${version}',\n  '/atc-polish.css?v=${version}',`);
   }
   return sw;
 });
