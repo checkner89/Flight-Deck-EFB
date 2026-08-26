@@ -45,6 +45,7 @@ await updateFile('public/index.html', (source) => {
     '/ground-polish.css',
     '/ui-polish.js',
     '/ui-polish.css',
+    '/ui-fixes.css',
     '/gsx-profile-manager.js',
     '/gsx-profile-manager.css',
   ]) html = updateAssetVersion(html, asset);
@@ -82,6 +83,13 @@ await updateFile('public/index.html', (source) => {
     html = html.replace(/<link[^>]+ui-polish\.css\?v=[^>]+>/, uiCss);
   } else {
     html = html.replace('</head>', `    ${uiCss}\n  </head>`);
+  }
+
+  const uiFixesCss = `<link rel="stylesheet" data-ui-fixes-style href="/ui-fixes.css?v=${version}">`;
+  if (/ui-fixes\.css\?v=/.test(html)) {
+    html = html.replace(/<link[^>]+ui-fixes\.css\?v=[^>]+>/, uiFixesCss);
+  } else {
+    html = html.replace('</head>', `    ${uiFixesCss}\n  </head>`);
   }
 
   const gsxProfileCss = `<link rel="stylesheet" data-gsx-profile-manager-style href="/gsx-profile-manager.css?v=${version}">`;
@@ -170,6 +178,7 @@ await updateFile('public/service-worker.js', (source) => {
     '/ground-polish.css',
     '/ui-polish.js',
     '/ui-polish.css',
+    '/ui-fixes.css',
     '/gsx-profile-manager.js',
     '/gsx-profile-manager.css',
     '/airline-catalog.js',
@@ -193,8 +202,11 @@ await updateFile('public/service-worker.js', (source) => {
   if (!sw.includes(`/ui-polish.js?v=${version}`)) {
     sw = sw.replace(`  '/ground-polish.css?v=${version}',`, `  '/ground-polish.css?v=${version}',\n  '/ui-polish.js?v=${version}',\n  '/ui-polish.css?v=${version}',`);
   }
+  if (!sw.includes(`/ui-fixes.css?v=${version}`)) {
+    sw = sw.replace(`  '/ui-polish.css?v=${version}',`, `  '/ui-polish.css?v=${version}',\n  '/ui-fixes.css?v=${version}',`);
+  }
   if (!sw.includes(`/gsx-profile-manager.js?v=${version}`)) {
-    sw = sw.replace(`  '/ui-polish.css?v=${version}',`, `  '/ui-polish.css?v=${version}',\n  '/gsx-profile-manager.js?v=${version}',\n  '/gsx-profile-manager.css?v=${version}',`);
+    sw = sw.replace(`  '/ui-fixes.css?v=${version}',`, `  '/ui-fixes.css?v=${version}',\n  '/gsx-profile-manager.js?v=${version}',\n  '/gsx-profile-manager.css?v=${version}',`);
   }
   return sw;
 });
