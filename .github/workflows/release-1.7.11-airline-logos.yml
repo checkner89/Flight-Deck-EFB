@@ -35,6 +35,16 @@ jobs:
           AIRLINE_SOURCE_2: ${{ runner.temp }}/airlines-logo-secondary
         run: |
           python scripts/apply-1.7.11.py
+          python <<'PY'
+          from pathlib import Path
+          p = Path('public/airline-catalog.js')
+          text = p.read_text(encoding='utf-8')
+          old = "if (/^[A-Z0-9]{2,3}\\d/.test(rawFlight)) return rawFlight;"
+          new = "if (/^[A-Z0-9]{2,3}\\d/.test(rawFlight) && /[A-Z]/.test(rawFlight.slice(0, 3))) return rawFlight;"
+          if old not in text:
+              raise SystemExit('flight-number prefix patch target missing')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           npm version 1.7.11 --no-git-tag-version
 
       - name: Verify 1.7.11 source
