@@ -160,6 +160,30 @@ html[data-theme="light"] #changelog-dialog .changelog-modal-content > section {
   margin-bottom: 0 !important;
 }
 
+/* Connected GSX Remote uses the screen instead of keeping setup above it. */
+.ground-polished .gsx-remote-connect-strip[hidden] {
+  display: none !important;
+}
+
+.ground-polished .gsx-remote-workspace.remote-connected {
+  gap: 0 !important;
+}
+
+.ground-polished .gsx-remote-workspace.remote-connected .gsx-remote-frame-card {
+  margin-top: 0 !important;
+}
+
+.ground-polished .gsx-remote-workspace.remote-connected .gsx-remote-frame-shell {
+  height: clamp(620px, calc(100vh - 255px), 980px) !important;
+  min-height: 620px !important;
+}
+
+.ground-polished .gsx-remote-frame-toolbar > div:last-child {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 /* System maintenance card. */
 .settings-polished .msfs-cache-tools-card {
   grid-column: span 6;
@@ -193,4 +217,8 @@ html[data-theme="light"] #changelog-dialog .changelog-modal-content > section {
     gap: 7px !important;
   }
   .settings-polished .msfs-cache-tools-card { grid-column: 1 / -1; }
+  .ground-polished .gsx-remote-workspace.remote-connected .gsx-remote-frame-shell {
+    height: 72vh !important;
+    min-height: 520px !important;
+  }
 }
