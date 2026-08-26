@@ -37,4 +37,10 @@ await update('public/service-worker.js', (source) => {
   return sw.replace(/\n{3,}/g, '\n\n');
 });
 
+await update('CHANGELOG.md', (source) => {
+  if (/^## 1\.20\.1\b/m.test(source)) return source;
+  const notes = `## 1.20.1 — Unified UI & In-App News\n\n- Fixes unreadable dark-on-dark combinations in Scratchpad, Flight Setup and News by making all three modules explicitly theme-aware in both Light and Dark mode.\n- Aligns Scratchpad, Flight Setup and News with Flight Deck's established card, typography, spacing, button and status styling.\n- Keeps the Scratchpad writing surface bright and high-contrast while the surrounding controls follow the selected theme.\n- Adds a native in-app News reader; selecting a story opens feed-supplied article content inside Flight Deck instead of immediately leaving the app.\n- Keeps an Open Original action when a publisher exposes only a shortened RSS/Atom version.\n- Marks News as read when a story is actually opened instead of clearing unread state merely by entering the News app.\n\n> Flight simulation use only — not for real-world navigation.\n\n`;
+  return source.replace(/^# Flight Deck EFB changelog\s*/i, (header) => `${header.trim()}\n\n${notes}`);
+});
+
 console.log(`Applied Flight Deck EFB ${version} theme + in-app News reader patch.`);
