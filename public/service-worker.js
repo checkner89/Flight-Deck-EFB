@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flight-deck-efb-v1711';
+const CACHE_NAME = 'flight-deck-efb-v1711-homeflight1';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -6,6 +6,8 @@ const APP_SHELL = [
   '/si-operations.css?v=1.7.11',
   '/app.js?v=1.7.11',
   '/live-traffic.js?v=1.7.11',
+  '/flight-overlay.js?v=1.7.11-homeflight1',
+  '/flight-overlay.css?v=1.7.11-homeflight1',
   '/airline-catalog.js?v=1.7.11',
   '/si-operations.js?v=1.7.11',
   '/i18n.js?v=1.7.11',
