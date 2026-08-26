@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { createTaxiServer } from '../src/server.mjs';
 
+const packageJson = JSON.parse(await fs.readFile('package.json', 'utf8'));
+const version = String(packageJson.version || '1.19.0');
 const pilot = await fs.readFile('public/pilot-tools.js', 'utf8');
 const nativeUi = await fs.readFile('public/sim-session-native.js', 'utf8');
 const html = await fs.readFile('public/index.html', 'utf8');
@@ -28,11 +30,11 @@ requireText(pilot, "if (heading.textContent !== nextLabel)", 'Flight Notes norma
 requireText(pilot, 'legacyPilotTilesCleaned', 'Legacy tile cleanup is not one-shot.');
 rejectText(pilot, `const observer = new MutationObserver(() => {\n    installTiles();\n    normalizeExistingFlightNotes();`, 'Recursive MutationObserver renderer loop is still present.');
 
-requireText(nativeUi, '/api/sim-session/status', 'Native Sim Session status UI is missing.');
+requireText(nativeUi, '/api/sim-session/status', 'Native Flight Setup status UI is missing.');
 requireText(nativeUi, '/api/sim-session/screenshot', 'Remote MSFS screenshot UI is missing.');
 requireText(nativeUi, '/api/discovery/status', 'LAN discovery UI is missing.');
-requireText(html, 'sim-session-native.js?v=1.19.0', '1.19 native Sim Session script is not wired.');
-requireText(html, 'sim-session-native.css?v=1.19.0', '1.19 native Sim Session styles are not wired.');
+requireText(html, `sim-session-native.js?v=${version}`, `Native Flight Setup script is not wired for ${version}.`);
+requireText(html, `sim-session-native.css?v=${version}`, `Native Flight Setup styles are not wired for ${version}.`);
 requireText(serverSource, "pathname === '/api/sim-session/status'", 'Sim Session API was not patched into the server.');
 requireText(serverSource, 'LanDiscoveryService', 'LAN discovery service was not patched into the server.');
 requireText(electronSource, 'captureMsfsWindow', 'Electron MSFS window capture provider is missing.');
@@ -47,6 +49,7 @@ const application = await createTaxiServer({
   automationStorageDirectory: path.join(temp, 'automations'),
   accessStorageDirectory: path.join(temp, 'access'),
   simSessionStorageDirectory: path.join(temp, 'sim-session'),
+  newsStorageDirectory: path.join(temp, 'news'),
   msfsEfbBuilderStorageDirectory: path.join(temp, 'builder'),
   screenshotProvider: async () => ({ buffer: Buffer.from('89504e470d0a1a0a', 'hex'), sourceName: 'Microsoft Flight Simulator 2024' }),
 });
@@ -77,4 +80,4 @@ try {
   await fs.rm(temp, { recursive: true, force: true });
 }
 
-console.log('Flight Deck EFB 1.19.0 renderer recovery + native session regression checks passed.');
+console.log(`Flight Deck EFB ${version} renderer recovery + native session regression checks passed.`);
