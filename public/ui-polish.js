@@ -132,6 +132,21 @@ function polishLiveTrafficEmptyState() {
 
 const CURRENT_CHANGELOG = [
   {
+    version: '1.7.18',
+    title: 'GSX Profile Manager & UI Feinschliff',
+    bullets: [
+      'Neue GSX Profiles App: lokale Profile scannen, ZIP/INI/PY per Drag & Drop importieren und bei mehreren Varianten gezielt das gewünschte Profil auswählen.',
+      'GSX Profile Manager kann den Community-Ordner gegen vorhandene GSX-Profile abgleichen und Airport-Einträge lokal ignorieren oder wieder aktivieren.',
+      'Optionale GSX Handler-Lib-Unterstützung installiert passende lib-Python-Dateien getrennt vom normalen Profilordner.',
+      'GSX Remote blendet nach erfolgreichem Laden die Verbindungsbox automatisch aus und bietet einen kompakten Setup-Schalter zum Wiedereinblenden.',
+      'Einrichtungsassistent ist in den Einstellungen vollständig linksbündig; Changelog-Kontrast und Schriftgröße wurden deutlich verbessert.',
+      'Das Popup für ältere Updates ist jetzt ein sauber zentrierter, eigenständig scrollender Dialog ohne abgesetzte Scrollbar.',
+      'Adapter Status hat korrigierte Abstände rund um CHECK ADAPTER.',
+      'Neues Windows-Systemtool leert nach Bestätigung die gleichen NVIDIA-/D3D-Shadercaches wie das bereitgestellte MSFS2024 Cache Removal Tool.',
+      'Der Home-Hinweis „Wähle eine Anwendung aus.“ wurde entfernt.',
+    ],
+  },
+  {
     version: '1.7.17',
     title: 'UI-Polish, Ground Services und Settings',
     bullets: [
@@ -175,7 +190,7 @@ function ensureChangelogDialog() {
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.id = CHANGELOG_DIALOG_ID;
-  dialog.className = 'modal changelog-modal';
+  dialog.className = 'changelog-modal';
   const shell = document.createElement('div');
   shell.className = 'modal-shell changelog-modal-shell';
   const close = textNode('button', 'modal-close', '×');
@@ -193,6 +208,9 @@ function ensureChangelogDialog() {
   shell.append(close, heading, content);
   dialog.append(shell);
   document.body.append(dialog);
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close?.();
+  });
   return dialog;
 }
 
@@ -251,6 +269,37 @@ function enhanceSettings() {
   }
 }
 
+function enhanceSystemTools() {
+  const grid = document.querySelector('[data-page="settings"] .settings-grid');
+  if (!grid || document.getElementById('settings-msfs-cache-tools')) return;
+  const card = document.createElement('article');
+  card.id = 'settings-msfs-cache-tools';
+  card.dataset.settingsPanel = 'system';
+  card.className = 'efb-card settings-card msfs-cache-tools-card';
+  card.hidden = true;
+  const windowsHost = /Electron\//i.test(navigator.userAgent);
+  card.innerHTML = `
+    <div class="section-title"><div><small>WINDOWS · MAINTENANCE</small><h2>MSFS 2024 Grafikcache</h2></div><span>${windowsHost ? 'HOST READY' : 'WINDOWS HOST'}</span></div>
+    <p>Leert NVIDIA GLCache, DXCache, ComputeCache und den Windows D3DSCache. Das entspricht dem bereitgestellten Cache-Removal-Tool und löscht nicht den MSFS-Rolling-Cache.</p>
+    <div class="connector-actions"><button id="clear-msfs-shader-cache" class="secondary-card-action" type="button" ${windowsHost ? '' : 'disabled'}>GRAFIK-/SHADERCACHE LEEREN</button></div>
+    <small id="clear-msfs-shader-cache-status" class="safety-note">MSFS 2024 vor dem Leeren vollständig schließen. Die Windows-App fragt vor dem Löschen noch einmal nach.</small>`;
+  const health = document.getElementById('settings-health');
+  if (health?.nextSibling) grid.insertBefore(card, health.nextSibling);
+  else grid.prepend(card);
+  card.querySelector('#clear-msfs-shader-cache')?.addEventListener('click', () => {
+    const status = card.querySelector('#clear-msfs-shader-cache-status');
+    if (status) status.textContent = 'Bestätigung wird im Windows-Host geöffnet …';
+    window.open('flightdeck://clear-msfs-cache', '_blank', 'noopener');
+    setTimeout(() => {
+      if (status) status.textContent = 'MSFS 2024 vor dem Leeren vollständig schließen. Die Windows-App fragt vor dem Löschen noch einmal nach.';
+    }, 4_000);
+  });
+}
+
+function removeHomeInstruction() {
+  document.querySelector('.home-launcher-heading [data-i18n="selectApp"]')?.remove();
+}
+
 function polishUpdateDialog() {
   const notes = document.getElementById('update-dialog-notes');
   if (!notes) return;
@@ -288,8 +337,10 @@ function installGeneralObserver() {
 
 function start() {
   document.documentElement.classList.add('ui-polish-v2');
+  removeHomeInstruction();
   enhanceAircraftPage();
   enhanceSettings();
+  enhanceSystemTools();
   installGeneralObserver();
 }
 
