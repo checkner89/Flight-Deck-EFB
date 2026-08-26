@@ -1,0 +1,446 @@
+/* Integrated GSX Profile Manager ----------------------------------------- */
+
+.gsx-profiles-app .app-tile-icon {
+  background: linear-gradient(145deg, rgba(255, 197, 34, .18), rgba(19, 210, 192, .10));
+}
+
+.gsx-profiles-page {
+  width: min(1420px, calc(100% - 44px));
+  max-width: none;
+}
+
+.gsx-profile-heading {
+  margin-bottom: 18px;
+}
+
+.gsxp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gsxp-stats > article {
+  min-height: 108px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.gsxp-stats small,
+.gsxp-library-toolbar small,
+.gsxp-setup-card .section-title small,
+.gsxp-import-card .section-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.gsxp-stats strong {
+  display: block;
+  margin: 8px 0 3px;
+  color: var(--text);
+  font-size: clamp(25px, 2.6vw, 38px);
+  line-height: 1;
+}
+
+.gsxp-stats span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.gsxp-stats > article:nth-child(2) strong { color: #42cba9; }
+.gsxp-stats > article:nth-child(3) strong { color: #ed7f89; }
+
+.gsxp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.gsxp-setup-card,
+.gsxp-import-card,
+.gsxp-library-card {
+  min-width: 0;
+  padding: 20px !important;
+}
+
+.gsxp-setup-card > p,
+.gsxp-import-card > p {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.gsxp-folder-list {
+  display: grid;
+  gap: 8px;
+  margin: 15px 0 14px;
+}
+
+.gsxp-folder-list > button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.gsxp-folder-list > button:hover {
+  border-color: rgba(24, 199, 185, .42);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  transform: translateY(-1px);
+}
+
+.gsxp-folder-list > button > i {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(18, 211, 197, .09);
+  color: var(--cyan);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.gsxp-folder-list > button > span {
+  min-width: 0;
+}
+
+.gsxp-folder-list > button strong,
+.gsxp-folder-list > button small {
+  display: block;
+}
+
+.gsxp-folder-list > button strong {
+  font-size: 10.5px;
+}
+
+.gsxp-folder-list > button small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsxp-folder-list > button > b {
+  color: var(--cyan);
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+
+.gsxp-dropzone {
+  display: grid;
+  place-items: center;
+  min-height: 246px;
+  margin-top: 14px;
+  padding: 28px;
+  border: 1.5px dashed rgba(28, 194, 181, .42);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(21, 203, 190, .06), rgba(81, 118, 139, .035));
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.gsxp-dropzone.dragging,
+.gsxp-dropzone:hover {
+  border-color: rgba(31, 215, 201, .78);
+  background: linear-gradient(145deg, rgba(21, 203, 190, .12), rgba(81, 118, 139, .05));
+}
+
+.gsxp-dropzone.dragging { transform: scale(.995); }
+
+.gsxp-dropzone > i {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(33, 204, 192, .30);
+  border-radius: 16px;
+  background: rgba(17, 204, 190, .08);
+  color: var(--cyan);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 300;
+}
+
+.gsxp-dropzone > strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.gsxp-dropzone > span {
+  max-width: 470px;
+  margin: 6px 0 16px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+.gsxp-import-preview {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.gsxp-candidates {
+  display: grid;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.gsxp-candidate {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+  cursor: pointer;
+}
+
+.gsxp-candidate:has(input:checked) {
+  border-color: rgba(20, 199, 186, .58);
+  background: rgba(21, 199, 186, .08);
+}
+
+.gsxp-candidate input {
+  margin-top: 2px;
+}
+
+.gsxp-candidate span,
+.gsxp-candidate strong,
+.gsxp-candidate small,
+.gsxp-candidate b {
+  display: block;
+}
+
+.gsxp-candidate strong {
+  color: var(--text);
+  font-size: 10.5px;
+}
+
+.gsxp-candidate small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.gsxp-candidate b {
+  margin-top: 5px;
+  color: var(--muted-strong, var(--muted));
+  font-size: 8px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.gsxp-import-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.gsxp-library-card {
+  margin-top: 14px;
+}
+
+.gsxp-library-toolbar {
+  display: flex;
+  gap: 18px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.gsxp-library-toolbar h2 {
+  margin: 3px 0 0;
+}
+
+.gsxp-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.gsxp-library-actions input {
+  width: min(320px, 38vw);
+}
+
+.gsxp-filter {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+.gsxp-filter button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gsxp-filter button.active {
+  background: rgba(17, 201, 188, .12);
+  color: var(--cyan);
+}
+
+.gsxp-table-head,
+.gsxp-library-row {
+  display: grid;
+  grid-template-columns: 76px minmax(200px, 1.5fr) minmax(180px, 1fr) 110px 92px;
+  gap: 14px;
+  align-items: center;
+}
+
+.gsxp-table-head {
+  min-height: 34px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: .09em;
+}
+
+.gsxp-library {
+  display: grid;
+}
+
+.gsxp-library-row {
+  min-height: 72px;
+  padding: 10px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.gsxp-library-row:last-child { border-bottom: 0; }
+.gsxp-library-row.ignored { opacity: .58; }
+
+.gsxp-icao {
+  color: var(--cyan);
+  font-size: 12px;
+  letter-spacing: .05em;
+}
+
+.gsxp-airport,
+.gsxp-profile-files {
+  min-width: 0;
+}
+
+.gsxp-airport b,
+.gsxp-profile-files b,
+.gsxp-airport small,
+.gsxp-profile-files small {
+  display: block;
+}
+
+.gsxp-airport b,
+.gsxp-profile-files b {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsxp-airport small,
+.gsxp-profile-files small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsxp-profile-status {
+  justify-self: start;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.gsxp-library-row.installed .gsxp-profile-status {
+  border-color: rgba(50, 202, 166, .28);
+  background: rgba(50, 202, 166, .07);
+  color: #42cba9;
+}
+
+.gsxp-library-row.missing .gsxp-profile-status {
+  border-color: rgba(232, 118, 132, .28);
+  background: rgba(232, 118, 132, .07);
+  color: #e77b88;
+}
+
+html[data-theme="light"] .gsxp-folder-list > button,
+html[data-theme="light"] .gsxp-candidate,
+html[data-theme="light"] .gsxp-filter {
+  background: #f4f8fa;
+}
+
+html[data-theme="light"] .gsxp-dropzone {
+  background: linear-gradient(145deg, rgba(15, 171, 161, .065), rgba(231, 239, 243, .7));
+}
+
+@media (max-width: 1050px) {
+  .gsxp-layout { grid-template-columns: 1fr; }
+  .gsxp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gsxp-table-head { display: none; }
+  .gsxp-library-row {
+    grid-template-columns: 62px minmax(0, 1fr) 100px;
+  }
+  .gsxp-profile-files { grid-column: 2; }
+  .gsxp-profile-status { grid-column: 3; grid-row: 1; }
+  .gsxp-library-row > button { grid-column: 3; grid-row: 2; justify-self: start; }
+}
+
+@media (max-width: 700px) {
+  .gsx-profiles-page { width: calc(100% - 24px); }
+  .gsxp-stats { grid-template-columns: 1fr 1fr; }
+  .gsxp-library-toolbar { align-items: stretch; flex-direction: column; }
+  .gsxp-library-actions { align-items: stretch; flex-direction: column; }
+  .gsxp-library-actions input { width: 100%; }
+  .gsxp-filter { overflow-x: auto; }
+  .gsxp-library-row {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .gsxp-profile-files { grid-column: 2; }
+  .gsxp-profile-status { grid-column: 2; grid-row: auto; }
+  .gsxp-library-row > button { grid-column: 2; grid-row: auto; }
+}
