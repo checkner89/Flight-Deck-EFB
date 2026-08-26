@@ -9,17 +9,17 @@
   "main": "src/electron-main.mjs",
   "private": false,
   "scripts": {
-    "prepare": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs",
-    "start": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron .",
-    "dist": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron-builder --win --x64 --publish never",
-    "release": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron-builder --win --x64 --publish always",
-    "test:com": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-com-ui.mjs",
-    "test:atc": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-atc-ui.mjs",
-    "test:ground": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ground-ui.mjs",
-    "test:ui": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ui-polish.mjs",
-    "test:profiles": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs",
-    "test:ops": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-pilot-tools.mjs && node scripts/test-release-1.19.0.mjs",
-    "prepare-data": "node scripts/apply-release-1.19.0.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs && node scripts/build-ourairports.mjs"
+    "prepare": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs",
+    "start": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron .",
+    "dist": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron-builder --win --x64 --publish never",
+    "release": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && electron-builder --win --x64 --publish always",
+    "test:com": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-com-ui.mjs",
+    "test:atc": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-atc-ui.mjs",
+    "test:ground": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ground-ui.mjs",
+    "test:ui": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-ui-polish.mjs",
+    "test:profiles": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs",
+    "test:ops": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-pilot-tools.mjs && node scripts/test-release-1.19.0.mjs",
+    "prepare-data": "node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/test-gsx-profile-manager.mjs && node scripts/build-ourairports.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
