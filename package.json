@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.7.13",
+  "version": "1.7.14",
   "description": "Flight Deck EFB for MSFS with honest local Live Traffic, taxi guidance, native EFB bridging, flight intelligence, aircraft adapters, GSX and guarded simulator integrations.",
   "author": "Christoph Heckner",
   "license": "MIT",
@@ -9,10 +9,11 @@
   "main": "src/electron-main.mjs",
   "private": false,
   "scripts": {
-    "start": "electron .",
+    "start": "node scripts/prepare-release-ui.mjs && electron .",
     "dist": "node scripts/prepare-release-ui.mjs && electron-builder --win --x64 --publish never",
     "release": "node scripts/prepare-release-ui.mjs && electron-builder --win --x64 --publish always",
-    "prepare-data": "node scripts/prepare-release-ui.mjs && node scripts/build-ourairports.mjs"
+    "test:com": "node scripts/prepare-release-ui.mjs && node scripts/test-com-ui.mjs",
+    "prepare-data": "node scripts/prepare-release-ui.mjs && node scripts/test-com-ui.mjs && node scripts/build-ourairports.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
