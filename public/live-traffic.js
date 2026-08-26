@@ -1,3 +1,5 @@
+import './flight-overlay.js?v=1.7.11-homeflight1';
+
 const EARTH_RADIUS_NM = 3_440.065;
 
 export const LIVE_TRAFFIC_LIMITS = Object.freeze({
