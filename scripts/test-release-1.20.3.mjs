@@ -21,7 +21,7 @@ need(serviceWorker, '/documents-workspace.css?v=1.20.3-docs1', 'Documents CSS is
 need(serviceWorker, '/documents-workspace.js?v=1.20.3-docs1', 'Documents JS is missing from the offline shell.');
 need(server, "pathname === '/api/simbrief/document'", 'SimBrief OFP document proxy is missing.');
 need(documentsJs, "const FD_DOCS_VERSION = '1.20.3-docs1';", 'Documents workspace asset version is stale.');
-need(documentsJs, 'IndexedDB', 'Local document storage implementation is missing.');
+need(documentsJs, 'indexedDB', 'Local document storage implementation is missing.');
 need(documentsJs, 'highlighter', 'Document highlighter support is missing.');
 need(documentsJs, 'undo', 'Document undo support is missing.');
 need(documentsCss, 'html[data-theme="light"]', 'Documents workspace Light Mode theme is missing.');
