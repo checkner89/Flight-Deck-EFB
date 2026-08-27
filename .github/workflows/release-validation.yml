@@ -29,12 +29,14 @@ jobs:
       - name: Verify modified source
         shell: pwsh
         run: |
+          node --check scripts/prepare-release-1.20.5-compat.mjs
           node --check scripts/apply-release-1.19.0.mjs
           node --check scripts/apply-release-1.20.0.mjs
           node --check scripts/apply-release-1.20.1.mjs
           node --check scripts/apply-release-1.20.2.mjs
           node --check scripts/apply-release-1.20.3.mjs
           node --check scripts/apply-release-1.20.4.mjs
+          node --check scripts/apply-release-1.20.5.mjs
           node --check scripts/prepare-release-1.19.0-notes.mjs
           node --check scripts/prepare-release-1.20.1-notes.mjs
           node --check scripts/apply-release-1.17.19.mjs
@@ -42,13 +44,15 @@ jobs:
           node --check scripts/test-pilot-tools.mjs
           node --check scripts/test-release-1.19.0.mjs
           node --check scripts/test-release-1.20.0.mjs
-          node --check scripts/test-release-1.20.4.mjs
+          node --check scripts/test-release-1.20.5.mjs
           node --check src/lan-discovery-service.mjs
           node --check src/windows-sim-session.mjs
           node --check src/msfs-addon-scanner.mjs
           node --check src/news-feed-service.mjs
           node --check src/local-path-discovery.mjs
           node --check src/simbrief-client.mjs
+          node --check src/file-browser-service.mjs
+          node --check src/file-browser-routes.mjs
           node --check src/simconnect-client.mjs
           node --check src/injected-traffic-client.mjs
           node --check src/state-engine.mjs
@@ -67,6 +71,7 @@ jobs:
           node --check public/sim-session-native.js
           node --check public/news-app.js
           node --check public/documents-workspace.js
+          node --check public/file-browser.js
 
       - name: Run traffic and integration regressions
         shell: pwsh
@@ -77,7 +82,7 @@ jobs:
           node scripts/test-gsx-profile-manager.mjs
           node scripts/test-pilot-tools.mjs
           node scripts/test-release-1.19.0.mjs
-          node scripts/test-release-1.20.4.mjs
+          node scripts/test-release-1.20.5.mjs
 
       - name: Verify release assets are wired
         shell: pwsh
@@ -94,6 +99,7 @@ jobs:
           if ($html -notmatch "release-1\.20\.2\.css\?v=$escapedVersion") { throw '1.20.2 unified UI stylesheet is not wired.' }
           if ($html -notmatch "release-1\.20\.4\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.20\.4\.js\?v=$escapedVersion") { throw "$version cockpit shell assets are not wired into index.html." }
           if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion-docs2" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion-docs2") { throw "$version complete OFP workspace is not wired into index.html." }
+          if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser assets are not wired into index.html." }
           if ($html -match 'operations-suite\.(?:js|css)\?v=') { throw 'Duplicate 1.18.0 operations suite is still wired into the app.' }
           if ($html -notmatch 'data-i18n="flightNotes">Flight Notes</h3>') { throw 'Existing Flight Hub note area still claims to be the Scratchpad.' }
           $server = Get-Content 'src/server.mjs' -Raw
@@ -101,6 +107,7 @@ jobs:
           if ($server -notmatch '/api/sim-session/status' -or $server -notmatch '/api/sim-session/screenshot' -or $server -notmatch 'LanDiscoveryService') { throw 'Native Flight Setup API is incomplete.' }
           if ($server -notmatch '/api/news/feed' -or $server -notmatch '/api/news/article' -or $server -notmatch 'NewsFeedService') { throw 'Enhanced News API is incomplete.' }
           if ($server -notmatch '/api/simbrief/document' -or $server -notmatch '/api/simbrief/ofp') { throw 'Complete SimBrief OFP endpoints are missing.' }
+          if ($server -notmatch 'handleFileBrowserRequest' -or $server -notmatch "pathname\.startsWith\('/api/files/'\)") { throw 'File browser API delegation is missing.' }
           $simbrief = Get-Content 'src/simbrief-client.mjs' -Raw
           if ($simbrief -notmatch "plan_html" -or $simbrief -notmatch "json', 'v2'" -or $simbrief -notmatch 'latestDocument') { throw 'Complete SimBrief JSON v2 OFP import is incomplete.' }
           $pilot = Get-Content 'public/pilot-tools.js' -Raw
@@ -119,5 +126,9 @@ jobs:
           if ($documentsCss -notmatch 'html\[data-theme="light"\]' -or $documentsCss -notmatch '--fd-docs-bg:\s*#071019') { throw 'OFP/Documents Light/Dark themes are incomplete.' }
           $releaseCss = Get-Content 'public/release-1.20.4.css' -Raw
           if ($releaseCss -notmatch 'fd-global-rail' -or $releaseCss -notmatch 'data-theme="light"') { throw '1.20.4 cockpit-wide Light/Dark UI is incomplete.' }
-          if ($version -ne '1.20.4') { throw "Unexpected package version: $version" }
-          Write-Host 'Release 1.20.4 validation passed.'
+          $fileBrowser = Get-Content 'public/file-browser.js' -Raw
+          if ($fileBrowser -notmatch 'data-fd-files-launcher' -or $fileBrowser -notmatch 'renderPreview' -or $fileBrowser -notmatch 'uploadFiles' -or $fileBrowser -notmatch 'runSearch') { throw 'Complete file browser UI is incomplete.' }
+          $fileService = Get-Content 'src/file-browser-service.mjs' -Raw
+          if ($fileService -notmatch 'remoteAllowedRoots' -or $fileService -notmatch 'assertWritable' -or $fileService -notmatch 'receiveUpload') { throw 'File browser security or file operations are incomplete.' }
+          if ($version -ne '1.20.5') { throw "Unexpected package version: $version" }
+          Write-Host 'Release 1.20.5 validation passed.'
