@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { constants } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -60,15 +61,6 @@ function previewKind(filename, stats) {
   return 'binary';
 }
 
-async function existing(directory) {
-  try {
-    const stat = await fs.stat(directory);
-    return stat.isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 async function realpathOrParent(target) {
   try {
     return await fs.realpath(target);
@@ -87,7 +79,16 @@ export class FileBrowserService {
   constructor({ userDataDirectory = null, homeDirectory = os.homedir(), platform = process.platform } = {}) {
     this.platform = platform;
     this.homeDirectory = path.resolve(homeDirectory || os.homedir());
-    this.userDataDirectory = userDataDirectory ? path.resolve(userDataDirectory) : null;
+    const dataRoot = userDataDirectory ? path.resolve(userDataDirectory) : path.join(this.homeDirectory, '.flight-deck-efb');
+    this.appRootDirectory = path.join(dataRoot, 'files');
+    this.managedFolders = [
+      ['briefings', 'Briefings', 'Briefings'],
+      ['flight-plans', 'Flight Plans', 'Flight Plans'],
+      ['documents', 'Documents', 'Documents'],
+      ['imports', 'Imports', 'Imports'],
+      ['exports', 'Exports', 'Exports'],
+      ['screenshots', 'Screenshots', 'Screenshots'],
+    ];
     this.maxTextPreviewBytes = 1_500_000;
     this.maxSearchResults = 500;
     this.maxSearchDirectories = 2_500;
@@ -96,54 +97,54 @@ export class FileBrowserService {
 
   normalize(target) {
     const value = String(target || '').trim();
-    if (!value || value.includes('\0')) throw new Error('Kein gültiger Pfad angegeben.');
-    if (this.platform === 'win32' && /^[A-Za-z]:$/.test(value)) return `${value}${path.sep}`;
-    if (!path.isAbsolute(value)) throw new Error('Es wird ein absoluter Pfad benötigt.');
+    if (!value || value.includes('\0')) throw new Error('Kein gültiger App-Pfad angegeben.');
+    if (!path.isAbsolute(value)) throw new Error('Es wird ein gültiger Flight-Deck-App-Pfad benötigt.');
     return path.normalize(value);
   }
 
-  async quickRoots() {
-    const candidates = [
-      ['home', 'Home', this.homeDirectory],
-      ['desktop', 'Desktop', path.join(this.homeDirectory, 'Desktop')],
-      ['documents', 'Dokumente', path.join(this.homeDirectory, 'Documents')],
-      ['downloads', 'Downloads', path.join(this.homeDirectory, 'Downloads')],
-      ['pictures', 'Bilder', path.join(this.homeDirectory, 'Pictures')],
-      ['videos', 'Videos', path.join(this.homeDirectory, 'Videos')],
-      ['music', 'Musik', path.join(this.homeDirectory, 'Music')],
-    ];
-    if (this.userDataDirectory) candidates.push(['flightdeck', 'Flight Deck Data', this.userDataDirectory]);
-    const roots = [];
-    for (const [id, label, target] of candidates) {
-      if (await existing(target)) roots.push({ id, label, path: path.normalize(target), kind: 'quick' });
+  async ensureStructure() {
+    await fs.mkdir(this.appRootDirectory, { recursive: true });
+    for (const [, , folder] of this.managedFolders) {
+      await fs.mkdir(path.join(this.appRootDirectory, folder), { recursive: true });
     }
-    return roots;
+  }
+
+  virtualPath(target) {
+    const normalized = path.normalize(target);
+    const rel = path.relative(this.appRootDirectory, normalized);
+    if (!rel || rel === '.') return '/';
+    return `/${rel.split(path.sep).join('/')}`;
+  }
+
+  async quickRoots() {
+    await this.ensureStructure();
+    return [
+      { id: 'home', label: 'My EFB', path: this.appRootDirectory, displayPath: '/', kind: 'app' },
+      ...this.managedFolders.map(([id, label, folder]) => ({
+        id,
+        label,
+        path: path.join(this.appRootDirectory, folder),
+        displayPath: `/${folder}`,
+        kind: 'app',
+      })),
+    ];
   }
 
   async driveRoots() {
-    if (this.platform !== 'win32') return [{ id: 'root', label: '/', path: '/', kind: 'drive' }];
-    const roots = [];
-    for (let code = 67; code <= 90; code += 1) {
-      const drive = `${String.fromCharCode(code)}:${path.sep}`;
-      try {
-        const stat = await fs.stat(drive);
-        if (stat.isDirectory()) roots.push({ id: `drive-${String.fromCharCode(code).toLowerCase()}`, label: `${String.fromCharCode(code)}:`, path: drive, kind: 'drive' });
-      } catch {
-        // Drive is absent or currently unavailable.
-      }
-    }
-    return roots;
+    return [];
   }
 
   async roots({ host = false } = {}) {
     const quick = await this.quickRoots();
-    const drives = host ? await this.driveRoots() : [];
     return {
       quick,
-      drives,
+      drives: [],
+      rootPath: this.appRootDirectory,
+      rootLabel: 'My EFB',
       capabilities: {
         write: Boolean(host),
-        fullFilesystem: Boolean(host),
+        fullFilesystem: false,
+        appScoped: true,
         remoteReadOnly: !host,
         search: true,
         preview: true,
@@ -153,37 +154,38 @@ export class FileBrowserService {
     };
   }
 
-  async remoteAllowedRoots() {
-    const roots = await this.quickRoots();
-    const canonical = [];
-    for (const root of roots) {
-      try { canonical.push(await fs.realpath(root.path)); }
-      catch { canonical.push(path.resolve(root.path)); }
-    }
-    return canonical;
+  async canonicalAppRoot() {
+    await this.ensureStructure();
+    try { return await fs.realpath(this.appRootDirectory); }
+    catch { return path.resolve(this.appRootDirectory); }
   }
 
-  async assertReadable(target, { host = false } = {}) {
+  async assertReadable(target) {
     const normalized = this.normalize(target);
-    if (host) return normalized;
     const canonical = await realpathOrParent(normalized);
-    const allowed = await this.remoteAllowedRoots();
-    if (!allowed.some((root) => within(root, canonical))) throw new Error('Dieser Pfad ist für ein gekoppeltes Remote-Gerät nicht freigegeben.');
+    const root = await this.canonicalAppRoot();
+    if (!within(root, canonical)) throw new Error('Dieser Pfad gehört nicht zum Flight-Deck-EFB-Speicher.');
     return normalized;
   }
 
   async assertWritable(target, { host = false } = {}) {
     if (!host) throw new Error('Dateiänderungen sind nur in der Windows-App erlaubt.');
-    return this.normalize(target);
+    const normalized = this.normalize(target);
+    const canonical = await realpathOrParent(normalized);
+    const root = await this.canonicalAppRoot();
+    if (!within(root, canonical)) throw new Error('Dateien können nur innerhalb des Flight-Deck-EFB-Speichers geändert werden.');
+    return normalized;
   }
 
   async metadata(target, { host = false } = {}) {
-    const resolved = await this.assertReadable(target, { host });
+    const resolved = await this.assertReadable(target);
     const stats = await fs.lstat(resolved);
+    const root = path.normalize(this.appRootDirectory);
     return {
-      name: path.basename(resolved) || resolved,
+      name: resolved === root ? 'My EFB' : path.basename(resolved),
       path: resolved,
-      parent: path.dirname(resolved),
+      displayPath: this.virtualPath(resolved),
+      parent: resolved === root ? root : path.dirname(resolved),
       type: itemType(stats),
       size: stats.isFile() ? stats.size : null,
       modifiedAt: stats.mtime?.toISOString?.() || null,
@@ -197,7 +199,7 @@ export class FileBrowserService {
   }
 
   async list(target, { host = false, showHidden = false } = {}) {
-    const resolved = await this.assertReadable(target, { host });
+    const resolved = await this.assertReadable(target);
     const stats = await fs.stat(resolved);
     if (!stats.isDirectory()) throw new Error('Der angegebene Pfad ist kein Ordner.');
     const entries = await fs.readdir(resolved, { withFileTypes: true });
@@ -211,6 +213,7 @@ export class FileBrowserService {
       items.push({
         name: entry.name,
         path: fullPath,
+        displayPath: this.virtualPath(fullPath),
         type: itemType(stat),
         size: stat.isFile() ? stat.size : null,
         modifiedAt: stat.mtime?.toISOString?.() || null,
@@ -221,13 +224,19 @@ export class FileBrowserService {
         readonly: !host,
       });
     }
-    return { path: resolved, parent: path.dirname(resolved), items };
+    const root = path.normalize(this.appRootDirectory);
+    return {
+      path: resolved,
+      displayPath: this.virtualPath(resolved),
+      parent: resolved === root ? root : path.dirname(resolved),
+      items,
+    };
   }
 
   async search(target, query, { host = false, showHidden = false, limit = this.maxSearchResults } = {}) {
-    const root = await this.assertReadable(target, { host });
+    const root = await this.assertReadable(target);
     const needle = String(query || '').trim().toLocaleLowerCase();
-    if (!needle) return { path: root, query: '', items: [], truncated: false };
+    if (!needle) return { path: root, displayPath: this.virtualPath(root), query: '', items: [], truncated: false };
     const resultLimit = Math.max(1, Math.min(this.maxSearchResults, Number(limit) || this.maxSearchResults));
     const queue = [root];
     const items = [];
@@ -249,6 +258,7 @@ export class FileBrowserService {
         items.push({
           name: entry.name,
           path: fullPath,
+          displayPath: this.virtualPath(fullPath),
           type: itemType(stat),
           size: stat.isFile() ? stat.size : null,
           modifiedAt: stat.mtime?.toISOString?.() || null,
@@ -261,7 +271,14 @@ export class FileBrowserService {
         if (items.length >= resultLimit) break;
       }
     }
-    return { path: root, query: String(query), items, truncated: queue.length > 0 || scannedDirectories >= this.maxSearchDirectories, scannedDirectories };
+    return {
+      path: root,
+      displayPath: this.virtualPath(root),
+      query: String(query),
+      items,
+      truncated: queue.length > 0 || scannedDirectories >= this.maxSearchDirectories,
+      scannedDirectories,
+    };
   }
 
   async preview(target, { host = false } = {}) {
@@ -276,6 +293,7 @@ export class FileBrowserService {
   async mkdir(directory, name, { host = false } = {}) {
     const parent = await this.assertWritable(directory, { host });
     const target = path.join(parent, cleanName(name));
+    await this.assertWritable(target, { host });
     await fs.mkdir(target, { recursive: false });
     return this.metadata(target, { host: true });
   }
@@ -283,6 +301,7 @@ export class FileBrowserService {
   async createFile(directory, name, { host = false } = {}) {
     const parent = await this.assertWritable(directory, { host });
     const target = path.join(parent, cleanName(name));
+    await this.assertWritable(target, { host });
     const handle = await fs.open(target, 'wx');
     await handle.close();
     return this.metadata(target, { host: true });
@@ -298,7 +317,10 @@ export class FileBrowserService {
 
   async rename(target, name, { host = false } = {}) {
     const source = await this.assertWritable(target, { host });
+    const protectedRoots = new Set((await this.quickRoots()).map((item) => path.normalize(item.path).toLocaleLowerCase()));
+    if (protectedRoots.has(path.normalize(source).toLocaleLowerCase())) throw new Error('Ein fester Flight-Deck-Ordner kann nicht umbenannt werden.');
     const destination = path.join(path.dirname(source), cleanName(name));
+    await this.assertWritable(destination, { host });
     await fs.rename(source, destination);
     return this.metadata(destination, { host: true });
   }
@@ -307,18 +329,22 @@ export class FileBrowserService {
     const from = await this.assertWritable(source, { host });
     const destination = await this.assertWritable(destinationDirectory, { host });
     const target = path.join(destination, path.basename(from));
+    await this.assertWritable(target, { host });
     try { await fs.access(target); throw new Error('Am Ziel existiert bereits ein Eintrag mit diesem Namen.'); }
     catch (error) { if (error?.code !== 'ENOENT') throw error; }
     const stat = await fs.lstat(from);
     if (stat.isDirectory()) await fs.cp(from, target, { recursive: true, force: false, errorOnExist: true, preserveTimestamps: true });
-    else await fs.copyFile(from, target, fs.constants.COPYFILE_EXCL);
+    else await fs.copyFile(from, target, constants.COPYFILE_EXCL);
     return this.metadata(target, { host: true });
   }
 
   async moveInto(source, destinationDirectory, { host = false } = {}) {
     const from = await this.assertWritable(source, { host });
+    const protectedRoots = new Set((await this.quickRoots()).map((item) => path.normalize(item.path).toLocaleLowerCase()));
+    if (protectedRoots.has(path.normalize(from).toLocaleLowerCase())) throw new Error('Ein fester Flight-Deck-Ordner kann nicht verschoben werden.');
     const destination = await this.assertWritable(destinationDirectory, { host });
     const target = path.join(destination, path.basename(from));
+    await this.assertWritable(target, { host });
     try { await fs.access(target); throw new Error('Am Ziel existiert bereits ein Eintrag mit diesem Namen.'); }
     catch (error) { if (error?.code !== 'ENOENT') throw error; }
     try {
@@ -334,16 +360,15 @@ export class FileBrowserService {
   async remove(target, { host = false } = {}) {
     const resolved = await this.assertWritable(target, { host });
     const protectedRoots = new Set((await this.quickRoots()).map((item) => path.normalize(item.path).toLocaleLowerCase()));
-    const drives = await this.driveRoots();
-    for (const drive of drives) protectedRoots.add(path.normalize(drive.path).toLocaleLowerCase());
-    if (protectedRoots.has(path.normalize(resolved).toLocaleLowerCase())) throw new Error('Ein Stamm- oder Schnellzugriffsordner kann nicht gelöscht werden.');
+    if (protectedRoots.has(path.normalize(resolved).toLocaleLowerCase())) throw new Error('Ein fester Flight-Deck-Ordner kann nicht gelöscht werden.');
     await fs.rm(resolved, { recursive: true, force: false, maxRetries: 2, retryDelay: 100 });
-    return { removed: true, path: resolved };
+    return { removed: true, path: resolved, displayPath: this.virtualPath(resolved) };
   }
 
   async receiveUpload(directory, name, readable, { host = false, overwrite = false } = {}) {
     const parent = await this.assertWritable(directory, { host });
     const target = path.join(parent, cleanName(name));
+    await this.assertWritable(target, { host });
     if (!overwrite) {
       try { await fs.access(target); throw new Error('Am Ziel existiert bereits eine Datei mit diesem Namen.'); }
       catch (error) { if (error?.code !== 'ENOENT') throw error; }

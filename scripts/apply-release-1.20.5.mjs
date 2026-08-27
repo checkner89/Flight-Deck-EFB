@@ -27,6 +27,47 @@ await update('src/file-browser-service.mjs', (source) => {
   return next;
 });
 
+await update('public/file-browser.js', (source) => {
+  let next = source;
+  next = next.replace(
+    "const location = filesEl('input', { type: 'text', class: 'fd-files-location', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Pfad' });",
+    "const location = filesEl('input', { type: 'text', class: 'fd-files-location', spellcheck: 'false', autocomplete: 'off', readonly: true, 'aria-label': 'Flight Deck App-Pfad' });",
+  );
+  next = next.replace(
+    "const searchWrap = filesEl('label', { class: 'fd-files-search', html: `${filesIcon('search')}<input type=\"search\" placeholder=\"In diesem Ordner suchen\" aria-label=\"Dateien suchen\"><kbd>Ctrl F</kbd>` });",
+    "const searchWrap = filesEl('label', { class: 'fd-files-search', html: `${filesIcon('search')}<input type=\"search\" placeholder=\"Flight Deck Files durchsuchen\" aria-label=\"Dateien suchen\"><kbd>Ctrl F</kbd>` });",
+  );
+  next = next.replace(
+    "  location.addEventListener('keydown', (event) => { if (event.key === 'Enter') navigateFiles(location.value.trim()); });\n",
+    '',
+  );
+  next = next.replace(
+    "tile.innerHTML = `<span class=\"app-tile-icon\">${filesIcon('folder')}</span><span class=\"app-tile-copy\"><small>LOCAL FILES · PREVIEW · MANAGEMENT</small><strong>Files</strong><span>Dateibrowser für PC, Briefings, Downloads und Flight Deck Daten</span></span><i class=\"app-open-arrow\">›</i>`;",
+    "tile.innerHTML = `<span class=\"app-tile-icon\">${filesIcon('folder')}</span><span class=\"app-tile-copy\"><small>EFB STORAGE · BRIEFINGS · EXPORTS</small><strong>Files</strong><span>Eigener Flight-Deck-Speicher für Briefings, Flugpläne, Dokumente und Exporte</span></span><i class=\"app-open-arrow\">›</i>`;",
+  );
+  next = next.replace(
+    "  filesUi.access.textContent = filesState.capabilities.write ? 'WINDOWS HOST · READ / WRITE' : 'PAIRED DEVICE · READ ONLY';",
+    "  filesUi.access.textContent = filesState.capabilities.write ? 'EFB STORAGE · READ / WRITE' : 'EFB STORAGE · READ ONLY';",
+  );
+  next = next.replace("      const button = filesEl('button', { type: 'button', class: filesState.currentPath === item.path ? 'active' : '', title: item.path });", "      const button = filesEl('button', { type: 'button', class: filesState.currentPath === item.path ? 'active' : '', title: item.label });");
+  next = next.replace("  section('QUICK ACCESS', filesState.roots?.quick, 'home');", "  section('EFB STORAGE', filesState.roots?.quick, 'home');");
+  next = next.replace("  section('DRIVES', filesState.roots?.drives, 'drive');\n", '');
+  next = next.replace("    filesUi.location.value = data.path;", "    filesUi.location.value = data.displayPath === '/' ? 'My EFB' : `My EFB ${data.displayPath || ''}`;");
+  next = next.replace(
+    "  return `<dl><div><dt>TYP</dt><dd>${escapeHtml(item.type === 'directory' ? 'Ordner' : item.mime?.split(';')[0] || 'Datei')}</dd></div><div><dt>GRÖSSE</dt><dd>${item.type === 'directory' ? '—' : formatBytes(item.size)}</dd></div><div><dt>GEÄNDERT</dt><dd>${escapeHtml(formatDate(item.modifiedAt))}</dd></div><div class=\"wide\"><dt>PFAD</dt><dd title=\"${escapeAttr(item.path)}\">${escapeHtml(item.path)}</dd></div></dl>`;",
+    "  const displayPath = item.displayPath === '/' ? 'My EFB' : `My EFB ${item.displayPath || ''}`;\n  return `<dl><div><dt>TYP</dt><dd>${escapeHtml(item.type === 'directory' ? 'Ordner' : item.mime?.split(';')[0] || 'Datei')}</dd></div><div><dt>GRÖSSE</dt><dd>${item.type === 'directory' ? '—' : formatBytes(item.size)}</dd></div><div><dt>GEÄNDERT</dt><dd>${escapeHtml(formatDate(item.modifiedAt))}</dd></div><div class=\"wide\"><dt>APP-PFAD</dt><dd title=\"${escapeAttr(displayPath)}\">${escapeHtml(displayPath)}</dd></div></dl>`;",
+  );
+  next = next.replace(
+    "  const destination = (window.prompt('Zielordner für die Kopie:', filesState.currentPath) || '').trim();",
+    "  const destination = (window.prompt('Zielordner innerhalb von My EFB:', filesState.currentPath) || '').trim();",
+  );
+  next = next.replace(
+    "  const destination = (window.prompt('Zielordner:', filesState.currentPath) || '').trim();",
+    "  const destination = (window.prompt('Zielordner innerhalb von My EFB:', filesState.currentPath) || '').trim();",
+  );
+  return next;
+});
+
 await update('src/server.mjs', (source) => {
   let server = source;
   if (!server.includes("from './file-browser-service.mjs'")) {
@@ -74,4 +115,4 @@ if (!/^## 1\.20\.5\b/m.test(changelog)) {
   await fs.writeFile(changelogPath, next, 'utf8');
 }
 
-console.log(`Applied Flight Deck EFB ${version} complete local file browser.`);
+console.log(`Applied Flight Deck EFB ${version} app-scoped file browser.`);
