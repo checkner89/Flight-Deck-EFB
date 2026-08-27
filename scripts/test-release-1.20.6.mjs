@@ -23,7 +23,7 @@ need(html, 'data-app-version="1.20.6"', 'HTML version is not 1.20.6.');
 need(html, '/release-1.20.4.js?v=1.20.6', 'Unified shell script is not versioned for 1.20.6.');
 need(html, '/file-browser.js?v=1.20.6', 'Files script is not versioned for 1.20.6.');
 need(server, "const APP_VERSION = '1.20.6';", 'Server APP_VERSION is not synchronized.');
-need(serviceWorker, "flight-deck-efb-v1206-unified-ui1", '1.20.6 service-worker cache is missing.');
+need(serviceWorker, 'flight-deck-efb-v1206-unified-ui1', '1.20.6 service-worker cache is missing.');
 
 need(shellJs, 'const FD26_NAV = [', 'Unified navigation model is missing.');
 need(shellJs, "['documents', 'docs', 'Briefing']", 'Briefing navigation entry is missing.');
@@ -38,11 +38,11 @@ need(shellJs, '#fd-files-workspace{inset:64px 0 0 92px!important', 'Files worksp
 need(shellJs, '--fd-ui-touch:44px', 'Minimum primary touch target token is missing.');
 need(shellJs, 'html[data-theme="light"]', 'Unified Light Mode tokens are missing.');
 need(shellJs, '.charts-app[disabled]{display:none!important}', 'Unavailable Charts is still shown in the primary launcher.');
+need(shellJs, "document.querySelector('.fd-global-rail [data-fd-files-rail]')?.remove();", 'Unified shell does not prevent a duplicate legacy Files rail item.');
 
 need(docsJs, '<strong>Briefing</strong>', 'Documents launcher was not renamed to Briefing.');
 need(docsJs, '<span>BRIEFING</span>', 'Flight-page briefing action was not normalized.');
 need(filesJs, "section('EFB STORAGE'", 'Files is not presented as EFB storage.');
-need(filesJs, '.fd-global-rail [data-fd24-module="files"]', 'Files still creates a duplicate cockpit-rail entry.');
 reject(filesJs, "section('DRIVES'", 'Files still exposes a drives section.');
 need(filesService, 'appRootDirectory', 'App-scoped Files boundary is missing.');
 need(filesService, 'fullFilesystem: false', 'Files advertises full filesystem access.');
