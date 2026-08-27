@@ -43,8 +43,8 @@ need(shellJs, "document.querySelector('.fd-global-rail [data-fd-files-rail]')?.r
 need(docsJs, '<strong>Briefing</strong>', 'Documents launcher was not renamed to Briefing.');
 need(docsJs, '<span>BRIEFING</span>', 'Flight-page briefing action was not normalized.');
 need(filesJs, "section('EFB STORAGE'", 'Files is not presented as EFB storage.');
-reject(filesJs, "section('DRIVES'", 'Files still exposes a drives section.');
 need(filesService, 'appRootDirectory', 'App-scoped Files boundary is missing.');
+need(filesService, 'drives: []', 'Files service still exposes filesystem drives.');
 need(filesService, 'fullFilesystem: false', 'Files advertises full filesystem access.');
 
 if (!/^## 1\.20\.6\b/m.test(changelog)) throw new Error('CHANGELOG section for 1.20.6 is missing.');
