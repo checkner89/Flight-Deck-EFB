@@ -58,10 +58,14 @@ await update('public/documents-workspace.js', (source) => {
     js = replaceRequired(js, anchor, `${helpers}${anchor}`, 'full OFP rendering helpers');
   }
 
-  const docsStart = `  const docs = [\n    { id: 'simbrief-ofp', label: 'GENERAL', title: 'SimBrief OFP', chip: 'SimBrief OFP', kind: 'html', html: () => makeOfpHtml(plan) },\n  ];\n  if (plan.ofpLink) docs.push({ id: 'simbrief-pdf', label: 'OFP PDF', title: 'SimBrief OFP PDF', chip: 'OFP PDF', kind: 'url', url: fdApiUrl('/api/simbrief/document').toString() });`;
-  const docsNext = `  const docs = [\n    { id: 'general', label: 'GENERAL', title: 'Flight Summary', chip: 'General', kind: 'html', html: () => makeOfpHtml(plan) },\n    { id: 'simbrief-ofp', label: 'OPERATIONAL FLIGHT PLAN', title: 'Operational Flight Plan', chip: 'OFP', kind: 'html', html: () => fullSimBriefOfpHtml() },\n  ];\n  if (plan.ofpLink || fdDocsSimBriefOFP?.pdfLink) docs.push({ id: 'simbrief-pdf', label: 'OFP PDF', title: 'SimBrief OFP PDF', chip: 'OFP PDF', kind: 'url', url: fdApiUrl('/api/simbrief/document').toString() });`;
-  if (js.includes(docsStart)) js = js.replace(docsStart, docsNext);
-  else if (!js.includes("label: 'OPERATIONAL FLIGHT PLAN'")) throw new Error('1.20.4 patch anchor missing: built-in OFP documents');
+  if (!js.includes("label: 'OPERATIONAL FLIGHT PLAN'")) {
+    const generalLine = "    { id: 'simbrief-ofp', label: 'GENERAL', title: 'SimBrief OFP', chip: 'SimBrief OFP', kind: 'html', html: () => makeOfpHtml(plan) },";
+    const replacement = "    { id: 'general', label: 'GENERAL', title: 'Flight Summary', chip: 'General', kind: 'html', html: () => makeOfpHtml(plan) },\n    { id: 'simbrief-ofp', label: 'OPERATIONAL FLIGHT PLAN', title: 'Operational Flight Plan', chip: 'OFP', kind: 'html', html: () => fullSimBriefOfpHtml() },";
+    js = replaceRequired(js, generalLine, replacement, 'built-in OFP summary entry');
+  }
+  if (js.includes('if (plan.ofpLink) docs.push(')) {
+    js = js.replace('if (plan.ofpLink) docs.push(', 'if (plan.ofpLink || fdDocsSimBriefOFP?.pdfLink) docs.push(');
+  }
 
   js = js.replace(
     `{ id: 'notams', label: 'NOTAMS', title: 'NOTAMs', chip: 'NOTAMs', kind: 'html', html: () => makePlaceholderHtml('NOTAMs', 'The current Flight Deck SimBrief bridge does not yet expose raw NOTAM text. Import the briefing PDF here to mark up NOTAMs directly.') },`,
