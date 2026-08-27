@@ -18,13 +18,13 @@ function need(source, token, message) {
   if (!source.includes(token)) throw new Error(message);
 }
 
-if (pkg.version !== '1.20.5') throw new Error(`Unexpected package version: ${pkg.version}`);
-need(html, 'data-app-version="1.20.5"', 'HTML version was not materialized to 1.20.5.');
-need(html, '/file-browser.css?v=1.20.5', 'File browser stylesheet is not wired.');
-need(html, '/file-browser.js?v=1.20.5', 'File browser script is not wired.');
-need(serviceWorker, 'flight-deck-efb-v1205-files1', 'File browser offline cache was not bumped.');
-need(serviceWorker, '/file-browser.css?v=1.20.5', 'File browser CSS is missing from offline shell.');
-need(serviceWorker, '/file-browser.js?v=1.20.5', 'File browser JS is missing from offline shell.');
+if (!['1.20.5', '1.20.6'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
+need(html, `data-app-version="${pkg.version}"`, `HTML version was not materialized to ${pkg.version}.`);
+need(html, `/file-browser.css?v=${pkg.version}`, 'File browser stylesheet is not wired to the current release version.');
+need(html, `/file-browser.js?v=${pkg.version}`, 'File browser script is not wired to the current release version.');
+need(serviceWorker, 'flight-deck-efb-v1205-files1', 'File browser offline cache was not bumped before the 1.20.6 final cache step.');
+need(serviceWorker, `/file-browser.css?v=${pkg.version}`, 'File browser CSS is missing from offline shell.');
+need(serviceWorker, `/file-browser.js?v=${pkg.version}`, 'File browser JS is missing from offline shell.');
 need(server, "from './file-browser-service.mjs'", 'File browser service import is missing.');
 need(server, "pathname.startsWith('/api/files/')", 'File browser routes are not delegated.');
 need(server, 'handleFileBrowserRequest', 'File browser route handler is missing.');
@@ -37,7 +37,7 @@ need(serviceSource, 'appRootDirectory', 'Dedicated Flight Deck app storage root 
 need(serviceSource, 'fullFilesystem: false', 'Files app still advertises full filesystem access.');
 need(serviceSource, 'assertWritable', 'Host-only write guard is missing.');
 need(serviceSource, 'receiveUpload', 'Streaming upload support is missing.');
-need(browserJs, "data-fd-files-launcher", 'Files app launcher is missing.');
+need(browserJs, 'data-fd-files-launcher', 'Files app launcher is missing.');
 need(browserJs, 'EFB STORAGE · BRIEFINGS · EXPORTS', 'Files launcher still describes PC-wide browsing.');
 need(browserJs, "section('EFB STORAGE'", 'Files sidebar is not app-storage oriented.');
 need(browserJs, 'Flight Deck App-Pfad', 'Physical path entry is still editable.');
@@ -128,4 +128,4 @@ try {
   await fs.rm(sandbox, { recursive: true, force: true });
 }
 
-console.log('Flight Deck EFB 1.20.5 app-scoped file browser checks passed.');
+console.log(`Flight Deck EFB ${pkg.version} app-scoped file browser checks passed.`);
