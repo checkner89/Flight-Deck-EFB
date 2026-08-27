@@ -8,7 +8,7 @@ const version = String(pkg.version || '1.20.3');
 const documentsAssetVersion = `${version}-docs1`;
 const cacheVersion = version.replace(/[^0-9]/g, '');
 
-if (version !== '1.20.3') throw new Error(`1.20.3 release materializer requires package version 1.20.3, got ${version}.`);
+if (!['1.20.3', '1.20.4'].includes(version)) throw new Error(`1.20.3 release materializer requires package version 1.20.3 or a compatible 1.20.4 chain, got ${version}.`);
 
 async function update(relativePath, transform) {
   const filename = path.join(root, relativePath);
