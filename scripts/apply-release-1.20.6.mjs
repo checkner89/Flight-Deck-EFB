@@ -19,7 +19,7 @@ await update('src/server.mjs', (source) => source.replace(/const APP_VERSION = '
 
 await update('public/index.html', (source) => {
   let html = source.replace(/(<html\b[^>]*\bdata-app-version=")[^"]+("[^>]*>)/i, `$1${version}$2`);
-  for (const asset of ['release-1.20.4.css', 'release-1.20.4.js', 'documents-workspace.css', 'documents-workspace.js', 'file-browser.css', 'file-browser.js']) {
+  for (const asset of ['release-1.20.4.css', 'release-1.20.4.js', 'file-browser.css', 'file-browser.js']) {
     const escaped = asset.replaceAll('.', '\\.');
     html = html.replace(new RegExp(`${escaped}\\?v=[^"']+`, 'g'), `${asset}?v=${version}`);
   }
@@ -28,7 +28,7 @@ await update('public/index.html', (source) => {
 
 await update('public/service-worker.js', (source) => {
   let sw = source.replace(/^const CACHE_NAME = .*;$/m, "const CACHE_NAME = 'flight-deck-efb-v1206-unified-ui1';");
-  for (const asset of ['release-1.20.4.css', 'release-1.20.4.js', 'documents-workspace.css', 'documents-workspace.js', 'file-browser.css', 'file-browser.js']) {
+  for (const asset of ['release-1.20.4.css', 'release-1.20.4.js', 'file-browser.css', 'file-browser.js']) {
     const escaped = asset.replaceAll('.', '\\.');
     sw = sw.replace(new RegExp(`${escaped}\\?v=[^'"\\s,]+`, 'g'), `${asset}?v=${version}`);
   }
@@ -36,7 +36,7 @@ await update('public/service-worker.js', (source) => {
 });
 
 await update('public/file-browser.js', (source) => source.replace(
-  /function installRailButton\(\) \{[\s\S]*?\n\}\n\nfunction markRailActive/,
+  /function installRailButton\(\) \{[\s\S]*?\r?\n\}\r?\n\r?\nfunction markRailActive/,
   `function installRailButton() {\n  const button = document.querySelector('.fd-global-rail [data-fd24-module="files"]');\n  if (button) filesUi.railButton = button;\n}\n\nfunction markRailActive`,
 ));
 
