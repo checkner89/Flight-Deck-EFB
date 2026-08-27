@@ -6,6 +6,8 @@ const newsService = await fs.readFile('src/news-feed-service.mjs', 'utf8');
 const server = await fs.readFile('src/server.mjs', 'utf8');
 const html = await fs.readFile('public/index.html', 'utf8');
 const css = await fs.readFile('public/release-1.20.2.css', 'utf8');
+const documentsJs = await fs.readFile('public/documents-workspace.js', 'utf8');
+const documentsCss = await fs.readFile('public/documents-workspace.css', 'utf8');
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 
 function need(source, token, message) {
@@ -33,6 +35,21 @@ need(css, '.news-app-tile .app-tile-icon', 'Unified News tile accent is missing.
 need(css, '.scratchpad-paper canvas{background:#fbfaf6', 'Scratchpad canvas is not explicitly bright.');
 need(css, '.news-reader-image', 'Inline News article image styling is missing.');
 need(html, 'release-1.20.2.css?v=1.20.2', '1.20.2 UI stylesheet is not wired into the app.');
+
+need(html, 'documents-workspace.css?v=1.20.2-docs1', 'Documents workspace stylesheet is not wired into the app.');
+need(html, 'documents-workspace.js?v=1.20.2-docs1', 'Documents workspace module is not wired into the app.');
+need(server, "pathname === '/api/simbrief/document'", 'SimBrief OFP document proxy is missing after prepare.');
+need(server, "frame-src 'self' blob: data: http: https:", 'CSP does not allow local annotated PDF previews.');
+need(documentsJs, "const FD_DOCS_DB = 'flight-deck-documents-v1'", 'Per-flight document storage is missing.');
+need(documentsJs, "id: 'simbrief-pdf'", 'Embedded SimBrief OFP PDF document is missing.');
+need(documentsJs, "['pan', 'Pan / scroll']", 'Document pan/scroll annotation mode is missing.');
+need(documentsJs, "['pen', 'Pen']", 'Document pen annotation tool is missing.');
+need(documentsJs, "['highlighter', 'Highlighter']", 'Document highlighter tool is missing.');
+need(documentsJs, "localStorage.setItem('flight-deck-theme'", 'Documents workspace does not integrate with theme persistence.');
+need(documentsCss, 'html[data-theme="light"]', 'Documents workspace light theme is missing.');
+need(documentsCss, '.fd-docs-workspace', 'Documents workspace layout styling is missing.');
+need(documentsCss, '.documents-app .app-tile-icon', 'Documents launcher tile styling is missing.');
+
 if (pkg.version !== '1.20.2') throw new Error(`Unexpected package version: ${pkg.version}`);
 
-console.log('Flight Deck EFB 1.20.2 UI, Scratchpad and enhanced News regression checks passed.');
+console.log('Flight Deck EFB 1.20.2 UI, Scratchpad, enhanced News and OFP/Documents regression checks passed.');
