@@ -15,11 +15,6 @@ async function update(relativePath, transform) {
   if (after !== before) await fs.writeFile(filename, after, 'utf8');
 }
 
-function replaceRequired(source, from, to, label) {
-  if (!source.includes(from)) throw new Error(`1.20.6 patch anchor missing: ${label}`);
-  return source.replace(from, to);
-}
-
 await update('src/server.mjs', (source) => source.replace(/const APP_VERSION = '[^']+';/, `const APP_VERSION = '${version}';`));
 
 await update('public/index.html', (source) => {
@@ -40,13 +35,10 @@ await update('public/service-worker.js', (source) => {
   return sw;
 });
 
-await update('public/file-browser.js', (source) => {
-  let next = source;
-  const oldInstall = `function installRailButton() {\n  const rail = document.querySelector('.fd-global-rail');\n  if (!rail || rail.querySelector('[data-fd-files-rail]')) return;\n  const button = filesEl('button', { type: 'button', title: 'Files', 'data-fd-files-rail': '1', html: \`${'${filesIcon(\'folder\')}'}<span>Files</span>\` });\n  button.addEventListener('click', () => openFileBrowser());\n  const spacer = rail.querySelector('.fd-rail-spacer');\n  rail.insertBefore(button, spacer || rail.lastElementChild);\n  filesUi.railButton = button;\n}`;
-  const newInstall = `function installRailButton() {\n  const button = document.querySelector('.fd-global-rail [data-fd24-module="files"]');\n  if (button) filesUi.railButton = button;\n}`;
-  if (next.includes(oldInstall)) next = next.replace(oldInstall, newInstall);
-  return next;
-});
+await update('public/file-browser.js', (source) => source.replace(
+  /function installRailButton\(\) \{[\s\S]*?\n\}\n\nfunction markRailActive/,
+  `function installRailButton() {\n  const button = document.querySelector('.fd-global-rail [data-fd24-module="files"]');\n  if (button) filesUi.railButton = button;\n}\n\nfunction markRailActive`,
+));
 
 await update('public/documents-workspace.js', (source) => {
   let next = source;
