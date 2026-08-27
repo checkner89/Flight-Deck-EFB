@@ -1,6 +1,15 @@
 const SIMBRIEF_ENDPOINT = 'https://www.simbrief.com/api/xml.fetcher.php';
+const MAX_OFP_TEXT = 1_000_000;
+const MAX_BRIEFING_TEXT = 350_000;
 
 function text(value, maxLength = 300) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  if (!normalized || ['undefined', 'null'].includes(normalized.toLowerCase())) return null;
+  return normalized.slice(0, maxLength);
+}
+
+function longText(value, maxLength = MAX_OFP_TEXT) {
   if (value === undefined || value === null) return null;
   const normalized = String(value).trim();
   if (!normalized || ['undefined', 'null'].includes(normalized.toLowerCase())) return null;
@@ -25,6 +34,51 @@ function safeLink(value) {
   } catch {
     return null;
   }
+}
+
+function simBriefFileLink(files, key) {
+  const entry = files?.[key];
+  const candidate = entry?.link || entry?.url || (typeof entry === 'string' ? entry : null);
+  if (!candidate) return null;
+  const direct = safeLink(candidate);
+  if (direct) return direct;
+  const directory = safeLink(files?.directory);
+  if (!directory) return null;
+  try {
+    const base = directory.endsWith('/') ? directory : `${directory}/`;
+    return safeLink(new URL(String(candidate).replace(/^\/+/, ''), base).toString());
+  } catch {
+    return null;
+  }
+}
+
+function decodeBasicEntities(value) {
+  return String(value || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;/gi, "'")
+    .replace(/&#(\d+);/g, (match, code) => {
+      const parsed = Number(code);
+      return Number.isInteger(parsed) && parsed > 0 && parsed <= 0x10ffff ? String.fromCodePoint(parsed) : match;
+    });
+}
+
+function htmlToPlainText(value) {
+  if (!value) return null;
+  return longText(decodeBasicEntities(String(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:div|p|pre|tr|table|section|h[1-6])>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<td[^>]*>/gi, '  ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')),
+  MAX_OFP_TEXT);
 }
 
 function position(source) {
@@ -52,6 +106,62 @@ function navlogWaypoints(navlog) {
       stage: text(fix.stage, 20)?.toUpperCase() || null,
     };
   }).filter(Boolean);
+}
+
+function collectReadableText(value, maxLength = MAX_BRIEFING_TEXT) {
+  const lines = [];
+  let total = 0;
+  const push = (line) => {
+    const normalized = String(line || '').replace(/\r/g, '').trim();
+    if (!normalized || total >= maxLength) return;
+    const remaining = maxLength - total;
+    const sliced = normalized.slice(0, remaining);
+    lines.push(sliced);
+    total += sliced.length + 1;
+  };
+  const visit = (node, label = '', depth = 0) => {
+    if (total >= maxLength || depth > 8 || node === undefined || node === null) return;
+    if (typeof node === 'string' || typeof node === 'number') {
+      const body = String(node).trim();
+      if (!body) return;
+      push(label && body.length > 20 ? `${label.toUpperCase()}\n${body}` : label ? `${label}: ${body}` : body);
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item, label, depth + 1);
+      return;
+    }
+    if (typeof node === 'object') {
+      for (const [key, child] of Object.entries(node)) {
+        const childLabel = key.replace(/_/g, ' ');
+        visit(child, childLabel, depth + 1);
+      }
+    }
+  };
+  visit(value);
+  return lines.join('\n\n').trim() || null;
+}
+
+export function extractSimBriefOFP(payload, summary = null) {
+  const planHtml = longText(payload?.text?.plan_html, MAX_OFP_TEXT);
+  const planText = longText(
+    payload?.text?.plan_text
+      || payload?.text?.plan
+      || htmlToPlainText(planHtml),
+    MAX_OFP_TEXT,
+  );
+  const files = payload?.files || {};
+  const pdfLink = simBriefFileLink(files, 'pdf') || summary?.flight?.ofpLink || null;
+  const generatedAt = summary?.generatedAt || new Date().toISOString();
+  return {
+    generatedAt,
+    planHtml,
+    planText,
+    pdfLink,
+    planFormat: text(payload?.params?.planformat || payload?.params?.ofp_format || payload?.general?.ofp_layout, 40),
+    notamsText: collectReadableText(payload?.notams || payload?.notam || null),
+    briefingText: collectReadableText(payload?.weather || payload?.briefing || null),
+  };
 }
 
 export function summarizeSimBrief(payload, user) {
@@ -127,7 +237,7 @@ export function summarizeSimBrief(payload, user) {
     alternateMetar: text(alternate.metar, 600),
     alternateTaf: text(alternate.taf, 1_200),
     waypoints,
-    ofpLink: safeLink(files.pdf?.link || files.pdf?.url || files.directory),
+    ofpLink: simBriefFileLink(files, 'pdf'),
     navlogCount: waypoints.length,
     units: text(params.units, 16),
     airacCycle: text(params.airac, 16),
@@ -146,6 +256,11 @@ export class SimBriefClient {
     this.engine = engine;
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
+    this.latestOFP = null;
+  }
+
+  latestDocument() {
+    return this.latestOFP ? structuredClone(this.latestOFP) : null;
   }
 
   async importLatest(identifier) {
@@ -155,13 +270,16 @@ export class SimBriefClient {
     }
     const url = new URL(SIMBRIEF_ENDPOINT);
     url.searchParams.set(/^\d+$/.test(value) ? 'userid' : 'username', value);
-    url.searchParams.set('json', '1');
+    url.searchParams.set('json', 'v2');
     const response = await this.fetchImpl(url, {
       headers: { Accept: 'application/json', 'User-Agent': 'Flight-Deck-EFB' },
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) throw new Error(`SimBrief antwortet mit HTTP ${response.status}.`);
-    const summary = summarizeSimBrief(await response.json(), value);
+    const payload = await response.json();
+    const summary = summarizeSimBrief(payload, value);
+    this.latestOFP = extractSimBriefOFP(payload, summary);
+    if (!summary.flight.ofpLink && this.latestOFP.pdfLink) summary.flight.ofpLink = this.latestOFP.pdfLink;
     this.engine.applySimBrief(summary);
     return summary;
   }
