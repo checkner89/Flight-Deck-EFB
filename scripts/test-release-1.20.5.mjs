@@ -22,7 +22,8 @@ if (!['1.20.5', '1.20.6'].includes(pkg.version)) throw new Error(`Unexpected pac
 need(html, `data-app-version="${pkg.version}"`, `HTML version was not materialized to ${pkg.version}.`);
 need(html, `/file-browser.css?v=${pkg.version}`, 'File browser stylesheet is not wired to the current release version.');
 need(html, `/file-browser.js?v=${pkg.version}`, 'File browser script is not wired to the current release version.');
-need(serviceWorker, 'flight-deck-efb-v1205-files1', 'File browser offline cache was not bumped before the 1.20.6 final cache step.');
+const validFileCache = serviceWorker.includes('flight-deck-efb-v1205-files1') || (pkg.version === '1.20.6' && serviceWorker.includes('flight-deck-efb-v1206-unified-ui1'));
+if (!validFileCache) throw new Error('File browser offline cache is not valid for the active release chain.');
 need(serviceWorker, `/file-browser.css?v=${pkg.version}`, 'File browser CSS is missing from offline shell.');
 need(serviceWorker, `/file-browser.js?v=${pkg.version}`, 'File browser JS is missing from offline shell.');
 need(server, "from './file-browser-service.mjs'", 'File browser service import is missing.');
