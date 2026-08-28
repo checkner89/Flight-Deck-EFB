@@ -18,12 +18,13 @@ function reject(source, token, message) {
   if (source.includes(token)) throw new Error(message);
 }
 
-if (pkg.version !== '1.20.6') throw new Error(`Unexpected package version: ${pkg.version}`);
-need(html, 'data-app-version="1.20.6"', 'HTML version is not 1.20.6.');
-need(html, '/release-1.20.4.js?v=1.20.6', 'Unified shell script is not versioned for 1.20.6.');
-need(html, '/file-browser.js?v=1.20.6', 'Files script is not versioned for 1.20.6.');
-need(server, "const APP_VERSION = '1.20.6';", 'Server APP_VERSION is not synchronized.');
-need(serviceWorker, 'flight-deck-efb-v1206-unified-ui1', '1.20.6 service-worker cache is missing.');
+if (!['1.20.6', '1.20.7'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
+const version = pkg.version;
+need(html, `data-app-version="${version}"`, `HTML version is not ${version}.`);
+need(html, `/release-1.20.4.js?v=${version}`, `Unified shell script is not versioned for ${version}.`);
+need(html, `/file-browser.js?v=${version}`, `Files script is not versioned for ${version}.`);
+need(server, `const APP_VERSION = '${version}';`, 'Server APP_VERSION is not synchronized.');
+need(serviceWorker, 'flight-deck-efb-v1206-unified-ui1', '1.20.6 compatibility service-worker cache is missing before the final release materializer.');
 
 need(shellJs, 'const FD26_NAV = [', 'Unified navigation model is missing.');
 need(shellJs, "['documents', 'docs', 'Briefing']", 'Briefing navigation entry is missing.');
@@ -49,4 +50,4 @@ need(filesService, 'fullFilesystem: false', 'Files advertises full filesystem ac
 
 if (!/^## 1\.20\.6\b/m.test(changelog)) throw new Error('CHANGELOG section for 1.20.6 is missing.');
 
-console.log('Flight Deck EFB 1.20.6 unified UI/UX checks passed.');
+console.log(`Flight Deck EFB ${version} unified UI/UX compatibility checks passed.`);
