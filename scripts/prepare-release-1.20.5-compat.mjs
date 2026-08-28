@@ -16,6 +16,10 @@ await update('scripts/apply-release-1.20.4.mjs', (source) => source
   .replace(
     /if \((?:version !== '1\.20\.4'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.4 release materializer[^\n]+/,
     "if (!['1.20.4', '1.20.5', '1.20.6', '1.20.7'].includes(version)) throw new Error(`1.20.4 release materializer requires a compatible 1.20.4+ chain, got ${version}.`);",
+  )
+  .replace(
+    "  if (!js.includes(\"label: 'OPERATIONAL FLIGHT PLAN'\")) {",
+    "  if (!js.includes(\"label: 'OPERATIONAL FLIGHT PLAN'\") && !js.includes(\"title: 'Flight Deck OFP'\")) {",
   ));
 
 await update('scripts/apply-release-1.20.5.mjs', (source) => source
