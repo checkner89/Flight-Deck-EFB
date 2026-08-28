@@ -41,7 +41,98 @@ await update('public/documents-workspace.js', (source) => {
 
   if (!js.includes('function makeFlightDeckOFPHtml')) {
     const anchor = 'function makeBriefingTextHtml(title, value, fallback) {';
-    const helpers = `function fdOfpAltitude(value) {\n  const altitude = numeric(value);\n  if (altitude === null) return '—';\n  if (altitude >= 10000) return \\`FL\\${Math.round(altitude / 100)}\\`;\n  return \\`\\${Math.round(altitude).toLocaleString()} ft\\`;\n}\n\nfunction fdOfpPercent(value, maximum) {\n  const current = numeric(value);\n  const max = numeric(maximum);\n  if (current === null || max === null || max <= 0) return 0;\n  return Math.max(0, Math.min(100, (current / max) * 100));\n}\n\nfunction fdOfpMetric(label, value, detail = '') {\n  return \\`<article class=\\"fd-custom-ofp-metric\\"><small>\\${htmlEscape(label)}</small><strong>\\${htmlEscape(safe(value))}</strong>\\${detail ? \\`<span>\\${htmlEscape(detail)}</span>\\` : ''}</article>\\`;\n}\n\nfunction fdOfpWeightCard(label, value, maximum) {\n  const percent = fdOfpPercent(value, maximum);\n  const maxLabel = numeric(maximum) === null ? '' : \\`MAX \\${formatWeight(maximum)}\\`;\n  return \\`<article class=\\"fd-custom-ofp-weight\\"><header><small>\\${htmlEscape(label)}</small><strong>\\${htmlEscape(formatWeight(value))}</strong></header><span class=\\"fd-custom-ofp-bar\\"><i style=\\"width:\\${percent.toFixed(1)}%\\"></i></span><footer>\\${htmlEscape(maxLabel || 'PLANNED')}</footer></article>\\`;\n}\n\nfunction fdOfpWeatherCard(label, icao, runway, metar, taf) {\n  return \\`<article class=\\"fd-custom-ofp-weather\\"><header><div><small>\\${htmlEscape(label)}</small><strong>\\${htmlEscape(safe(icao))}</strong></div><b>RWY \\${htmlEscape(safe(runway))}</b></header><section><small>METAR</small><p>\\${htmlEscape(safe(metar, 'No METAR in current SimBrief briefing'))}</p></section><section><small>TAF</small><p>\\${htmlEscape(safe(taf, 'No TAF in current SimBrief briefing'))}</p></section></article>\\`;\n}\n\nfunction fdOfpNavlogRows(plan) {\n  const waypoints = Array.isArray(plan?.waypoints) ? plan.waypoints : [];\n  if (!waypoints.length) return '<tr><td colspan=\\"7\\" class=\\"fd-custom-ofp-empty\\">No navlog waypoints were supplied by SimBrief.</td></tr>';\n  return waypoints.slice(0, 500).map((fix, index) => \\`<tr><td>\\${String(index + 1).padStart(2, '0')}</td><td><strong>\\${htmlEscape(safe(fix.ident))}</strong><small>\\${htmlEscape(safe(fix.stage, ''))}</small></td><td>\\${htmlEscape(safe(fix.airway, 'DCT'))}</td><td>\\${htmlEscape(fdOfpAltitude(fix.altitudeFeet))}</td><td>\\${numeric(fix.plannedSpeedKnots) === null ? '—' : \\`\\${Math.round(fix.plannedSpeedKnots)} kt\\`}</td><td>\\${numeric(fix.distanceNm) === null ? '—' : \\`\\${Math.round(fix.distanceNm)} NM\\`}</td><td>\\${htmlEscape(safe(fix.type, 'FIX'))}</td></tr>\\`).join('');\n}\n\nfunction makeFlightDeckOFPHtml(plan) {\n  const generated = fdDocsSimBriefOFP?.generatedAt ? new Date(fdDocsSimBriefOFP.generatedAt) : null;\n  const generatedLabel = generated && !Number.isNaN(generated.valueOf()) ? generated.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Latest import';\n  const route = safe(plan.route, 'No filed route available');\n  const fuelRows = [\n    ['Taxi', plan.taxiFuelPounds], ['Trip', plan.tripFuelPounds], ['Contingency', plan.contingencyFuelPounds],\n    ['Alternate', plan.alternateFuelPounds], ['Final reserve', plan.reserveFuelPounds], ['Extra', plan.extraFuelPounds], ['Block', plan.blockFuelPounds],\n  ];\n  const timeRows = [\n    ['OUT', formatEpoch(plan.estimatedOut)], ['OFF', formatEpoch(plan.estimatedOff)], ['ON', formatEpoch(plan.estimatedOn)], ['IN', formatEpoch(plan.estimatedIn)],\n  ];\n  return \\`<div class=\\"fd-custom-ofp\\">\n    <header class=\\"fd-custom-ofp-hero\\">\n      <div class=\\"fd-custom-ofp-ident\\"><small>FLIGHT DECK · SIMBRIEF OFP</small><h1>\\${htmlEscape(safe(plan.callsign, plan.flightNumber || 'FLIGHT'))}</h1><span>\\${htmlEscape(safe(plan.aircraftType))}\\${plan.registration ? \\` · \\${htmlEscape(plan.registration)}\\` : ''}</span></div>\n      <div class=\\"fd-custom-ofp-route\\"><strong>\\${htmlEscape(safe(plan.origin))}</strong><span><i></i><b>\\${numeric(plan.routeDistanceNm) === null ? '—' : \\`\\${Math.round(plan.routeDistanceNm)} NM\\`}</b></span><strong>\\${htmlEscape(safe(plan.destination))}</strong></div>\n      <div class=\\"fd-custom-ofp-release\\"><small>OFP IMPORT</small><strong>\\${htmlEscape(generatedLabel)}</strong><span>\\${htmlEscape(safe(fdDocsSimBriefOFP?.planFormat, 'SimBrief'))}</span></div>\n    </header>\n\n    <section class=\\"fd-custom-ofp-metrics\\">\n      \\${fdOfpMetric('CRUISE', fdOfpAltitude(plan.cruiseAltitudeFeet), plan.cruiseMach ? \\`M\\${Number(plan.cruiseMach).toFixed(2)}\\` : '')}\n      \\${fdOfpMetric('COST INDEX', plan.costIndex)}\n      \\${fdOfpMetric('EET', formatDuration(plan.enrouteSeconds))}\n      \\${fdOfpMetric('BLOCK', formatDuration(plan.blockSeconds))}\n      \\${fdOfpMetric('SID', plan.sid)}\n      \\${fdOfpMetric('STAR', plan.star)}\n    </section>\n\n    <div class=\\"fd-custom-ofp-two\\">\n      <section class=\\"fd-custom-ofp-card fd-custom-ofp-route-card\\"><header><div><small>FILED ROUTE</small><strong>ATC Flight Plan</strong></div><span>AIRAC \\${htmlEscape(safe(plan.airacCycle))}</span></header><pre>\\${htmlEscape(route)}</pre></section>\n      <section class=\\"fd-custom-ofp-card\\"><header><div><small>PLANNED TIMES</small><strong>UTC Schedule</strong></div><span>\\${htmlEscape(formatDuration(plan.enrouteSeconds))} ENROUTE</span></header><div class=\\"fd-custom-ofp-times\\">\\${timeRows.map(([label, value]) => \\`<span><small>\\${label}</small><strong>\\${htmlEscape(value)}</strong></span>\\`).join('')}</div></section>\n    </div>\n\n    <div class=\\"fd-custom-ofp-two\\">\n      <section class=\\"fd-custom-ofp-card\\"><header><div><small>FUEL PLAN</small><strong>Dispatch Fuel</strong></div><span>\\${htmlEscape(formatWeight(plan.blockFuelPounds))} BLOCK</span></header><table class=\\"fd-custom-ofp-table compact\\"><tbody>\\${fuelRows.map(([label, value], index) => \\`<tr class=\\"\\${index === fuelRows.length - 1 ? 'total' : ''}\\"><td>\\${htmlEscape(label)}</td><td>\\${htmlEscape(formatWeight(value))}</td></tr>\\`).join('')}</tbody></table></section>\n      <section class=\\"fd-custom-ofp-card\\"><header><div><small>WEIGHTS</small><strong>Aircraft Loading</strong></div><span>\\${htmlEscape(safe(plan.passengers))} PAX</span></header><div class=\\"fd-custom-ofp-weights\\">\\${fdOfpWeightCard('ZFW', plan.zeroFuelWeightPounds, plan.maxZeroFuelWeightPounds)}\\${fdOfpWeightCard('TOW', plan.takeoffWeightPounds, plan.maxTakeoffWeightPounds)}\\${fdOfpWeightCard('LDW', plan.landingWeightPounds, plan.maxLandingWeightPounds)}</div></section>\n    </div>\n\n    <section class=\\"fd-custom-ofp-card fd-custom-ofp-navlog\\"><header><div><small>NAVLOG</small><strong>Route Waypoints</strong></div><span>\\${Array.isArray(plan.waypoints) ? plan.waypoints.length : 0} FIXES</span></header><div class=\\"fd-custom-ofp-table-wrap\\"><table class=\\"fd-custom-ofp-table\\"><thead><tr><th>#</th><th>FIX</th><th>VIA</th><th>ALT</th><th>SPEED</th><th>DIST</th><th>TYPE</th></tr></thead><tbody>\\${fdOfpNavlogRows(plan)}</tbody></table></div></section>\n\n    <section class=\\"fd-custom-ofp-airports\\">\n      \\${fdOfpWeatherCard('DEPARTURE', plan.origin, plan.departureRunway, plan.originMetar, plan.originTaf)}\n      \\${fdOfpWeatherCard('DESTINATION', plan.destination, plan.arrivalRunway, plan.destinationMetar, plan.destinationTaf)}\n      \\${fdOfpWeatherCard('ALTERNATE', plan.alternate, '—', plan.alternateMetar, plan.alternateTaf)}\n    </section>\n\n    \\${fdDocsSimBriefOFP?.notamsText ? \\`<details class=\\"fd-custom-ofp-details\\"><summary><span><small>SIMBRIEF BRIEFING</small><strong>NOTAMs</strong></span><b>SHOW</b></summary><pre>\\${htmlEscape(fdDocsSimBriefOFP.notamsText)}</pre></details>\\` : ''}\n    <footer class=\\"fd-custom-ofp-footer\\"><span>Structured by Flight Deck EFB from the imported SimBrief dataset.</span><span>Use ORIGINAL OFP or OFP PDF for the unmodified dispatch document.</span></footer>\n  </div>\\`;\n}\n\n`;
+    const helpers = `function fdOfpAltitude(value) {
+  const altitude = numeric(value);
+  if (altitude === null) return '—';
+  if (altitude >= 10000) return 'FL' + Math.round(altitude / 100);
+  return Math.round(altitude).toLocaleString() + ' ft';
+}
+
+function fdOfpPercent(value, maximum) {
+  const current = numeric(value);
+  const max = numeric(maximum);
+  if (current === null || max === null || max <= 0) return 0;
+  return Math.max(0, Math.min(100, (current / max) * 100));
+}
+
+function fdOfpMetric(label, value, detail = '') {
+  const detailHtml = detail ? '<span>' + htmlEscape(detail) + '</span>' : '';
+  return '<article class="fd-custom-ofp-metric"><small>' + htmlEscape(label) + '</small><strong>' + htmlEscape(safe(value)) + '</strong>' + detailHtml + '</article>';
+}
+
+function fdOfpWeightCard(label, value, maximum) {
+  const percent = fdOfpPercent(value, maximum);
+  const maxLabel = numeric(maximum) === null ? 'PLANNED' : 'MAX ' + formatWeight(maximum);
+  return '<article class="fd-custom-ofp-weight"><header><small>' + htmlEscape(label) + '</small><strong>' + htmlEscape(formatWeight(value)) + '</strong></header><span class="fd-custom-ofp-bar"><i style="width:' + percent.toFixed(1) + '%"></i></span><footer>' + htmlEscape(maxLabel) + '</footer></article>';
+}
+
+function fdOfpWeatherCard(label, icao, runway, metar, taf) {
+  return '<article class="fd-custom-ofp-weather"><header><div><small>' + htmlEscape(label) + '</small><strong>' + htmlEscape(safe(icao)) + '</strong></div><b>RWY ' + htmlEscape(safe(runway)) + '</b></header><section><small>METAR</small><p>' + htmlEscape(safe(metar, 'No METAR in current SimBrief briefing')) + '</p></section><section><small>TAF</small><p>' + htmlEscape(safe(taf, 'No TAF in current SimBrief briefing')) + '</p></section></article>';
+}
+
+function fdOfpNavlogRows(plan) {
+  const waypoints = Array.isArray(plan?.waypoints) ? plan.waypoints : [];
+  if (!waypoints.length) return '<tr><td colspan="7" class="fd-custom-ofp-empty">No navlog waypoints were supplied by SimBrief.</td></tr>';
+  return waypoints.slice(0, 500).map((fix, index) => {
+    const speed = numeric(fix.plannedSpeedKnots) === null ? '—' : Math.round(fix.plannedSpeedKnots) + ' kt';
+    const distance = numeric(fix.distanceNm) === null ? '—' : Math.round(fix.distanceNm) + ' NM';
+    return '<tr><td>' + String(index + 1).padStart(2, '0') + '</td><td><strong>' + htmlEscape(safe(fix.ident)) + '</strong><small>' + htmlEscape(safe(fix.stage, '')) + '</small></td><td>' + htmlEscape(safe(fix.airway, 'DCT')) + '</td><td>' + htmlEscape(fdOfpAltitude(fix.altitudeFeet)) + '</td><td>' + htmlEscape(speed) + '</td><td>' + htmlEscape(distance) + '</td><td>' + htmlEscape(safe(fix.type, 'FIX')) + '</td></tr>';
+  }).join('');
+}
+
+function makeFlightDeckOFPHtml(plan) {
+  const generated = fdDocsSimBriefOFP?.generatedAt ? new Date(fdDocsSimBriefOFP.generatedAt) : null;
+  const generatedLabel = generated && !Number.isNaN(generated.valueOf()) ? generated.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Latest import';
+  const route = safe(plan.route, 'No filed route available');
+  const fuelRows = [
+    ['Taxi', plan.taxiFuelPounds], ['Trip', plan.tripFuelPounds], ['Contingency', plan.contingencyFuelPounds],
+    ['Alternate', plan.alternateFuelPounds], ['Final reserve', plan.reserveFuelPounds], ['Extra', plan.extraFuelPounds], ['Block', plan.blockFuelPounds],
+  ];
+  const timeRows = [
+    ['OUT', formatEpoch(plan.estimatedOut)], ['OFF', formatEpoch(plan.estimatedOff)], ['ON', formatEpoch(plan.estimatedOn)], ['IN', formatEpoch(plan.estimatedIn)],
+  ];
+  const registration = plan.registration ? ' · ' + htmlEscape(plan.registration) : '';
+  const distance = numeric(plan.routeDistanceNm) === null ? '—' : Math.round(plan.routeDistanceNm) + ' NM';
+  const mach = plan.cruiseMach ? 'M' + Number(plan.cruiseMach).toFixed(2) : '';
+  const fixes = Array.isArray(plan.waypoints) ? plan.waypoints.length : 0;
+  const timesHtml = timeRows.map(([label, value]) => '<span><small>' + label + '</small><strong>' + htmlEscape(value) + '</strong></span>').join('');
+  const fuelHtml = fuelRows.map(([label, value], index) => '<tr class="' + (index === fuelRows.length - 1 ? 'total' : '') + '"><td>' + htmlEscape(label) + '</td><td>' + htmlEscape(formatWeight(value)) + '</td></tr>').join('');
+  const notamsHtml = fdDocsSimBriefOFP?.notamsText ? '<details class="fd-custom-ofp-details"><summary><span><small>SIMBRIEF BRIEFING</small><strong>NOTAMs</strong></span><b>SHOW</b></summary><pre>' + htmlEscape(fdDocsSimBriefOFP.notamsText) + '</pre></details>' : '';
+
+  return '<div class="fd-custom-ofp">' +
+    '<header class="fd-custom-ofp-hero">' +
+      '<div class="fd-custom-ofp-ident"><small>FLIGHT DECK · SIMBRIEF OFP</small><h1>' + htmlEscape(safe(plan.callsign, plan.flightNumber || 'FLIGHT')) + '</h1><span>' + htmlEscape(safe(plan.aircraftType)) + registration + '</span></div>' +
+      '<div class="fd-custom-ofp-route"><strong>' + htmlEscape(safe(plan.origin)) + '</strong><span><i></i><b>' + htmlEscape(distance) + '</b></span><strong>' + htmlEscape(safe(plan.destination)) + '</strong></div>' +
+      '<div class="fd-custom-ofp-release"><small>OFP IMPORT</small><strong>' + htmlEscape(generatedLabel) + '</strong><span>' + htmlEscape(safe(fdDocsSimBriefOFP?.planFormat, 'SimBrief')) + '</span></div>' +
+    '</header>' +
+    '<section class="fd-custom-ofp-metrics">' +
+      fdOfpMetric('CRUISE', fdOfpAltitude(plan.cruiseAltitudeFeet), mach) +
+      fdOfpMetric('COST INDEX', plan.costIndex) +
+      fdOfpMetric('EET', formatDuration(plan.enrouteSeconds)) +
+      fdOfpMetric('BLOCK', formatDuration(plan.blockSeconds)) +
+      fdOfpMetric('SID', plan.sid) +
+      fdOfpMetric('STAR', plan.star) +
+    '</section>' +
+    '<div class="fd-custom-ofp-two">' +
+      '<section class="fd-custom-ofp-card fd-custom-ofp-route-card"><header><div><small>FILED ROUTE</small><strong>ATC Flight Plan</strong></div><span>AIRAC ' + htmlEscape(safe(plan.airacCycle)) + '</span></header><pre>' + htmlEscape(route) + '</pre></section>' +
+      '<section class="fd-custom-ofp-card"><header><div><small>PLANNED TIMES</small><strong>UTC Schedule</strong></div><span>' + htmlEscape(formatDuration(plan.enrouteSeconds)) + ' ENROUTE</span></header><div class="fd-custom-ofp-times">' + timesHtml + '</div></section>' +
+    '</div>' +
+    '<div class="fd-custom-ofp-two">' +
+      '<section class="fd-custom-ofp-card"><header><div><small>FUEL PLAN</small><strong>Dispatch Fuel</strong></div><span>' + htmlEscape(formatWeight(plan.blockFuelPounds)) + ' BLOCK</span></header><table class="fd-custom-ofp-table compact"><tbody>' + fuelHtml + '</tbody></table></section>' +
+      '<section class="fd-custom-ofp-card"><header><div><small>WEIGHTS</small><strong>Aircraft Loading</strong></div><span>' + htmlEscape(safe(plan.passengers)) + ' PAX</span></header><div class="fd-custom-ofp-weights">' + fdOfpWeightCard('ZFW', plan.zeroFuelWeightPounds, plan.maxZeroFuelWeightPounds) + fdOfpWeightCard('TOW', plan.takeoffWeightPounds, plan.maxTakeoffWeightPounds) + fdOfpWeightCard('LDW', plan.landingWeightPounds, plan.maxLandingWeightPounds) + '</div></section>' +
+    '</div>' +
+    '<section class="fd-custom-ofp-card fd-custom-ofp-navlog"><header><div><small>NAVLOG</small><strong>Route Waypoints</strong></div><span>' + fixes + ' FIXES</span></header><div class="fd-custom-ofp-table-wrap"><table class="fd-custom-ofp-table"><thead><tr><th>#</th><th>FIX</th><th>VIA</th><th>ALT</th><th>SPEED</th><th>DIST</th><th>TYPE</th></tr></thead><tbody>' + fdOfpNavlogRows(plan) + '</tbody></table></div></section>' +
+    '<section class="fd-custom-ofp-airports">' +
+      fdOfpWeatherCard('DEPARTURE', plan.origin, plan.departureRunway, plan.originMetar, plan.originTaf) +
+      fdOfpWeatherCard('DESTINATION', plan.destination, plan.arrivalRunway, plan.destinationMetar, plan.destinationTaf) +
+      fdOfpWeatherCard('ALTERNATE', plan.alternate, '—', plan.alternateMetar, plan.alternateTaf) +
+    '</section>' +
+    notamsHtml +
+    '<footer class="fd-custom-ofp-footer"><span>Structured by Flight Deck EFB from the imported SimBrief dataset.</span><span>Use ORIGINAL OFP or OFP PDF for the unmodified dispatch document.</span></footer>' +
+  '</div>';
+}
+
+`;
     js = replaceRequired(js, anchor, `${helpers}${anchor}`, 'Flight Deck formatted OFP helpers');
   }
 
