@@ -135,32 +135,45 @@ html[data-theme="light"] .tracking-weather-map-icon small {
 
 /* Make UTC / Local and the compact flight stats readable at the width shown in the desktop app. */
 .home-time.flight-overlay-clock {
-  min-width: 112px !important;
+  min-width: 118px !important;
   padding: 4px 7px !important;
 }
 
 .flight-overlay-clock-values {
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(46px, 1fr));
+  grid-template-columns: repeat(2, minmax(50px, 1fr));
   align-items: center !important;
   gap: 7px !important;
   width: 100%;
 }
 
-.flight-overlay-clock-values > * {
+.flight-overlay-clock-item {
+  display: grid !important;
+  gap: 3px !important;
   min-width: 0;
-  color: var(--fd24-text, inherit) !important;
-  opacity: 1 !important;
-  font-size: 12px !important;
-  font-weight: 850 !important;
-  line-height: 1.15 !important;
-  letter-spacing: .02em !important;
   text-align: center;
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.flight-overlay-clock-values > *::first-line {
-  line-height: 1.15;
+.flight-overlay-clock-item small {
+  display: block !important;
+  color: var(--fd24-muted, #7f98a6) !important;
+  opacity: 1 !important;
+  font-size: 8px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+  letter-spacing: .10em !important;
+}
+
+.flight-overlay-clock-item strong {
+  display: block !important;
+  color: var(--fd24-text, inherit) !important;
+  opacity: 1 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  letter-spacing: .025em !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .flight-overlay-top small {
@@ -182,7 +195,7 @@ html[data-theme="light"] .tracking-weather-map-icon small {
   }
 
   .home-time.flight-overlay-clock {
-    min-width: 108px !important;
+    min-width: 114px !important;
   }
 }
 
@@ -196,7 +209,11 @@ html[data-theme="light"] .tracking-weather-map-icon small {
   }
 
   .home-time.flight-overlay-clock {
-    min-width: 102px !important;
+    min-width: 108px !important;
+  }
+
+  .flight-overlay-clock-item strong {
+    font-size: 12px !important;
   }
 }
 
