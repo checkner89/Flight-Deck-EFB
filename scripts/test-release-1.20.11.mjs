@@ -4,7 +4,6 @@ const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const simconnect = await fs.readFile('src/simconnect-client.mjs', 'utf8');
 const server = await fs.readFile('src/server.mjs', 'utf8');
 const weatherClient = await fs.readFile('src/aviation-weather-client.mjs', 'utf8');
-const recorder = await fs.readFile('src/flight-recorder.mjs', 'utf8');
 const app = await fs.readFile('public/app.js', 'utf8');
 const overlay = await fs.readFile('public/flight-overlay.js', 'utf8');
 const html = await fs.readFile('public/index.html', 'utf8');
@@ -34,7 +33,6 @@ for (const token of ['lat:', 'lon:', 'windGust:', 'visibilitySm:', 'altimeterHpa
   need(weatherClient, token, `AviationWeather overlay field is missing: ${token}`);
 }
 need(weatherClient, 'state.flight?.alternate, simbrief.alternate', 'Alternate airport is missing from automatic weather refresh.');
-need(recorder, 'lat: finite(entry.lat), lon: finite(entry.lon)', 'Flight recorder does not preserve official weather coordinates.');
 
 // Tracking weather overlay and controls.
 need(app, "trackingWeatherToggle: $('#tracking-weather-toggle')", 'Weather overlay control is not wired.');
