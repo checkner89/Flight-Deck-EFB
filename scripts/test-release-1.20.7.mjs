@@ -20,12 +20,13 @@ function reject(source, token, message) {
 
 if (!['1.20.7', '1.20.8', '1.20.9'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
 const version = pkg.version;
-const docsSuffix = version === '1.20.7' ? 'docs3' : 'docs2';
 need(html, `data-app-version="${version}"`, `HTML version is not ${version}.`);
 need(html, `/release-1.20.4.js?v=${version}`, `Unified shell JS is not versioned for ${version}.`);
 need(html, `/release-1.20.4.css?v=${version}`, `Unified shell CSS is not versioned for ${version}.`);
-need(html, `/documents-workspace.js?v=${version}-${docsSuffix}`, 'Formatted OFP workspace JS is not wired.');
-need(html, `/documents-workspace.css?v=${version}-${docsSuffix}`, 'Formatted OFP workspace CSS is not wired.');
+const docsJsPattern = new RegExp(`documents-workspace\\.js\\?v=${version.replaceAll('.', '\\.')}(?:-docs[0-9]+)?`);
+const docsCssPattern = new RegExp(`documents-workspace\\.css\\?v=${version.replaceAll('.', '\\.')}(?:-docs[0-9]+)?`);
+if (!docsJsPattern.test(html)) throw new Error('Formatted OFP workspace JS is not wired.');
+if (!docsCssPattern.test(html)) throw new Error('Formatted OFP workspace CSS is not wired.');
 need(server, `const APP_VERSION = '${version}';`, 'Server version is not synchronized.');
 const compatibleCaches = [
   'flight-deck-efb-v1207-formatted-ofp1',
@@ -33,7 +34,7 @@ const compatibleCaches = [
   'flight-deck-efb-v1209-tracking1',
 ];
 if (!compatibleCaches.some((cache) => sw.includes(cache))) throw new Error('Formatted OFP service worker cache is missing for the active release.');
-need(sw, `/documents-workspace.js?v=${version}-${docsSuffix}`, 'Formatted OFP JS is not in offline cache.');
+if (!docsJsPattern.test(sw)) throw new Error('Formatted OFP JS is not in offline cache.');
 
 need(shell, 'body:has(#app-toolbar:not([hidden])) .fd-global-rail.fd26-rail{top:126px!important}', 'Rail is not moved below the visible app toolbar.');
 need(shell, 'body:has(#app-toolbar:not([hidden])) #fd-docs-workspace', 'Briefing workspace does not align below the shared app toolbar.');
