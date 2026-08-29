@@ -32,6 +32,11 @@ await update('scripts/apply-release-1.20.9.mjs', (source) => source.replace(
   "if (!['1.20.9', '1.20.10', '1.20.11'].includes(version)) throw new Error(`1.20.9 release materializer requires a compatible 1.20.9+ chain, got ${version}.`);",
 ));
 
+await update('scripts/apply-release-1.20.10.mjs', (source) => source.replace(
+  /if \(version !== '1\.20\.10'\) throw new Error\(`1\.20\.10 release materializer[^\n]+/,
+  "if (!['1.20.10', '1.20.11'].includes(version)) throw new Error(`1.20.10 release materializer requires a compatible 1.20.10+ chain, got ${version}.`);",
+));
+
 await update('scripts/test-release-1.20.9.mjs', (source) => {
   let test = source;
   test = test.replace(
@@ -45,6 +50,23 @@ await update('scripts/test-release-1.20.9.mjs', (source) => {
   test = test.replace(
     /need\(html, .*release-1\.20\.9\.css[^\n]+/,
     "need(html, `release-1.20.9.css?v=${pkg.version}`, '1.20.9 tracking stylesheet is not wired for the active patch release.');",
+  );
+  return test;
+});
+
+await update('scripts/test-release-1.20.10.mjs', (source) => {
+  let test = source;
+  test = test.replace(
+    "if (pkg.version !== '1.20.10') throw new Error(`Expected package version 1.20.10, got ${pkg.version}.`);",
+    "if (!['1.20.10', '1.20.11'].includes(pkg.version)) throw new Error(`Expected package version 1.20.10+, got ${pkg.version}.`);",
+  );
+  test = test.replace(
+    "need(server, \"const APP_VERSION = '1.20.10';\", 'Server version was not materialized to 1.20.10.');",
+    "need(server, `const APP_VERSION = '${pkg.version}';`, `Server version was not materialized to ${pkg.version}.`);",
+  );
+  test = test.replace(
+    "need(html, 'release-1.20.10.css?v=1.20.10', '1.20.10 stylesheet is not wired.');",
+    "need(html, `release-1.20.10.css?v=${pkg.version}`, '1.20.10 stylesheet is not wired for the active patch release.');",
   );
   return test;
 });
