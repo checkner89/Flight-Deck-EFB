@@ -48,8 +48,10 @@ jobs:
         run: |
           $server = Get-Content 'src/server.mjs' -Raw
           $state = Get-Content 'src/state-engine.mjs' -Raw
+          $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
           if ($server -notmatch 'FlightJourneyService' -or $server -notmatch 'flightJourney\.start\(\)') { throw 'Flight Journey service is not wired into the live server.' }
           if ($state -notmatch "'planning'.*'boarding'.*'pushback'" -or $state -notmatch 'flightJourney: \{') { throw 'Flight Journey state and manual phases are not materialized.' }
+          if ($recorder -notmatch "journeyCompletion" -or $recorder -notmatch "journey-complete-at-gate" -or $recorder -notmatch "stable-parked-after-flight") { throw 'Journey-driven recorder completion or safe legacy fallback is missing.' }
 
       - name: Run stable pilot regressions
         run: |
