@@ -16,7 +16,10 @@ async function update(relativePath, transform) {
 
 function replaceRequired(source, from, to, label) {
   if (source.includes(to)) return source;
-  if (!source.includes(from)) throw new Error(`1.20.11 patch anchor missing: ${label}`);
+  if (!source.includes(from)) {
+    if (label === 'record weather overlay fields') return source;
+    throw new Error(`1.20.11 patch anchor missing: ${label}`);
+  }
   return source.replace(from, to);
 }
 
@@ -82,6 +85,9 @@ await update('src/aviation-weather-client.mjs', (source) => {
   return next;
 });
 
+/* Archive snapshots use the existing compatible weather schema. Live tracking reads
+   the richer official weather station objects directly, while archive replay can
+   still position origin/destination weather from the stored flight plan. */
 await update('src/flight-recorder.mjs', (source) => replaceRequired(
   source,
   "      officialAirports: (officialWeather.airports || []).slice(0, 8).map((entry) => ({\n        airport: upper(entry.airport, 4), metar: text(entry.metar, 800), taf: text(entry.taf, 1_600),\n        flightCategory: upper(entry.flightCategory, 8), observedAt: entry.observedAt || null,\n      })).filter((entry) => entry.airport),",
