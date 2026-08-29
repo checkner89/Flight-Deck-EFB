@@ -18,13 +18,21 @@ function reject(source, token, message) {
   if (source.includes(token)) throw new Error(message);
 }
 
-if (!['1.20.6', '1.20.7'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
+if (!['1.20.6', '1.20.7', '1.20.8', '1.20.9'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
 const version = pkg.version;
 need(html, `data-app-version="${version}"`, `HTML version is not ${version}.`);
 need(html, `/release-1.20.4.js?v=${version}`, `Unified shell script is not versioned for ${version}.`);
 need(html, `/file-browser.js?v=${version}`, `Files script is not versioned for ${version}.`);
 need(server, `const APP_VERSION = '${version}';`, 'Server APP_VERSION is not synchronized.');
-need(serviceWorker, 'flight-deck-efb-v1206-unified-ui1', '1.20.6 compatibility service-worker cache is missing before the final release materializer.');
+const compatibleCaches = [
+  'flight-deck-efb-v1206-unified-ui1',
+  'flight-deck-efb-v1207-formatted-ofp1',
+  'flight-deck-efb-v1208-flightops1',
+  'flight-deck-efb-v1209-tracking1',
+];
+if (!compatibleCaches.some((cache) => serviceWorker.includes(cache))) {
+  throw new Error('Unified UI compatibility service-worker cache is missing for the active release.');
+}
 
 need(shellJs, 'const FD26_NAV = [', 'Unified navigation model is missing.');
 need(shellJs, "['documents', 'docs', 'Briefing']", 'Briefing navigation entry is missing.');
