@@ -7,10 +7,10 @@ async function update(filename, transform) {
 }
 
 const compatibility = [
-  ['scripts/apply-release-1.20.3.mjs', /if \(!\[[^\n]+\]\.includes\(version\)\) throw new Error\(`1\.20\.3 release materializer[^\n]+/, "if (!['1.20.3', '1.20.4', '1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.3 release materializer requires a compatible 1.20.x chain, got ${version}.`);"],
-  ['scripts/apply-release-1.20.4.mjs', /if \((?:version !== '1\.20\.4'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.4 release materializer[^\n]+/, "if (!['1.20.4', '1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.4 release materializer requires a compatible 1.20.4+ chain, got ${version}.`);"],
-  ['scripts/apply-release-1.20.5.mjs', /if \((?:version !== '1\.20\.5'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.5 release materializer[^\n]+/, "if (!['1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.5 release materializer requires a compatible 1.20.5+ chain, got ${version}.`);"],
-  ['scripts/apply-release-1.20.6.mjs', /if \((?:version !== '1\.20\.6'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.6 UI\/UX materializer[^\n]+/, "if (!['1.20.6', '1.20.7', '1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.6 UI/UX materializer requires a compatible 1.20.6+ chain, got ${version}.`);"],
+  ['scripts/apply-release-1.20.3.mjs', /if \(!\[[^\n]+\]\.includes\(version\)\) throw new Error\(`1\.20\.3 release materializer[^\n]+/, "if (!['1.20.3', '1.20.4', '1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.3 release materializer requires a compatible 1.20.x chain, got ${version}.`);"],
+  ['scripts/apply-release-1.20.4.mjs', /if \((?:version !== '1\.20\.4'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.4 release materializer[^\n]+/, "if (!['1.20.4', '1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.4 release materializer requires a compatible 1.20.4+ chain, got ${version}.`);"],
+  ['scripts/apply-release-1.20.5.mjs', /if \((?:version !== '1\.20\.5'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.5 release materializer[^\n]+/, "if (!['1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.5 release materializer requires a compatible 1.20.5+ chain, got ${version}.`);"],
+  ['scripts/apply-release-1.20.6.mjs', /if \((?:version !== '1\.20\.6'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.6 UI\/UX materializer[^\n]+/, "if (!['1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.6 UI/UX materializer requires a compatible 1.20.6+ chain, got ${version}.`);"],
 ];
 
 for (const [filename, pattern, replacement] of compatibility) {
@@ -19,13 +19,35 @@ for (const [filename, pattern, replacement] of compatibility) {
 
 await update('scripts/apply-release-1.20.7.mjs', (source) => source.replace(
   /if \((?:version !== '1\.20\.7'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.7 release materializer[^\n]+/,
-  "if (!['1.20.7', '1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.7 release materializer requires a compatible 1.20.7+ chain, got ${version}.`);",
+  "if (!['1.20.7', '1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.7 release materializer requires a compatible 1.20.7+ chain, got ${version}.`);",
 ));
 
 await update('scripts/apply-release-1.20.8.mjs', (source) => source.replace(
-  /if \(version !== '1\.20\.8'\) throw new Error\(`1\.20\.8 release materializer[^\n]+/,
-  "if (!['1.20.8', '1.20.9'].includes(version)) throw new Error(`1.20.8 release materializer requires a compatible 1.20.8+ chain, got ${version}.`);",
+  /if \((?:version !== '1\.20\.8'|!\[[^\n]+\]\.includes\(version\))\) throw new Error\(`1\.20\.8 release materializer[^\n]+/,
+  "if (!['1.20.8', '1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.8 release materializer requires a compatible 1.20.8+ chain, got ${version}.`);",
 ));
+
+await update('scripts/apply-release-1.20.9.mjs', (source) => source.replace(
+  /if \(version !== '1\.20\.9'\) throw new Error\(`1\.20\.9 release materializer[^\n]+/,
+  "if (!['1.20.9', '1.20.10'].includes(version)) throw new Error(`1.20.9 release materializer requires a compatible 1.20.9+ chain, got ${version}.`);",
+));
+
+await update('scripts/test-release-1.20.9.mjs', (source) => {
+  let test = source;
+  test = test.replace(
+    "if (pkg.version !== '1.20.9') throw new Error(`Expected package version 1.20.9, got ${pkg.version}.`);",
+    "if (!['1.20.9', '1.20.10'].includes(pkg.version)) throw new Error(`Expected package version 1.20.9+, got ${pkg.version}.`);",
+  );
+  test = test.replace(
+    "need(server, \"const APP_VERSION = '1.20.9';\", 'Server version was not materialized to 1.20.9.');",
+    "need(server, `const APP_VERSION = '${pkg.version}';`, `Server version was not materialized to ${pkg.version}.`);",
+  );
+  test = test.replace(
+    "need(html, 'release-1.20.9.css?v=1.20.9', '1.20.9 tracking stylesheet is not wired.');",
+    "need(html, `release-1.20.9.css?v=${pkg.version}`, '1.20.9 tracking stylesheet is not wired for the active patch release.');",
+  );
+  return test;
+});
 
 // Previous materializers can reformat the SimBrief fetch options. Ensure the
 // required no-store flag exists before apply-release-1.20.8.mjs runs so clean
@@ -39,4 +61,4 @@ await update('src/simbrief-client.mjs', (source) => {
   return source.replace(fetchStart, (match) => `${match}\n      cache: 'no-store',`);
 });
 
-console.log('Prepared prior Flight Deck release materializers and resilient SimBrief fetch for the 1.20.9 chain.');
+console.log('Prepared prior Flight Deck release materializers and regression suites for the 1.20.10 chain.');
