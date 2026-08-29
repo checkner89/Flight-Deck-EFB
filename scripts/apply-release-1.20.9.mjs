@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const version = String(pkg.version || '1.20.9');
-
 if (version !== '1.20.9') throw new Error(`1.20.9 release materializer requires package version 1.20.9, got ${version}.`);
 
 async function update(relativePath, transform) {
@@ -16,32 +15,24 @@ async function update(relativePath, transform) {
 }
 
 function replaceRequired(source, from, to, label) {
-  if (!source.includes(from)) {
-    if (source.includes(to)) return source;
-    throw new Error(`1.20.9 patch anchor missing: ${label}`);
-  }
+  if (source.includes(to)) return source;
+  if (!source.includes(from)) throw new Error(`1.20.9 patch anchor missing: ${label}`);
   return source.replace(from, to);
 }
 
 function replaceBetween(source, startMarker, endMarker, replacement, label) {
+  if (source.includes(replacement.trim().slice(0, 90))) return source;
   const start = source.indexOf(startMarker);
   const end = source.indexOf(endMarker, start + startMarker.length);
-  if (start < 0 || end < 0) {
-    if (source.includes(replacement.trim().slice(0, 80))) return source;
-    throw new Error(`1.20.9 patch range missing: ${label}`);
-  }
+  if (start < 0 || end < 0) throw new Error(`1.20.9 patch range missing: ${label}`);
   return `${source.slice(0, start)}${replacement}${source.slice(end)}`;
 }
 
 await update('src/server.mjs', (source) => source.replace(/^const APP_VERSION = '[^']+';$/m, `const APP_VERSION = '${version}';`));
 
-/*
- * Progress used to select the nearest route waypoint. With only origin and
- * destination available this made the origin remain the "next" point until
- * halfway through the flight, so remaining distance became larger than the
- * planned route and progress was clamped to 0 %. Project the aircraft onto
- * the route polyline instead.
- */
+/* Fix flight progress: use the aircraft projection on the route polyline,
+   rather than the nearest waypoint. This also works for the common fallback
+   route that only contains origin and destination. */
 await update('public/flight-phases.js', (source) => {
   const replacement = `export function calculateFlightProgress(state = {}) {
   const aircraft = state.aircraft || {};
@@ -80,49 +71,36 @@ await update('public/flight-phases.js', (source) => {
   } else if (result.totalRouteNm && result.totalRouteNm > 0) {
     const aircraftLat = Number(aircraft.lat);
     const aircraftLon = Number(aircraft.lon);
-    const longitudeDelta = (value) => {
+    const lonDelta = (value) => {
       let delta = Number(value) - aircraftLon;
       while (delta > 180) delta -= 360;
       while (delta < -180) delta += 360;
       return delta;
     };
-    const longitudeScale = Math.max(0.0001, Math.cos(aircraftLat * Math.PI / 180));
-    const local = (point) => ({
-      x: longitudeDelta(point.lon) * longitudeScale,
-      y: Number(point.lat) - aircraftLat,
-    });
-
-    let completedBeforeSegment = 0;
+    const lonScale = Math.max(0.0001, Math.cos(aircraftLat * Math.PI / 180));
+    const local = (point) => ({ x: lonDelta(point.lon) * lonScale, y: Number(point.lat) - aircraftLat });
+    let completedBefore = 0;
     let best = null;
     for (let index = 0; index < points.length - 1; index += 1) {
-      const start = local(points[index]);
-      const end = local(points[index + 1]);
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
+      const a = local(points[index]);
+      const b = local(points[index + 1]);
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
       const lengthSquared = dx * dx + dy * dy;
       const segmentNm = distanceNm(points[index], points[index + 1]) || 0;
-      const rawProgress = lengthSquared > 0
-        ? ((-start.x * dx) + (-start.y * dy)) / lengthSquared
-        : 0;
-      const segmentProgress = Math.max(0, Math.min(1, rawProgress));
+      const raw = lengthSquared > 0 ? ((-a.x * dx) + (-a.y * dy)) / lengthSquared : 0;
+      const progress = Math.max(0, Math.min(1, raw));
       const projected = {
-        lat: Number(points[index].lat) + segmentProgress * (Number(points[index + 1].lat) - Number(points[index].lat)),
-        lon: Number(points[index].lon) + segmentProgress * (Number(points[index + 1].lon) - Number(points[index].lon)),
+        lat: Number(points[index].lat) + progress * (Number(points[index + 1].lat) - Number(points[index].lat)),
+        lon: Number(points[index].lon) + progress * (Number(points[index + 1].lon) - Number(points[index].lon)),
       };
       const crossTrackNm = distanceNm(aircraft, projected) ?? Infinity;
-      const candidate = {
-        segmentIndex: index,
-        segmentProgress,
-        crossTrackNm,
-        completedNm: completedBeforeSegment + segmentNm * segmentProgress,
-      };
+      const candidate = { segmentIndex: index, crossTrackNm, completedNm: completedBefore + segmentNm * progress };
       if (!best || candidate.crossTrackNm < best.crossTrackNm) best = candidate;
-      completedBeforeSegment += segmentNm;
+      completedBefore += segmentNm;
     }
-
     if (best) {
-      const nextIndex = Math.min(points.length - 1, best.segmentIndex + 1);
-      result.nextWaypoint = points[nextIndex];
+      result.nextWaypoint = points[Math.min(points.length - 1, best.segmentIndex + 1)];
       result.nextWaypointDistanceNm = distanceNm(aircraft, result.nextWaypoint);
       result.remainingRouteNm = Math.max(0, result.totalRouteNm - best.completedNm);
       result.completedPercent = Math.max(0, Math.min(100, best.completedNm / result.totalRouteNm * 100));
@@ -133,16 +111,11 @@ await update('public/flight-phases.js', (source) => {
   if (groundSpeed !== null && groundSpeed >= 30 && result.remainingRouteNm !== null) {
     result.etaSeconds = Math.round(result.remainingRouteNm / groundSpeed * 3_600);
   }
-  if (result.plannedTripFuelPounds !== null
-    && result.fuelRemainingPounds !== null
-    && result.totalRouteNm > 0
-    && result.remainingRouteNm !== null) {
+  if (result.plannedTripFuelPounds !== null && result.fuelRemainingPounds !== null && result.totalRouteNm > 0 && result.remainingRouteNm !== null) {
     const remainingRatio = Math.max(0, Math.min(1, result.remainingRouteNm / result.totalRouteNm));
     result.plannedRemainingTripBurnPounds = result.plannedTripFuelPounds * remainingRatio;
     result.projectedLandingFuelPounds = result.fuelRemainingPounds - result.plannedRemainingTripBurnPounds;
-    if (result.reserveFuelPounds !== null) {
-      result.projectedReserveMarginPounds = result.projectedLandingFuelPounds - result.reserveFuelPounds;
-    }
+    if (result.reserveFuelPounds !== null) result.projectedReserveMarginPounds = result.projectedLandingFuelPounds - result.reserveFuelPounds;
   }
   return result;
 }
@@ -151,8 +124,8 @@ await update('public/flight-phases.js', (source) => {
   return replaceBetween(source, 'export function calculateFlightProgress(state = {}) {', 'function timeFromSimBrief(value) {', replacement, 'route progress projection');
 });
 
-/* Keep live SayIntentions/MSFS plan data usable even when a SimBrief object is
- * present but was not explicitly imported for this flight. */
+/* Preserve the automatically detected live plan when SimBrief is merely
+   present in state. An explicitly imported SimBrief plan remains authoritative. */
 await update('src/flight-recorder.mjs', (source) => {
   const replacement = `function planFromState(state) {
   const simbrief = state.integrations?.simbrief || {};
@@ -168,7 +141,6 @@ await update('src/flight-recorder.mjs', (source) => {
   const sourceWaypoints = preferSimBrief
     ? (plannedWaypoints.length ? plannedWaypoints : liveWaypoints)
     : (liveWaypoints.length ? liveWaypoints : plannedWaypoints);
-  const waypoints = sourceWaypoints.map(waypoint).filter(Boolean);
   const rawOriginPosition = choose(planned.originPosition, live.originPosition);
   const rawDestinationPosition = choose(planned.destinationPosition, live.destinationPosition);
   return {
@@ -177,13 +149,9 @@ await update('src/flight-recorder.mjs', (source) => {
     sid: upper(choose(planned.sid, live.sid), 32),
     star: upper(choose(planned.star, live.star), 32),
     initialAltitude: text(choose(planned.initialAltitude, live.initialAltitude), 20),
-    waypoints,
-    originPosition: validPoint(rawOriginPosition)
-      ? { lat: Number(rawOriginPosition.lat), lon: Number(rawOriginPosition.lon) }
-      : null,
-    destinationPosition: validPoint(rawDestinationPosition)
-      ? { lat: Number(rawDestinationPosition.lat), lon: Number(rawDestinationPosition.lon) }
-      : null,
+    waypoints: sourceWaypoints.map(waypoint).filter(Boolean),
+    originPosition: validPoint(rawOriginPosition) ? { lat: Number(rawOriginPosition.lat), lon: Number(rawOriginPosition.lon) } : null,
+    destinationPosition: validPoint(rawDestinationPosition) ? { lat: Number(rawDestinationPosition.lat), lon: Number(rawDestinationPosition.lon) } : null,
   };
 }
 
@@ -193,41 +161,22 @@ await update('src/flight-recorder.mjs', (source) => {
 
 await update('public/app.js', (source) => {
   let app = source;
-
-  app = replaceRequired(
-    app,
-    "let flightHubTab = 'operations';",
-    "let flightHubTab = 'tracking';",
-    'tracking-first hub state',
-  );
-  app = replaceRequired(
-    app,
-    "  if (moduleName === 'flight' && !preserveFlightHubTab) flightHubTab = 'operations';",
-    "  if (moduleName === 'flight' && !preserveFlightHubTab) flightHubTab = 'tracking';",
-    'tracking-first module navigation',
-  );
-
-  app = replaceRequired(
-    app,
+  app = replaceRequired(app, "let flightHubTab = 'operations';", "let flightHubTab = 'tracking';", 'tracking-first hub state');
+  app = replaceRequired(app, "  if (moduleName === 'flight' && !preserveFlightHubTab) flightHubTab = 'operations';", "  if (moduleName === 'flight' && !preserveFlightHubTab) flightHubTab = 'tracking';", 'tracking-first module navigation');
+  app = replaceRequired(app,
     "  trackingBasemapButtons: [...document.querySelectorAll('[data-tracking-basemap]')],\n  trackingFollow: $('#tracking-follow'),",
     "  trackingBasemapButtons: [...document.querySelectorAll('[data-tracking-basemap]')],\n  trackingWaypointsToggle: $('#tracking-waypoints-toggle'),\n  trackingFollow: $('#tracking-follow'),",
-    'waypoint toggle element',
-  );
-  app = replaceRequired(
-    app,
+    'waypoint toggle element');
+  app = replaceRequired(app,
     "  trackingArchiveCount: $('#tracking-archive-count'),\n  flightArchiveList: $('#flight-archive-list'),",
     "  trackingArchiveCount: $('#tracking-archive-count'),\n  trackingArchiveDeleteAll: $('#tracking-archive-delete-all'),\n  flightArchiveList: $('#flight-archive-list'),",
-    'archive bulk delete element',
-  );
-
-  app = replaceRequired(
-    app,
+    'archive bulk delete element');
+  app = replaceRequired(app,
     "let trackingBasemap = 'map';\nlet trackingFollowAircraft = true;",
     "let trackingBasemap = 'map';\nlet trackingWaypointsVisible = localStorage.getItem('flight-deck-tracking-waypoints') !== 'hidden';\nlet trackingFollowAircraft = true;",
-    'waypoint visibility state',
-  );
+    'waypoint visibility state');
 
-  const waypointFunctions = `function syncTrackingWaypointButton() {
+  const visibilityHelpers = `function syncTrackingWaypointButton() {
   if (!elements.trackingWaypointsToggle) return;
   elements.trackingWaypointsToggle.classList.toggle('active', trackingWaypointsVisible);
   elements.trackingWaypointsToggle.setAttribute('aria-pressed', trackingWaypointsVisible ? 'true' : 'false');
@@ -238,34 +187,27 @@ function setTrackingWaypointsVisible(visible) {
   localStorage.setItem('flight-deck-tracking-waypoints', trackingWaypointsVisible ? 'visible' : 'hidden');
   syncTrackingWaypointButton();
   if (!trackingMap || !trackingLayers.waypoints) return;
-  if (trackingWaypointsVisible) {
-    if (!trackingMap.hasLayer(trackingLayers.waypoints)) trackingLayers.waypoints.addTo(trackingMap);
-  } else if (trackingMap.hasLayer(trackingLayers.waypoints)) {
-    trackingMap.removeLayer(trackingLayers.waypoints);
-  }
+  if (trackingWaypointsVisible && !trackingMap.hasLayer(trackingLayers.waypoints)) trackingLayers.waypoints.addTo(trackingMap);
+  if (!trackingWaypointsVisible && trackingMap.hasLayer(trackingLayers.waypoints)) trackingMap.removeLayer(trackingLayers.waypoints);
 }
 
 `;
   if (!app.includes('function setTrackingWaypointsVisible(visible)')) {
-    app = replaceRequired(app, 'function setTrackingBasemap(mode) {', `${waypointFunctions}function setTrackingBasemap(mode) {`, 'waypoint visibility functions');
+    app = replaceRequired(app, 'function setTrackingBasemap(mode) {', `${visibilityHelpers}function setTrackingBasemap(mode) {`, 'waypoint visibility helpers');
   }
+  app = replaceRequired(app,
+    '  trackingLayers.waypoints = L.layerGroup().addTo(trackingMap);',
+    '  trackingLayers.waypoints = L.layerGroup();\n  if (trackingWaypointsVisible) trackingLayers.waypoints.addTo(trackingMap);\n  syncTrackingWaypointButton();',
+    'waypoint layer visibility');
 
-  app = replaceRequired(
-    app,
-    "  trackingLayers.waypoints = L.layerGroup().addTo(trackingMap);",
-    "  trackingLayers.waypoints = L.layerGroup();\n  if (trackingWaypointsVisible) trackingLayers.waypoints.addTo(trackingMap);\n  syncTrackingWaypointButton();",
-    'waypoint layer visibility',
-  );
-
-  const trackingPointHelpers = `function trackingWaypointPoints(record) {
-  const recorded = (record?.plan?.waypoints || [])
-    .filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
+  const routeHelpers = `function trackingWaypointPoints(record) {
+  const recorded = (record?.plan?.waypoints || []).filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
   if (trackingSelectedId || recorded.length) return recorded;
   const state = latestState || {};
-  const simbriefIntegration = state.integrations?.simbrief || {};
-  const planned = simbriefIntegration.flight || {};
+  const simbrief = state.integrations?.simbrief || {};
+  const planned = simbrief.flight || {};
   const live = state.flight || {};
-  const preferSimBrief = Boolean(simbriefIntegration.imported && planned.origin && planned.destination);
+  const preferSimBrief = Boolean(simbrief.imported && planned.origin && planned.destination);
   const source = preferSimBrief
     ? (Array.isArray(planned.waypoints) ? planned.waypoints : [])
     : (Array.isArray(live.waypoints) && live.waypoints.length ? live.waypoints : (Array.isArray(planned.waypoints) ? planned.waypoints : []));
@@ -275,27 +217,19 @@ function setTrackingWaypointsVisible(visible) {
 function trackingPlanPoints(record) {
   const waypoints = trackingWaypointPoints(record);
   if (waypoints.length > 1) return waypoints;
-  if (trackingSelectedId) {
-    return [record?.plan?.originPosition, record?.plan?.destinationPosition]
-      .filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
-  }
+  if (trackingSelectedId) return [record?.plan?.originPosition, record?.plan?.destinationPosition].filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
   const state = latestState || {};
-  const simbriefIntegration = state.integrations?.simbrief || {};
-  const planned = simbriefIntegration.flight || {};
+  const simbrief = state.integrations?.simbrief || {};
+  const planned = simbrief.flight || {};
   const live = state.flight || {};
-  const preferSimBrief = Boolean(simbriefIntegration.imported && planned.origin && planned.destination);
-  const origin = record?.plan?.originPosition
-    || (preferSimBrief ? planned.originPosition : live.originPosition)
-    || planned.originPosition;
-  const destination = record?.plan?.destinationPosition
-    || (preferSimBrief ? planned.destinationPosition : live.destinationPosition)
-    || planned.destinationPosition;
-  return [origin, destination]
-    .filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
+  const preferSimBrief = Boolean(simbrief.imported && planned.origin && planned.destination);
+  const origin = record?.plan?.originPosition || (preferSimBrief ? planned.originPosition : live.originPosition) || planned.originPosition;
+  const destination = record?.plan?.destinationPosition || (preferSimBrief ? planned.destinationPosition : live.destinationPosition) || planned.destinationPosition;
+  return [origin, destination].filter((entry) => Number.isFinite(Number(entry?.lat)) && Number.isFinite(Number(entry?.lon)));
 }
 
 `;
-  app = replaceBetween(app, 'function trackingPlanPoints(record) {', 'function trackingActualPoints(record) {', trackingPointHelpers, 'tracking route point fallback');
+  app = replaceBetween(app, 'function trackingPlanPoints(record) {', 'function trackingActualPoints(record) {', routeHelpers, 'tracking route fallback');
 
   app = app.replace(
     "  const latest = record?.weather?.at(-1) || {};",
@@ -318,69 +252,65 @@ function trackingPlanPoints(record) {
     "        pane: 'trackingPlanned', color: '#2bbdca', opacity: 0.96, weight: 3.4, dashArray: '10 7', lineCap: 'round', interactive: false,",
   );
 
-  /* A removed manual-start button was still dereferenced by the recorder
-     renderer. That exception prevented route, weather, detail and map rendering. */
-  app = replaceRequired(
-    app,
+  /* This null dereference was the visible 'Cannot set properties of null'
+     error. It also aborted rendering before route/weather/flight data/map. */
+  app = replaceRequired(app,
     '  elements.trackingStart.hidden = recording || archived;',
     '  if (elements.trackingStart) elements.trackingStart.hidden = recording || archived;',
-    'tracking recorder null guard',
-  );
+    'tracking recorder null guard');
 
-  const deleteAllFunction = `async function deleteAllTrackedFlights() {
-  const button = elements.trackingArchiveDeleteAll;
-  if (button) button.disabled = true;
-  try {
-    const response = await fetch(authenticatedUrl('/api/flights'), { cache: 'no-store' });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Flight archive could not be loaded.');
-    const currentId = data.current?.id || null;
-    const deletable = (data.flights || []).filter((flight) => flight?.id && flight.id !== currentId && flight.status !== 'recording');
-    if (!deletable.length) {
-      window.alert('Es gibt keine abgeschlossenen Flüge zum Löschen. Der aktuelle Flug bleibt erhalten.');
-      return;
-    }
-    if (!window.confirm(`${deletable.length} abgeschlossene Flug${deletable.length === 1 ? '' : 'e'} aus dem Flight Archiv löschen? Der aktuelle Flug bleibt erhalten.`)) return;
-    const results = await Promise.allSettled(deletable.map(async (flight) => {
-      const deletion = await fetch(authenticatedUrl(`/api/flights/${encodeURIComponent(flight.id)}`), { method: 'DELETE' });
-      const body = await deletion.json().catch(() => ({}));
-      if (!deletion.ok) throw new Error(body.error || `Flight ${flight.id} could not be deleted.`);
-      return flight.id;
-    }));
-    const failures = results.filter((result) => result.status === 'rejected');
-    if (failures.length) throw new Error(`${failures.length} Flug${failures.length === 1 ? '' : 'e'} konnten nicht gelöscht werden.`);
-    trackingSelectedId = null;
-    trackingRenderedKey = '';
-    trackingStaticRenderKey = '';
-    await refreshTrackingData({ force: true });
-  } catch (error) {
-    if (elements.trackingRecordMessage) elements.trackingRecordMessage.textContent = error.message;
-    window.alert(error.message);
-  } finally {
-    if (button) button.disabled = false;
-  }
-}
-
-`;
+  const deleteAllFunction = [
+    'async function deleteAllTrackedFlights() {',
+    '  const button = elements.trackingArchiveDeleteAll;',
+    '  if (button) button.disabled = true;',
+    '  try {',
+    "    const response = await fetch(authenticatedUrl('/api/flights'), { cache: 'no-store' });",
+    '    const data = await response.json();',
+    "    if (!response.ok) throw new Error(data.error || 'Flight archive could not be loaded.');",
+    '    const currentId = data.current?.id || null;',
+    "    const deletable = (data.flights || []).filter((flight) => flight?.id && flight.id !== currentId && flight.status !== 'recording');",
+    '    if (!deletable.length) {',
+    "      window.alert('Es gibt keine abgeschlossenen Flüge zum Löschen. Der aktuelle Flug bleibt erhalten.');",
+    '      return;',
+    '    }',
+    "    if (!window.confirm(`${deletable.length} abgeschlossene Flug${deletable.length === 1 ? '' : 'e'} aus dem Flight Archiv löschen? Der aktuelle Flug bleibt erhalten.`)) return;",
+    '    const results = await Promise.allSettled(deletable.map(async (flight) => {',
+    "      const deletion = await fetch(authenticatedUrl(`/api/flights/${encodeURIComponent(flight.id)}`), { method: 'DELETE' });",
+    '      const body = await deletion.json().catch(() => ({}));',
+    "      if (!deletion.ok) throw new Error(body.error || `Flight ${flight.id} could not be deleted.`);",
+    '      return flight.id;',
+    '    }));',
+    "    const failures = results.filter((result) => result.status === 'rejected');",
+    "    if (failures.length) throw new Error(`${failures.length} Flug${failures.length === 1 ? '' : 'e'} konnten nicht gelöscht werden.`);",
+    '    trackingSelectedId = null;',
+    "    trackingRenderedKey = '';",
+    "    trackingStaticRenderKey = '';",
+    '    await refreshTrackingData({ force: true });',
+    '  } catch (error) {',
+    '    if (elements.trackingRecordMessage) elements.trackingRecordMessage.textContent = error.message;',
+    '    window.alert(error.message);',
+    '  } finally {',
+    '    if (button) button.disabled = false;',
+    '  }',
+    '}',
+    '',
+    '',
+  ].join('\n');
   if (!app.includes('async function deleteAllTrackedFlights()')) {
     app = replaceRequired(app, 'async function deleteTrackedFlight() {', `${deleteAllFunction}async function deleteTrackedFlight() {`, 'archive bulk delete function');
   }
 
   if (!app.includes("elements.trackingWaypointsToggle?.addEventListener('click'")) {
-    app = replaceRequired(
-      app,
+    app = replaceRequired(app,
       "for (const button of elements.trackingBasemapButtons) {\n  button.addEventListener('click', () => setTrackingBasemap(button.dataset.trackingBasemap));\n}\nelements.trackingFollow.addEventListener('click', () => {",
       "for (const button of elements.trackingBasemapButtons) {\n  button.addEventListener('click', () => setTrackingBasemap(button.dataset.trackingBasemap));\n}\nelements.trackingWaypointsToggle?.addEventListener('click', () => setTrackingWaypointsVisible(!trackingWaypointsVisible));\nelements.trackingFollow.addEventListener('click', () => {",
-      'waypoint toggle handler',
-    );
+      'waypoint toggle handler');
   }
   if (!app.includes("elements.trackingArchiveDeleteAll?.addEventListener('click'")) {
-    app = replaceRequired(
-      app,
+    app = replaceRequired(app,
       "elements.trackingDelete.addEventListener('click', deleteTrackedFlight);",
       "elements.trackingDelete.addEventListener('click', deleteTrackedFlight);\nelements.trackingArchiveDeleteAll?.addEventListener('click', deleteAllTrackedFlights);",
-      'archive bulk delete handler',
-    );
+      'archive bulk delete handler');
   }
   return app;
 });
@@ -393,20 +323,16 @@ await update('public/flight-overlay.js', (source) => source.replace(
 await update('public/index.html', (source) => {
   let html = source;
   if (!html.includes('id="tracking-waypoints-toggle"')) {
-    html = replaceRequired(
-      html,
+    html = replaceRequired(html,
       '<div class="tracking-basemap-selector" role="group" aria-label="Map style"><button type="button" class="active" data-tracking-basemap="map" data-i18n="mapView">MAP</button><button type="button" data-tracking-basemap="satellite" data-i18n="satelliteView">SATELLITE</button></div>\n                  <button id="tracking-follow"',
       '<div class="tracking-basemap-selector" role="group" aria-label="Map style"><button type="button" class="active" data-tracking-basemap="map" data-i18n="mapView">MAP</button><button type="button" data-tracking-basemap="satellite" data-i18n="satelliteView">SATELLITE</button></div>\n                  <button id="tracking-waypoints-toggle" class="tracking-control active" type="button" aria-pressed="true">WEGPUNKTE</button>\n                  <button id="tracking-follow"',
-      'tracking waypoint button markup',
-    );
+      'waypoint toggle markup');
   }
   if (!html.includes('id="tracking-archive-delete-all"')) {
-    html = replaceRequired(
-      html,
+    html = replaceRequired(html,
       '<div class="section-title"><h2 data-i18n="archive">Flight archive</h2><span id="tracking-archive-count">0</span></div>',
       '<div class="section-title"><h2 data-i18n="archive">Flight archive</h2><div class="tracking-archive-header-actions"><span id="tracking-archive-count">0</span><button id="tracking-archive-delete-all" type="button">ALLE LÖSCHEN</button></div></div>',
-      'archive bulk delete markup',
-    );
+      'archive bulk delete markup');
   }
   html = html.replace(/\s*<link[^>]+release-1\.20\.9\.css\?v=[^>]+>\s*/g, '\n');
   html = html.replace('</head>', `    <link rel="stylesheet" href="/release-1.20.9.css?v=${version}">\n  </head>`);
