@@ -33,10 +33,11 @@ await update('scripts/apply-release-1.20.9.mjs', (source) => {
     "if (!['1.20.9', '1.20.10', '1.20.11'].includes(version)) throw new Error(`1.20.9 release materializer requires a compatible 1.20.9+ chain, got ${version}.`);",
   );
   if (!next.includes("label === 'waypoint toggle element'")) {
-    const anchor = "function replaceRequired(source, from, to, label) {\n  if (source.includes(to)) return source;";
-    const replacement = "function replaceRequired(source, from, to, label) {\n  if (label === 'waypoint toggle element' && source.includes(\"trackingWaypointsToggle: $('#tracking-waypoints-toggle')\")) return source;\n  if (label === 'waypoint visibility state' && source.includes(\"let trackingWaypointsVisible = localStorage.getItem('flight-deck-tracking-waypoints') !== 'hidden';\")) return source;\n  if (source.includes(to)) return source;";
-    if (!next.includes(anchor)) throw new Error('1.20.9 compatibility patch could not locate replaceRequired().');
-    next = next.replace(anchor, replacement);
+    const pattern = /function replaceRequired\(source, from, to, label\) \{\r?\n\s*if \(source\.includes\(to\)\) return source;/;
+    if (!pattern.test(next)) throw new Error('1.20.9 compatibility patch could not locate replaceRequired().');
+    next = next.replace(pattern,
+      "function replaceRequired(source, from, to, label) {\n  if (label === 'waypoint toggle element' && source.includes(\"trackingWaypointsToggle: $('#tracking-waypoints-toggle')\")) return source;\n  if (label === 'waypoint visibility state' && source.includes(\"let trackingWaypointsVisible = localStorage.getItem('flight-deck-tracking-waypoints') !== 'hidden';\")) return source;\n  if (source.includes(to)) return source;"
+    );
   }
   return next;
 });
