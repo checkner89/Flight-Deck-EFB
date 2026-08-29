@@ -1,0 +1,96 @@
+/* Flight Deck EFB 1.20.9 — tracking-first flight hub */
+
+/* Tracking is the Flight Hub now. Keep legacy nodes in the DOM for the core
+   renderer, but remove recorder/operations chrome from the visible surface. */
+[data-page="tracking"] #tracking-status-pill,
+[data-page="tracking"] .tracking-recorder-card,
+.flight-hub-nav [data-flight-hub-tab="operations"] {
+  display: none !important;
+}
+
+[data-page="tracking"] .tracking-sidebar {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+[data-page="tracking"] .tracking-archive-card {
+  min-height: 0;
+  height: 100%;
+}
+
+/* Route controls */
+#tracking-waypoints-toggle {
+  min-width: 104px;
+}
+
+#tracking-waypoints-toggle[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--fd-ui-accent, #18cfc3) 48%, var(--fd-ui-line, rgba(154,193,213,.18))) !important;
+  background: color-mix(in srgb, var(--fd-ui-accent, #18cfc3) 11%, var(--fd-ui-panel2, #10232f)) !important;
+  color: var(--fd-ui-accent2, #58e7dd) !important;
+}
+
+#tracking-waypoints-toggle[aria-pressed="false"] {
+  opacity: .68;
+}
+
+/* Archive header + safe bulk delete. */
+.tracking-archive-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+#tracking-archive-delete-all {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--fd-ui-danger, #ef6864) 34%, var(--fd-ui-line, rgba(154,193,213,.18)));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fd-ui-danger, #ef6864) 7%, var(--fd-ui-panel2, #10232f));
+  color: var(--fd-ui-danger, #ef6864);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .035em;
+  cursor: pointer;
+}
+
+#tracking-archive-delete-all:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--fd-ui-danger, #ef6864) 62%, var(--fd-ui-line, rgba(154,193,213,.18)));
+  background: color-mix(in srgb, var(--fd-ui-danger, #ef6864) 12%, var(--fd-ui-panel2, #10232f));
+}
+
+#tracking-archive-delete-all:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+/* The currently recording flight is deliberately not deletable. 1.20.8 adds
+   the per-row delete control after rendering, so keep that control hidden on
+   the recording row as an additional client-side guard. */
+.fd28-archive-row:has(.flight-archive-entry.recording) .fd28-archive-delete {
+  display: none !important;
+}
+
+/* Give the lower information cards enough room now that they actually render
+   again, without turning the tracking view into a long dashboard. */
+[data-page="tracking"] .tracking-detail-layout {
+  align-items: stretch;
+}
+
+[data-page="tracking"] .tracking-route-card,
+[data-page="tracking"] .tracking-weather-card,
+[data-page="tracking"] .tracking-data-card {
+  min-height: 220px;
+}
+
+@media (max-width: 1180px) {
+  .tracking-archive-header-actions {
+    gap: 6px;
+  }
+
+  #tracking-archive-delete-all {
+    padding: 0 8px;
+    font-size: 8px;
+  }
+}
