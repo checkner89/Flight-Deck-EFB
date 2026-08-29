@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-if (pkg.version !== '1.22.0') throw new Error(`Expected package version 1.22.0, got ${pkg.version}.`);
+if (!['1.22.0', '1.22.1'].includes(pkg.version)) throw new Error(`Expected package version 1.22.0+, got ${pkg.version}.`);
+const expectedVersion = pkg.version;
 
 const [html, app, runtime, css, recorder, server, sw] = await Promise.all([
   fs.readFile('public/index.html', 'utf8'),
@@ -14,11 +15,11 @@ const [html, app, runtime, css, recorder, server, sw] = await Promise.all([
 ]);
 
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
-need(html, 'data-app-version="1.22.0"', 'HTML version not materialized.');
-need(html, 'release-1.22.0.css?v=1.22.0', '1.22 stylesheet not wired.');
-need(html, 'release-1.22.0.js?v=1.22.0', '1.22 runtime not wired.');
-need(server, "const APP_VERSION = '1.22.0';", 'Server version not materialized.');
-need(sw, 'flight-deck-efb-v1220-pilotops1', 'Service-worker cache not bumped.');
+need(html, `data-app-version="${expectedVersion}"`, 'HTML version not materialized.');
+need(html, `release-1.22.0.css?v=${expectedVersion}`, '1.22 stylesheet not wired.');
+need(html, `release-1.22.0.js?v=${expectedVersion}`, '1.22 runtime not wired.');
+need(server, `const APP_VERSION = '${expectedVersion}';`, 'Server version not materialized.');
+if (!sw.includes('flight-deck-efb-v1220-pilotops1') && !sw.includes('flight-deck-efb-v1221-ui1')) throw new Error('Service-worker cache not compatible with 1.22 pilot workflows.');
 need(app, 'button.dataset.flightId = flight.id;', 'Archive buttons do not expose stable flight IDs.');
 need(recorder, 'originalPlan: structuredClone(initialPlan)', 'Original planned route is not preserved.');
 need(recorder, 'planHistory.push({ capturedAt:', 'Plan-change history is not persisted.');
@@ -35,4 +36,4 @@ need(runtime, 'SERVICE_DEFS', 'Ground-services redesign missing.');
 need(css, "html[data-theme='light']", 'Dedicated Light Mode contrast rules missing.');
 need(css, '--fd122-accent-strong: #07535b', 'Dark Light-Mode accent token missing.');
 
-console.log('Flight Deck EFB 1.22.0 flight analysis, briefing, scratchpad and ground-service regression checks passed.');
+console.log(`Flight Deck EFB ${expectedVersion} 1.22 pilot workflow regression checks passed.`);
