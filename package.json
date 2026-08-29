@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.20.10",
+  "version": "1.20.11",
   "description": "Flight Deck EFB for MSFS with a unified cockpit UI, persistent flight context, native formatted SimBrief OFP and original dispatch documents, app-scoped My EFB file storage, taxi guidance, live traffic, native EFB bridging, aircraft adapters and guarded simulator integrations.",
   "author": "Christoph Heckner",
   "license": "MIT",
@@ -9,17 +9,17 @@
   "main": "src/electron-main.mjs",
   "private": false,
   "scripts": {
-    "prepare:release": "node scripts/prepare-release-1.20.5-compat.mjs && node scripts/normalize-release-1.19.0-inputs.mjs && node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/apply-release-1.20.0.mjs && node scripts/apply-release-1.20.1.mjs && node scripts/apply-release-1.20.2.mjs && node scripts/apply-release-1.20.3.mjs && node scripts/apply-release-1.20.4.mjs && node scripts/apply-release-1.20.5.mjs && node scripts/apply-release-1.20.6.mjs && node scripts/apply-release-1.20.7.mjs && node scripts/prepare-release-1.20.8-compat.mjs && node scripts/apply-release-1.20.8.mjs && node scripts/apply-release-1.20.8-route-hotfix.mjs && node scripts/apply-release-1.20.8-layout-hotfix.mjs && node scripts/apply-release-1.20.9.mjs && node scripts/apply-release-1.20.10.mjs",
+    "prepare:release": "node scripts/prepare-release-1.20.5-compat.mjs && node scripts/normalize-release-1.19.0-inputs.mjs && node scripts/apply-release-1.19.0.mjs && node scripts/prepare-release-1.19.0-notes.mjs && node scripts/apply-release-1.17.19.mjs && node scripts/prepare-release-ui.mjs && node scripts/prepare-operations-suite.mjs && node scripts/apply-release-1.20.0.mjs && node scripts/apply-release-1.20.1.mjs && node scripts/apply-release-1.20.2.mjs && node scripts/apply-release-1.20.3.mjs && node scripts/apply-release-1.20.4.mjs && node scripts/apply-release-1.20.5.mjs && node scripts/apply-release-1.20.6.mjs && node scripts/apply-release-1.20.7.mjs && node scripts/prepare-release-1.20.8-compat.mjs && node scripts/apply-release-1.20.8.mjs && node scripts/apply-release-1.20.8-route-hotfix.mjs && node scripts/apply-release-1.20.8-layout-hotfix.mjs && node scripts/apply-release-1.20.9.mjs && node scripts/apply-release-1.20.10.mjs && node scripts/apply-release-1.20.11.mjs",
     "prepare": "npm run prepare:release",
     "start": "npm run prepare:release && electron .",
-    "dist": "npm run prepare:release && node scripts/test-release-1.20.10.mjs && electron-builder --win --x64 --publish never",
-    "release": "npm run prepare:release && node scripts/test-release-1.20.10.mjs && electron-builder --win --x64 --publish always",
+    "dist": "npm run prepare:release && node scripts/test-release-1.20.11.mjs && electron-builder --win --x64 --publish never",
+    "release": "npm run prepare:release && node scripts/test-release-1.20.11.mjs && electron-builder --win --x64 --publish always",
     "test:com": "npm run prepare:release && node scripts/test-com-ui.mjs",
     "test:atc": "npm run prepare:release && node scripts/test-atc-ui.mjs",
     "test:ground": "npm run prepare:release && node scripts/test-ground-ui.mjs",
     "test:ui": "npm run prepare:release && node scripts/test-ui-polish.mjs",
     "test:profiles": "npm run prepare:release && node scripts/test-gsx-profile-manager.mjs",
-    "test:ops": "npm run prepare:release && node scripts/test-pilot-tools.mjs && node scripts/test-release-1.19.0.mjs && node scripts/test-release-1.20.0.mjs && node scripts/test-release-1.20.9.mjs && node scripts/test-release-1.20.10.mjs",
+    "test:ops": "npm run prepare:release && node scripts/test-pilot-tools.mjs && node scripts/test-release-1.19.0.mjs && node scripts/test-release-1.20.0.mjs && node scripts/test-release-1.20.9.mjs && node scripts/test-release-1.20.10.mjs && node scripts/test-release-1.20.11.mjs",
     "prepare-data": "npm run prepare:release && node scripts/test-gsx-profile-manager.mjs && node scripts/build-ourairports.mjs"
   },
   "dependencies": {
