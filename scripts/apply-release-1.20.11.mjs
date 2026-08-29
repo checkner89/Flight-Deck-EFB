@@ -167,29 +167,29 @@ function renderTrackingWeatherOverlay(record, weather) {
     const windDirection = Number(point.entry?.windDirection);
     const windSpeed = Number(point.entry?.windSpeed);
     const windGust = Number(point.entry?.windGust);
-    const wind = Number.isFinite(windSpeed)
-      ? `${Number.isFinite(windDirection) ? String(Math.round(windDirection)).padStart(3, '0') + '°' : 'VRB'} / ${Math.round(windSpeed)}${Number.isFinite(windGust) && windGust > windSpeed ? `G${Math.round(windGust)}` : ''} kt`
-      : 'METAR';
+    const directionLabel = Number.isFinite(windDirection) ? String(Math.round(windDirection)).padStart(3, '0') + '°' : 'VRB';
+    const gustLabel = Number.isFinite(windGust) && windGust > windSpeed ? 'G' + Math.round(windGust) : '';
+    const wind = Number.isFinite(windSpeed) ? directionLabel + ' / ' + Math.round(windSpeed) + gustLabel + ' kt' : 'METAR';
     const marker = L.marker([point.lat, point.lon], {
       pane: 'trackingWeather',
       zIndexOffset: 380,
       icon: L.divIcon({
-        className: `tracking-weather-map-icon wx-${categoryClass}`,
-        html: `<span><b>${escapeHtml(point.airport)}</b><em>${escapeHtml(category)}</em><small>${escapeHtml(wind)}</small></span>`,
+        className: 'tracking-weather-map-icon wx-' + categoryClass,
+        html: '<span><b>' + escapeHtml(point.airport) + '</b><em>' + escapeHtml(category) + '</em><small>' + escapeHtml(wind) + '</small></span>',
         iconSize: [1, 1], iconAnchor: [0, 0],
       }),
     }).addTo(trackingLayers.weather);
     const details = [
-      point.entry?.metar ? `<small>METAR</small><br>${escapeHtml(point.entry.metar)}` : '',
-      point.entry?.taf ? `<br><small>TAF</small><br>${escapeHtml(point.entry.taf)}` : '',
+      point.entry?.metar ? '<small>METAR</small><br>' + escapeHtml(point.entry.metar) : '',
+      point.entry?.taf ? '<br><small>TAF</small><br>' + escapeHtml(point.entry.taf) : '',
     ].filter(Boolean).join('');
-    marker.bindPopup(`<strong>${escapeHtml(point.airport)} · ${escapeHtml(category)}</strong><br>${escapeHtml(wind)}${details ? `<br>${details}` : ''}`);
+    marker.bindPopup('<strong>' + escapeHtml(point.airport) + ' · ' + escapeHtml(category) + '</strong><br>' + escapeHtml(wind) + (details ? '<br>' + details : ''));
   }
 }
 
 `;
   if (!app.includes('function setTrackingWeatherVisible(visible)')) {
-    app = replaceRequired(app, 'function setTrackingBasemap(mode) {', `${weatherHelpers}function setTrackingBasemap(mode) {`, 'weather overlay helpers');
+    app = replaceRequired(app, 'function setTrackingBasemap(mode) {', weatherHelpers + 'function setTrackingBasemap(mode) {', 'weather overlay helpers');
   }
 
   app = replaceRequired(
@@ -202,7 +202,7 @@ function renderTrackingWeatherOverlay(record, weather) {
   const routeDetails = `function renderTrackingWaypoints(record) {
   const waypoints = trackingWaypointPoints(record);
   if (elements.trackingWaypointCount) {
-    elements.trackingWaypointCount.textContent = `${waypoints.length} WPT`;
+    elements.trackingWaypointCount.textContent = String(waypoints.length) + ' WPT';
     elements.trackingWaypointCount.hidden = true;
   }
   elements.trackingRouteSummary.textContent = record?.plan?.route
