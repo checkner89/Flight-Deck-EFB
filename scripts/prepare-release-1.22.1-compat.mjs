@@ -20,24 +20,22 @@ for (const filename of targets) {
   await update(filename, (source) => {
     let next = source;
 
-    // Existing compatibility lists that already contain 1.22.0 should also accept 1.22.1.
+    // Any prior release compatibility gate must continue to admit the current patch release.
+    // This runs before the historical compatibility scripts, so it deliberately covers strict
+    // 1.20.x gates as well as the more recent 1.21/1.22 compatibility arrays.
     next = next.replace(
-      /\[([^\]\n]*'1\.22\.0'[^\]\n]*)\]\.includes\((version|pkg\.version|packageJson\.version)\)/g,
+      /\[([^\]\n]*'1\.(?:20\.\d+|21\.0|22\.0)'[^\]\n]*)\]\.includes\((version|pkg\.version|packageJson\.version)\)/g,
       (match, list, variable) => list.includes("'1.22.1'") ? match : `[${list}, '1.22.1'].includes(${variable})`,
     );
 
-    // Latest 1.22.0 materializers/tests must remain valid compatibility regressions in 1.22.1.
     next = next.replace(
-      /if \((version|pkg\.version|packageJson\.version) !== '1\.22\.0'\) throw new Error\(([^\n]+)\);/g,
-      (match, variable, message) => `if (!['1.22.0', '1.22.1'].includes(${variable})) throw new Error(${message});`,
+      /if \((version|pkg\.version|packageJson\.version) !== '(1\.(?:20\.\d+|21\.0|22\.0))'\) throw new Error\(([^\n]+)\);/g,
+      (match, variable, legacyVersion, message) => `if (!['${legacyVersion}', '1.22.1'].includes(${variable})) throw new Error(${message});`,
     );
 
-    // Older release scripts that are still strict get the complete current compatibility range.
-    next = next.replace(
-      /if \((version|pkg\.version|packageJson\.version) !== '1\.21\.0'\) throw new Error\(([^\n]+)\);/g,
-      (match, variable, message) => `if (!['1.21.0', '1.22.0', '1.22.1'].includes(${variable})) throw new Error(${message});`,
-    );
-
+    // A few legacy scripts compare package versions through String(...) aliases. Their final
+    // guards are normalized above because the alias itself is named `version`; keep explicit
+    // list literals resilient when later compatibility scripts add intermediate releases.
     next = next.replace(/'1\.20\.11', '1\.21\.0', '1\.22\.0'\]/g, "'1.20.11', '1.21.0', '1.22.0', '1.22.1']");
     next = next.replace(/'1\.21\.0', '1\.22\.0'\]/g, "'1.21.0', '1.22.0', '1.22.1']");
 
