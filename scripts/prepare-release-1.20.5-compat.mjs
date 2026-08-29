@@ -40,24 +40,40 @@ await update('scripts/apply-release-1.20.7.mjs', (source) => source
     "if (!['1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'].includes(version)) throw new Error(`1.20.7 materializer requires a compatible 1.20.7+ chain, got ${version}.`);",
   ));
 
-await update('scripts/test-release-1.20.5.mjs', (source) => source.replace(
-  /if \(!\[[^\n]+\]\.includes\(pkg\.version\)\) throw new Error\(`Unexpected package version: \$\{pkg\.version\}`\);/,
-  "if (!['1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);",
-));
-await update('scripts/test-release-1.20.6.mjs', (source) => source.replace(
-  /if \(!\[[^\n]+\]\.includes\(pkg\.version\)\) throw new Error\(`Unexpected package version: \$\{pkg\.version\}`\);/,
-  "if (!['1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);",
-));
+await update('scripts/test-release-1.20.5.mjs', (source) => {
+  let next = source.replace(
+    /const compatibleVersions = \[[^\n]+\];/,
+    "const compatibleVersions = ['1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'];",
+  );
+  if (!next.includes("'flight-deck-efb-v12011-weather-altitude1',")) {
+    next = next.replace("  'flight-deck-efb-v1209-tracking1',", "  'flight-deck-efb-v1209-tracking1',\n  'flight-deck-efb-v12011-weather-altitude1',");
+  }
+  return next;
+});
+
+await update('scripts/test-release-1.20.6.mjs', (source) => {
+  let next = source.replace(
+    /if \(!\[[^\n]+\]\.includes\(pkg\.version\)\) throw new Error\(`Unexpected package version: \$\{pkg\.version\}`\);/,
+    "if (!['1.20.6', '1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);",
+  );
+  if (!next.includes("'flight-deck-efb-v12011-weather-altitude1',")) {
+    next = next.replace("  'flight-deck-efb-v1209-tracking1',", "  'flight-deck-efb-v1209-tracking1',\n  'flight-deck-efb-v12011-weather-altitude1',");
+  }
+  return next;
+});
+
 await update('scripts/test-release-1.20.7.mjs', (source) => {
   let next = source.replace(
-    /if \((?:pkg\.version !== '1\.20\.7'|!\[[^\n]+\]\.includes\(pkg\.version\))\) throw new Error\(`Unexpected package version: \$\{pkg\.version\}`\);/,
+    /if \(!\[[^\n]+\]\.includes\(pkg\.version\)\) throw new Error\(`Unexpected package version: \$\{pkg\.version\}`\);/,
     "if (!['1.20.7', '1.20.8', '1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);",
   );
-  if (!next.includes("await import('./test-release-1.20.9.mjs')")) {
-    next = `${next.trimEnd()}\n\nif (['1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) await import('./test-release-1.20.9.mjs');\n`;
-  } else {
-    next = next.replace(/if \(\[[^\n]+\]\.includes\(pkg\.version\)\) await import\('\.\/test-release-1\.20\.9\.mjs'\);/, "if (['1.20.9', '1.20.10', '1.20.11'].includes(pkg.version)) await import('./test-release-1.20.9.mjs');");
+  if (!next.includes("'flight-deck-efb-v12011-weather-altitude1',")) {
+    next = next.replace("  'flight-deck-efb-v1209-tracking1',", "  'flight-deck-efb-v1209-tracking1',\n  'flight-deck-efb-v12011-weather-altitude1',");
   }
+  next = next.replace(
+    "if (version === '1.20.9') await import('./test-release-1.20.9.mjs');",
+    "if (['1.20.9', '1.20.10', '1.20.11'].includes(version)) await import('./test-release-1.20.9.mjs');",
+  );
   return next;
 });
 
