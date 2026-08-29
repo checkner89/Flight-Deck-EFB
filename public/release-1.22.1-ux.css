@@ -1,0 +1,140 @@
+/* Flight Deck EFB 1.22.1 — pilot UX interaction layer */
+
+.fd123-toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 20px;
+  z-index: 12000;
+  display: grid;
+  gap: 8px;
+  width: min(390px, calc(100vw - 36px));
+  pointer-events: none;
+}
+
+.fd123-toast {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid var(--fd123-border-strong, rgba(133,169,187,.34));
+  border-radius: 11px;
+  background: rgba(7, 20, 30, .94);
+  box-shadow: 0 18px 46px rgba(0,0,0,.28);
+  color: #edf7f8;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(8px) scale(.985);
+  transition: opacity .16s ease, transform .16s ease;
+  backdrop-filter: blur(16px);
+}
+
+.fd123-toast.show { opacity: 1; transform: none; }
+.fd123-toast > i { width: 8px; height: 8px; border-radius: 50%; background: var(--fd123-accent, #20c6c7); }
+.fd123-toast.success > i { background: #55c98c; }
+.fd123-toast.warning > i { background: #f0b95a; }
+
+.fd123-context-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.fd123-context-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--fd123-border, rgba(133,169,187,.2));
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.fd123-context-actions button:hover {
+  border-color: var(--fd123-border-strong, rgba(133,169,187,.34));
+  background: var(--fd123-accent-soft, rgba(32,198,199,.12));
+}
+
+.fd123-context-actions .fd123-context-home {
+  border-color: transparent;
+  color: var(--fd123-muted, #9eb2bd);
+}
+
+.fd123-resume-module {
+  display: grid !important;
+  grid-template-columns: auto;
+  gap: 1px;
+  align-content: center;
+  text-align: left;
+  min-width: 112px;
+}
+
+.fd123-resume-module span {
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: .11em;
+  opacity: .68;
+}
+
+.fd123-resume-module strong {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.fd123-empty-hint {
+  display: block;
+  max-width: 520px;
+  margin: 10px auto 0;
+  color: var(--fd123-muted, #9eb2bd);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+html[data-theme='light'] .fd123-toast {
+  background: rgba(255,255,255,.98);
+  color: #17323d;
+  box-shadow: 0 16px 40px rgba(25,58,72,.16);
+}
+
+html[data-theme='light'] .fd123-context-actions button {
+  color: #23434e;
+}
+
+@media (max-width: 900px) {
+  .fd123-context-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .fd123-context-actions button {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 680px) {
+  .fd123-toast-stack {
+    right: 9px;
+    bottom: 10px;
+    width: calc(100vw - 18px);
+  }
+
+  .fd123-context-actions {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+  }
+
+  .fd123-context-actions::-webkit-scrollbar { display: none; }
+  .fd123-context-actions button { flex: 0 0 auto; }
+}
