@@ -31,13 +31,25 @@ jobs:
         run: |
           node --check src/electron-bootstrap.mjs
           node --check src/flight-journey-engine.mjs
+          node --check src/flight-journey-service.mjs
+          node --check scripts/apply-feature-1.23-flight-journey.mjs
           node --check scripts/test-single-instance-bootstrap.mjs
           node --check scripts/test-flight-journey-engine.mjs
+          node --check scripts/test-flight-journey-service.mjs
 
       - name: Run focused 1.23 regressions
         run: |
           node scripts/test-single-instance-bootstrap.mjs
           node scripts/test-flight-journey-engine.mjs
+          node scripts/test-flight-journey-service.mjs
+
+      - name: Verify live journey materialization
+        shell: pwsh
+        run: |
+          $server = Get-Content 'src/server.mjs' -Raw
+          $state = Get-Content 'src/state-engine.mjs' -Raw
+          if ($server -notmatch 'FlightJourneyService' -or $server -notmatch 'flightJourney\.start\(\)') { throw 'Flight Journey service is not wired into the live server.' }
+          if ($state -notmatch "'planning'.*'boarding'.*'pushback'" -or $state -notmatch 'flightJourney: \{') { throw 'Flight Journey state and manual phases are not materialized.' }
 
       - name: Run stable pilot regressions
         run: |
