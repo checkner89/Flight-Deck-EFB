@@ -44,7 +44,29 @@
     return qs(`[data-open-module="${CSS.escape(module)}"]`);
   }
 
+  function focusModuleHeading(module) {
+    window.setTimeout(() => {
+      const page = qs(`.efb-page[data-page="${CSS.escape(module)}"]`);
+      const heading = page && (qs('h1', page) || qs('h2', page));
+      if (!heading) return;
+      heading.setAttribute('tabindex', '-1');
+      heading.focus({ preventScroll: true });
+    }, 90);
+  }
+
+  function openHome() {
+    const homeButton = qs('#app-home-button');
+    if (homeButton && !homeButton.disabled) {
+      homeButton.click();
+      focusModuleHeading('home');
+      return true;
+    }
+    announce('Home konnte nicht geöffnet werden.', 'warning');
+    return false;
+  }
+
   function openModule(module, { remember = true } = {}) {
+    if (module === 'home') return openHome();
     const button = moduleButton(module);
     if (!button || button.disabled) {
       announce(`${MODULE_LABELS[module] || module} ist derzeit nicht verfügbar.`, 'warning');
@@ -52,16 +74,7 @@
     }
     if (remember) localStorage.setItem(STORAGE_LAST_MODULE, module);
     button.click();
-    requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        const page = qs(`.efb-page[data-page="${CSS.escape(module)}"]`);
-        const heading = page && (qs('h1', page) || qs('h2', page));
-        if (heading) {
-          heading.setAttribute('tabindex', '-1');
-          heading.focus({ preventScroll: true });
-        }
-      }, 80);
-    });
+    focusModuleHeading(module);
     return true;
   }
 
@@ -105,7 +118,7 @@
       home.type = 'button';
       home.className = 'fd123-context-home';
       home.textContent = '⌂ HOME';
-      home.addEventListener('click', () => openModule('home', { remember: false }) || qs('[data-page="home"]')?.removeAttribute('hidden'));
+      home.addEventListener('click', openHome);
       bar.append(home);
       for (const [target, label] of PAGE_ACTIONS[pageName] || []) {
         if (!moduleButton(target)) continue;
@@ -232,5 +245,5 @@
   enhance();
   const observer = new MutationObserver(() => enhance());
   observer.observe(document.body, { childList: true, subtree: true });
-  window.FlightDeckUX123 = { version: VERSION, announce, openModule, refresh: enhance };
+  window.FlightDeckUX123 = { version: VERSION, announce, openModule, openHome, refresh: enhance };
 })();
