@@ -39,4 +39,11 @@ await update('src/simconnect-client.mjs', (source) => {
   return next;
 });
 
+await update('CHANGELOG.md', (source) => {
+  if (/^##\s+1\.20\.11\b/m.test(source)) return source;
+  const notes = `## 1.20.11 — Barometric Altitude / QNH\n\n- Flight Tracking now uses MSFS **INDICATED ALTITUDE** as the primary displayed altitude instead of geometric **PLANE ALTITUDE**.\n- The altitude therefore follows the aircraft altimeter reference: the selected **QNH** below transition altitude and **STD / 1013.25 hPa** when standard pressure is selected.\n- Geometric/true altitude is retained separately as \`trueAltitudeFeet\` for diagnostics and future calculations instead of being shown as the pilot altitude.\n- The active altimeter pressure setting and STD state are exposed as telemetry, preventing cases where a flight at FL370 appears near 39,000 ft because of atmospheric conditions.\n\n`;
+  const headingEnd = source.indexOf('\n') + 1;
+  return `${source.slice(0, headingEnd)}\n${notes}${source.slice(headingEnd)}`;
+});
+
 console.log('Flight Deck EFB 1.20.11 barometric altitude/QNH telemetry materialized.');
