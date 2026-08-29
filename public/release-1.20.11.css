@@ -1,0 +1,239 @@
+/* Flight Deck EFB 1.20.11 — weather overlay, clean map toolbar and readable header */
+
+/* Map style buttons now share the same visual language as Waypoints / Follow / Fit. */
+.tracking-map-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tracking-map-actions > [data-tracking-basemap],
+#tracking-weather-toggle,
+#tracking-waypoints-toggle,
+#tracking-follow,
+#tracking-fit {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+}
+
+.tracking-map-actions > [data-tracking-basemap] {
+  min-width: 74px;
+}
+
+#tracking-weather-toggle {
+  min-width: 82px;
+}
+
+#tracking-weather-toggle[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--fd-ui-accent, #18cfc3) 48%, var(--fd-ui-line, rgba(154,193,213,.18))) !important;
+  background: color-mix(in srgb, var(--fd-ui-accent, #18cfc3) 11%, var(--fd-ui-panel2, #10232f)) !important;
+  color: var(--fd-ui-accent2, #58e7dd) !important;
+}
+
+#tracking-weather-toggle[aria-pressed="false"] {
+  opacity: .72;
+}
+
+/* Waypoints remain on the map only. Route Details is intentionally just the route string. */
+[data-page="tracking"] #tracking-waypoint-count,
+[data-page="tracking"] #tracking-waypoint-list {
+  display: none !important;
+}
+
+[data-page="tracking"] .tracking-route-card {
+  min-height: 0 !important;
+}
+
+[data-page="tracking"] .tracking-route-summary {
+  min-height: 82px;
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 18px;
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* Current airport weather overlay. The category chip follows standard VFR/MVFR/IFR/LIFR semantics. */
+.tracking-weather-map-icon {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.tracking-weather-map-icon > span {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "icao cat" "wind wind";
+  align-items: center;
+  gap: 2px 6px;
+  min-width: 94px;
+  padding: 6px 8px;
+  border: 1px solid rgba(224, 239, 246, .35);
+  border-radius: 9px;
+  background: rgba(8, 25, 35, .92);
+  color: #eef8fb;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(8px);
+  transform: translate(-50%, -50%);
+}
+
+.tracking-weather-map-icon b {
+  grid-area: icao;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+
+.tracking-weather-map-icon em {
+  grid-area: cat;
+  justify-self: end;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(146, 167, 178, .18);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .06em;
+}
+
+.tracking-weather-map-icon small {
+  grid-area: wind;
+  color: #a8bdc8;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.tracking-weather-map-icon.wx-vfr em { background: rgba(71, 203, 132, .20); color: #82e5ae; }
+.tracking-weather-map-icon.wx-mvfr em { background: rgba(75, 157, 235, .22); color: #92c9ff; }
+.tracking-weather-map-icon.wx-ifr em { background: rgba(237, 92, 92, .22); color: #ff9c9c; }
+.tracking-weather-map-icon.wx-lifr em { background: rgba(195, 99, 225, .23); color: #dda5f2; }
+
+.tracking-legend i.weather {
+  width: 9px;
+  height: 9px;
+  border: 2px solid rgba(255,255,255,.75);
+  border-radius: 50%;
+  background: #4b9deb;
+}
+
+html[data-theme="light"] .tracking-weather-map-icon > span {
+  border-color: rgba(45, 76, 92, .28);
+  background: rgba(248, 252, 253, .95);
+  color: #18313d;
+  box-shadow: 0 7px 20px rgba(31, 58, 72, .18);
+}
+
+html[data-theme="light"] .tracking-weather-map-icon small {
+  color: #637d89;
+}
+
+/* Make UTC / Local and the compact flight stats readable at the width shown in the desktop app. */
+.home-time.flight-overlay-clock {
+  min-width: 118px !important;
+  padding: 4px 7px !important;
+}
+
+.flight-overlay-clock-values {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(50px, 1fr));
+  align-items: center !important;
+  gap: 7px !important;
+  width: 100%;
+}
+
+.flight-overlay-clock-item {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.flight-overlay-clock-item small {
+  display: block !important;
+  color: var(--fd24-muted, #7f98a6) !important;
+  opacity: 1 !important;
+  font-size: 8px !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+  letter-spacing: .10em !important;
+}
+
+.flight-overlay-clock-item strong {
+  display: block !important;
+  color: var(--fd24-text, inherit) !important;
+  opacity: 1 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  letter-spacing: .025em !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-overlay-top small {
+  opacity: .78 !important;
+}
+
+@media (max-width: 1500px) {
+  .flight-overlay-top small {
+    font-size: .59rem !important;
+  }
+
+  .flight-overlay-top-route strong,
+  .flight-overlay-top-stat strong {
+    font-size: .78rem !important;
+  }
+
+  .flight-overlay-top-progress b {
+    font-size: .72rem !important;
+  }
+
+  .home-time.flight-overlay-clock {
+    min-width: 114px !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .tracking-map-toolbar {
+    align-items: flex-start;
+  }
+
+  .tracking-map-actions {
+    max-width: 64%;
+  }
+
+  .home-time.flight-overlay-clock {
+    min-width: 108px !important;
+  }
+
+  .flight-overlay-clock-item strong {
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .tracking-map-toolbar {
+    display: grid;
+    gap: 10px;
+  }
+
+  .tracking-map-actions {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .tracking-map-actions > [data-tracking-basemap],
+  #tracking-weather-toggle,
+  #tracking-waypoints-toggle,
+  #tracking-follow,
+  #tracking-fit {
+    flex: 1 1 auto;
+    min-width: 92px;
+  }
+}

@@ -52,6 +52,7 @@ jobs:
           if (Test-Path 'scripts/test-release-1.20.7.mjs') { node scripts/test-release-1.20.7.mjs }
           if (Test-Path 'scripts/test-release-1.20.9.mjs') { node scripts/test-release-1.20.9.mjs }
           if (Test-Path 'scripts/test-release-1.20.10.mjs') { node scripts/test-release-1.20.10.mjs }
+          if (Test-Path 'scripts/test-release-1.20.11.mjs') { node scripts/test-release-1.20.11.mjs }
 
       - name: Verify release assets are wired
         shell: pwsh
@@ -68,10 +69,10 @@ jobs:
           if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?") { throw "$version OFP workspace is not wired." }
           if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser is not wired." }
 
-          if ($version -eq '1.20.10') {
+          if ($version -in @('1.20.10', '1.20.11')) {
             if ($html -notmatch "release-1\.20\.9\.css\?v=$escapedVersion") { throw '1.20.9 tracking compatibility stylesheet is not wired.' }
             if ($html -notmatch "release-1\.20\.10\.css\?v=$escapedVersion") { throw '1.20.10 tracking layout stylesheet is not wired.' }
-            if ($html -notmatch 'tracking-context-callsign' -or $html -notmatch '<i class="simbrief"></i>') { throw '1.20.10 tracking markup is incomplete.' }
+            if ($html -notmatch 'tracking-context-callsign' -or $html -notmatch '<i class="simbrief"></i>') { throw 'Tracking map markup is incomplete.' }
           }
 
           $server = Get-Content 'src/server.mjs' -Raw
@@ -81,8 +82,15 @@ jobs:
           if ($simbrief -notmatch 'navlogFixes' -or $simbrief -notmatch 'pos_lon' -or $simbrief -notmatch 'latestDocument') { throw 'Robust SimBrief OFP/navlog support is incomplete.' }
 
           $app = Get-Content 'public/app.js' -Raw
-          if ($version -eq '1.20.10' -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
-            throw '1.20.10 map-first Tracking integration is incomplete.'
+          if ($version -in @('1.20.10', '1.20.11') -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
+            throw 'Map-first Tracking integration is incomplete.'
+          }
+
+          if ($version -eq '1.20.11') {
+            $simconnect = Get-Content 'src/simconnect-client.mjs' -Raw
+            if ($simconnect -notmatch "INDICATED ALTITUDE" -or $simconnect -notmatch "KOHLSMAN SETTING MB:1" -or $simconnect -notmatch 'trueAltitudeFeet') {
+              throw '1.20.11 barometric altitude/QNH telemetry is incomplete.'
+            }
           }
 
           Write-Host "Release $version validation passed."
