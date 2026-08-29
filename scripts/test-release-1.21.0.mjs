@@ -15,16 +15,15 @@ const [server, engine, safety, planner, recorder, app, html, runtime, css, sw] =
 ]);
 
 need(server, "const APP_VERSION = '1.21.0';", 'Server version is not 1.21.0.');
-need(server, "FlightMediaService", 'Media service is not wired into server.');
+need(server, 'FlightMediaService', 'Media service is not wired into server.');
 need(server, "pathname === '/api/media/screenshot'", 'Screenshot persistence endpoint missing.');
 need(server, '/api/media/recordings/', 'Recording endpoints missing.');
 need(server, 'display-capture=(self)', 'Display capture permission policy missing.');
-
 need(engine, "routes: { departure: null, arrival: null }", 'Separate departure/arrival taxi-route state missing.');
 need(engine, 'taxiPositive', 'Strict taxi message classifier missing.');
 need(engine, 'nonTaxi', 'Non-taxi ATC exclusion missing.');
 need(engine, 'warningDelayMs: 6_000', 'Sustained taxi deviation delay missing.');
-need(engine, "taxiSpeed < 3.5", 'Low-speed maneuvering suppression missing.');
+need(engine, 'taxiSpeed < 3.5', 'Low-speed maneuvering suppression missing.');
 need(safety, 'isOwnshipTraffic', 'Ownship traffic filtering missing.');
 need(planner, 'runwayExitAnchor', 'Runway-exit anchor logic missing.');
 need(planner, 'request.runwayExit', 'Runway-exit request is not used by planner.');
@@ -32,7 +31,6 @@ need(recorder, 'stable-parked-at-gate', 'Stable automatic flight completion miss
 need(recorder, 'stable-parked-after-flight', 'No-gate stable completion fallback missing.');
 need(recorder, 'sameRoute', 'Active flight identity stabilization missing.');
 need(recorder, 'taxiRoutes = structuredClone', 'Taxi route archive persistence missing.');
-
 need(app, 'window.__flightDeckTrackingMap = trackingMap', 'Tracking map bridge missing.');
 need(app, 'window.__flightDeckTaxiMap = map', 'Taxi map bridge missing.');
 need(app, 'runwayExit: window.__flightDeckArrivalExit || null', 'Selected runway exit is not sent by planner UI.');
@@ -42,11 +40,11 @@ need(runtime, 'tracking-manual-end', 'Manual flight-end fallback missing.');
 need(runtime, 'tracking-takeoff-time', 'Planned/actual takeoff UI missing.');
 need(runtime, 'AUFNAHME STARTEN', 'Media recording UI missing.');
 need(runtime, 'SCREENSHOT', 'Screenshot UI missing.');
-need(runtime, "data-app-id=\"media\"", 'Media application tile missing.');
+need(runtime, "tile.dataset.appId = 'media'", 'Media application tile missing.');
 need(css, '.fd121-media-page', 'Media UI styling missing.');
 need(html, 'release-1.21.0.css?v=1.21.0', '1.21 stylesheet not wired.');
 need(html, 'release-1.21.0.js?v=1.21.0', '1.21 runtime not wired.');
-need(sw, "flight-deck-efb-v1210-backlog1", '1.21 service-worker cache missing.');
+need(sw, 'flight-deck-efb-v1210-backlog1', '1.21 service-worker cache missing.');
 
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'flight-deck-media-'));
 try {
