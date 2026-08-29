@@ -22,4 +22,16 @@ await update('scripts/apply-release-1.20.7.mjs', (source) => source.replace(
   "if (!['1.20.7', '1.20.8'].includes(version)) throw new Error(`1.20.7 release materializer requires a compatible 1.20.7+ chain, got ${version}.`);",
 ));
 
-console.log('Prepared prior Flight Deck release materializers for the 1.20.8 chain.');
+// Previous materializers can reformat the SimBrief fetch options. Ensure the
+// required no-store flag exists before apply-release-1.20.8.mjs runs so clean
+// CI checkouts and repeated prepare runs remain idempotent.
+await update('src/simbrief-client.mjs', (source) => {
+  if (source.includes("cache: 'no-store'")) return source;
+  const fetchStart = /const response = await this\.fetchImpl\(url,\s*\{/;
+  if (!fetchStart.test(source)) {
+    throw new Error('1.20.8 compatibility patch could not locate the SimBrief fetch call.');
+  }
+  return source.replace(fetchStart, (match) => `${match}\n      cache: 'no-store',`);
+});
+
+console.log('Prepared prior Flight Deck release materializers and resilient SimBrief fetch for the 1.20.8 chain.');
