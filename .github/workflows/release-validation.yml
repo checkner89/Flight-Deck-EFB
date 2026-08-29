@@ -55,6 +55,7 @@ jobs:
           if (Test-Path 'scripts/test-release-1.20.11.mjs') { node scripts/test-release-1.20.11.mjs }
           if (Test-Path 'scripts/test-release-1.21.0.mjs') { node scripts/test-release-1.21.0.mjs }
           if (Test-Path 'scripts/test-release-1.22.0.mjs') { node scripts/test-release-1.22.0.mjs }
+          if (Test-Path 'scripts/test-release-1.22.1.mjs') { node scripts/test-release-1.22.1.mjs }
 
       - name: Verify release assets are wired
         shell: pwsh
@@ -71,7 +72,7 @@ jobs:
           if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?") { throw "$version OFP workspace is not wired." }
           if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser is not wired." }
 
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0')) {
+          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1')) {
             if ($html -notmatch "release-1\.20\.9\.css\?v=$escapedVersion") { throw '1.20.9 tracking compatibility stylesheet is not wired.' }
             if ($html -notmatch "release-1\.20\.10\.css\?v=$escapedVersion") { throw '1.20.10 tracking layout stylesheet is not wired.' }
             if ($html -notmatch 'tracking-context-callsign' -or $html -notmatch '<i class="simbrief"></i>') { throw 'Tracking map markup is incomplete.' }
@@ -84,18 +85,18 @@ jobs:
           if ($simbrief -notmatch 'navlogFixes' -or $simbrief -notmatch 'pos_lon' -or $simbrief -notmatch 'latestDocument') { throw 'Robust SimBrief OFP/navlog support is incomplete.' }
 
           $app = Get-Content 'public/app.js' -Raw
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0') -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
+          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1') -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
             throw 'Map-first Tracking integration is incomplete.'
           }
 
-          if ($version -in @('1.20.11', '1.21.0', '1.22.0')) {
+          if ($version -in @('1.20.11', '1.21.0', '1.22.0', '1.22.1')) {
             $simconnect = Get-Content 'src/simconnect-client.mjs' -Raw
             if ($simconnect -notmatch "INDICATED ALTITUDE" -or $simconnect -notmatch "KOHLSMAN SETTING MB:1" -or $simconnect -notmatch 'trueAltitudeFeet') {
               throw 'Barometric altitude/QNH telemetry is incomplete.'
             }
           }
 
-          if ($version -in @('1.21.0', '1.22.0')) {
+          if ($version -in @('1.21.0', '1.22.0', '1.22.1')) {
             if ($html -notmatch "release-1\.21\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.21\.0\.js\?v=$escapedVersion") { throw '1.21.0 backlog compatibility assets are not wired.' }
             $media = Get-Content 'src/flight-media-service.mjs' -Raw
             $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
@@ -104,12 +105,18 @@ jobs:
             if ($recorder -notmatch 'stable-parked-at-gate' -or $state -notmatch 'taxiPositive' -or $state -notmatch 'routes: \{ departure: null, arrival: null \}') { throw '1.21.0 flight lifecycle/taxi core is incomplete.' }
           }
 
-          if ($version -eq '1.22.0') {
+          if ($version -in @('1.22.0', '1.22.1')) {
             if ($html -notmatch "release-1\.22\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.0\.js\?v=$escapedVersion") { throw '1.22.0 pilot workflow assets are not wired.' }
             $runtime = Get-Content 'public/release-1.22.0.js' -Raw
             $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
             if ($runtime -notmatch 'fd122-profile-axis' -or $runtime -notmatch 'BRIEF_STEPS' -or $runtime -notmatch 'fd122-scratch-canvas' -or $runtime -notmatch 'SERVICE_DEFS') { throw '1.22.0 pilot workflow runtime is incomplete.' }
             if ($recorder -notmatch 'originalPlan' -or $recorder -notmatch 'planHistory' -or $recorder -notmatch 'groundEvents') { throw '1.22.0 flight archive persistence is incomplete.' }
+          }
+
+          if ($version -eq '1.22.1') {
+            if ($html -notmatch "release-1\.22\.1\.css\?v=$escapedVersion") { throw '1.22.1 cockpit UI stylesheet is not wired.' }
+            $ui = Get-Content 'public/release-1.22.1.css' -Raw
+            if ($ui -notmatch 'flight-hub-tab=.operations' -or $ui -notmatch 'fd122-briefing-shell' -or $ui -notmatch 'fd122-scratch-toolbar' -or $ui -notmatch 'news-card') { throw '1.22.1 cockpit UI harmonization is incomplete.' }
           }
 
           Write-Host "Release $version validation passed."
