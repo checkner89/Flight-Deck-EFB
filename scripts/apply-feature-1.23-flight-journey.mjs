@@ -48,4 +48,52 @@ await update('src/state-engine.mjs', (source) => {
   return next;
 });
 
-console.log('Flight Deck EFB 1.23 gate-to-gate journey service materialized.');
+await update('src/flight-recorder.mjs', (source) => {
+  if (source.includes("await this.#finalizeInternal('journey-complete-at-gate')")) return source;
+  const oldBlock = `    const landedForMs = this.active.stats.landedAt ? now.getTime() - Date.parse(this.active.stats.landedAt) : 0;
+    const hasParkingContext = Boolean(state.gate?.name || state.taxi?.pathMetadata?.destination?.name || state.flight?.currentAirport);
+    const parkedSignal = Boolean(this.active.stats.takeoffAt)
+      && landedForMs >= 60_000
+      && state.aircraft.onGround
+      && speed < 2
+      && state.aircraft.enginesRunning === false
+      && (state.aircraft.parkingBrake === true || hasParkingContext);
+    if (parkedSignal) this.parkedSince ??= now.getTime();
+    else this.parkedSince = null;
+    const stableParkedForMs = this.parkedSince ? now.getTime() - this.parkedSince : 0;
+    const finishAtGate = parkedSignal && hasParkingContext && stableParkedForMs >= 60_000;
+    const finishWithoutGate = parkedSignal && stableParkedForMs >= 180_000;
+    if (finishAtGate || finishWithoutGate) {
+      this.parkedSince = null;
+      await this.#finalizeInternal(finishAtGate ? 'stable-parked-at-gate' : 'stable-parked-after-flight');
+    }`;
+  if (!source.includes(oldBlock)) throw new Error('1.23 recorder completion anchor missing after stable materialization.');
+  const newBlock = `    const landedForMs = this.active.stats.landedAt ? now.getTime() - Date.parse(this.active.stats.landedAt) : 0;
+    const journeyCompletion = state.integrations?.flightJourney?.completion;
+    const journeyAvailable = journeyCompletion && typeof journeyCompletion.ready === 'boolean';
+    const journeyReady = Boolean(this.active.stats.takeoffAt)
+      && landedForMs >= 60_000
+      && journeyCompletion?.ready === true;
+    const hasParkingContext = Boolean(state.gate?.name || state.taxi?.pathMetadata?.destination?.name || state.flight?.currentAirport);
+    const legacyParkedSignal = !journeyAvailable
+      && Boolean(this.active.stats.takeoffAt)
+      && landedForMs >= 60_000
+      && state.aircraft.onGround
+      && speed < 2
+      && state.aircraft.enginesRunning === false
+      && (state.aircraft.parkingBrake === true || hasParkingContext);
+    const parkedSignal = journeyReady || legacyParkedSignal;
+    if (parkedSignal) this.parkedSince ??= now.getTime();
+    else this.parkedSince = null;
+    const stableParkedForMs = this.parkedSince ? now.getTime() - this.parkedSince : 0;
+    const finishJourney = journeyReady && stableParkedForMs >= 15_000;
+    const finishAtGate = legacyParkedSignal && hasParkingContext && stableParkedForMs >= 60_000;
+    const finishWithoutGate = legacyParkedSignal && stableParkedForMs >= 180_000;
+    if (finishJourney || finishAtGate || finishWithoutGate) {
+      this.parkedSince = null;
+      await this.#finalizeInternal(finishJourney ? 'journey-complete-at-gate' : finishAtGate ? 'stable-parked-at-gate' : 'stable-parked-after-flight');
+    }`;
+  return source.replace(oldBlock, newBlock);
+});
+
+console.log('Flight Deck EFB 1.23 gate-to-gate journey service and recorder completion materialized.');
