@@ -21,7 +21,6 @@ function replaceRequired(source, from, to, label) {
 }
 
 function replaceBetween(source, startMarker, endMarker, replacement, label) {
-  if (source.includes(replacement.trim().slice(0, 90))) return source;
   const start = source.indexOf(startMarker);
   const end = source.indexOf(endMarker, start + startMarker.length);
   if (start < 0 || end < 0) throw new Error(`1.20.10 patch range missing: ${label}`);
@@ -30,9 +29,6 @@ function replaceBetween(source, startMarker, endMarker, replacement, label) {
 
 await update('src/server.mjs', (source) => source.replace(/^const APP_VERSION = '[^']+';$/m, `const APP_VERSION = '${version}';`));
 
-/* SimBrief JSON v2 is not completely uniform across OFP formats. Accept the
-   coordinate aliases and nested navlog shapes that SimBrief returns so an
-   imported OFP always exposes its actual route geometry to Tracking. */
 await update('src/simbrief-client.mjs', (source) => {
   const replacement = `function position(source) {
   const value = source?.position ?? source?.location ?? source?.coordinate ?? source?.coordinates ?? source;
@@ -55,7 +51,6 @@ function navlogFixes(navlog, depth = 0) {
   if (depth > 5 || navlog === undefined || navlog === null) return [];
   if (Array.isArray(navlog)) return navlog;
   if (typeof navlog !== 'object') return [];
-
   for (const key of ['fix', 'fixes', 'waypoints', 'navlog', 'items', 'points']) {
     const candidate = navlog[key];
     if (Array.isArray(candidate)) return candidate;
@@ -64,7 +59,6 @@ function navlogFixes(navlog, depth = 0) {
       if (values.some((entry) => entry && typeof entry === 'object' && position(entry))) return values;
     }
   }
-
   const direct = Object.values(navlog);
   if (direct.some((entry) => entry && typeof entry === 'object' && position(entry))) return direct;
   for (const candidate of direct) {
@@ -225,21 +219,18 @@ await update('public/app.js', (source) => {
 
 await update('public/index.html', (source) => {
   let html = source;
-
   if (!html.includes('tracking-context-callsign')) {
     html = replaceRequired(html,
       '<dl class="tracking-live-strip"><div><dt>ALTITUDE</dt><dd id="tracking-altitude">—</dd></div><div><dt>GS / IAS</dt><dd id="tracking-speed">—</dd></div><div><dt>HEADING</dt><dd id="tracking-heading">—</dd></div><div><dt>DISTANCE</dt><dd id="tracking-distance">—</dd></div><div><dt>FLIGHT TIME</dt><dd id="tracking-duration">—</dd></div><div><dt>FUEL USED</dt><dd id="tracking-fuel">—</dd></div></dl>',
       '<dl class="tracking-live-strip"><div><dt>ALTITUDE</dt><dd id="tracking-altitude">—</dd></div><div><dt>GS / IAS</dt><dd id="tracking-speed">—</dd></div><div><dt>HEADING</dt><dd id="tracking-heading">—</dd></div><div><dt>DISTANCE</dt><dd id="tracking-distance">—</dd></div><div><dt>FLIGHT TIME</dt><dd id="tracking-duration">—</dd></div><div><dt>FUEL USED</dt><dd id="tracking-fuel">—</dd></div></dl>\n              <dl class="tracking-flight-strip"><div><dt>CALLSIGN</dt><dd id="tracking-context-callsign">—</dd></div><div><dt>AIRCRAFT</dt><dd id="tracking-context-aircraft">—</dd></div><div><dt>RUNWAYS</dt><dd id="tracking-context-runways">—</dd></div><div><dt>GATE</dt><dd id="tracking-context-gate">—</dd></div><div><dt>TAKEOFF</dt><dd id="tracking-context-takeoff">—</dd></div><div><dt>LANDING</dt><dd id="tracking-context-landing">—</dd></div></dl>',
       'map flight context strip');
   }
-
   if (!html.includes('<i class="simbrief"></i>')) {
     html = replaceRequired(html,
       '<div class="tracking-legend"><span><i class="planned"></i><b data-i18n="plannedRoute">Planned route</b></span>',
       '<div class="tracking-legend"><span><i class="simbrief"></i><b>SimBrief Route</b></span><span><i class="planned"></i><b data-i18n="plannedRoute">Planned route</b></span>',
       'SimBrief route legend');
   }
-
   html = html.replace(/\s*<link[^>]+release-1\.20\.10\.css\?v=[^>]+>\s*/g, '\n');
   html = html.replace('</head>', `    <link rel="stylesheet" href="/release-1.20.10.css?v=${version}">\n  </head>`);
   html = html.replace(/(<html\b[^>]*\bdata-app-version=")[^"]+("[^>]*>)/i, `$1${version}$2`);
