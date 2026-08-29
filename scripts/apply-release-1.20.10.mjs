@@ -144,8 +144,8 @@ await update('public/app.js', (source) => {
   }
 
   app = replaceRequired(app,
-    '  const planPoints = trackingPlanPoints(record);\n  const actualPoints = trackingDisplayPoints(trackingActualPoints(record));',
-    '  const planPoints = trackingPlanPoints(record);\n  const simbriefPoints = trackingSimBriefPoints();\n  const actualPoints = trackingDisplayPoints(trackingActualPoints(record));',
+    '  const planPoints = trackingPlanPoints(record);\n  const actualPoints = trackingActualPoints(record);\n  const displayActualPoints = trackingDisplayPoints(actualPoints);',
+    '  const planPoints = trackingPlanPoints(record);\n  const simbriefPoints = trackingSimBriefPoints();\n  const actualPoints = trackingActualPoints(record);\n  const displayActualPoints = trackingDisplayPoints(actualPoints);',
     'SimBrief route render points');
 
   app = replaceRequired(app,
