@@ -14,15 +14,8 @@ if (!after.includes(safe)) {
   after = after.replace(unsafe, safe);
 }
 
-// Guard the observer callback against re-entrant child-list churn. The home
-// simplifier deliberately changes the DOM, so schedule one coalesced pass per
-// animation frame rather than recursively processing its own mutations.
-const oldObserver = `  const observer = new MutationObserver(() => {\n    simplifyHome(); removeLargeAppHeadings(); ensureHomeButton(); removeSeparateTrafficNavigation(); ensureMediaPage(); ensureTrackingTimePanel(); ensureArrivalTaxiControls(); constrainTaxiMap();\n  });\n  observer.observe(document.documentElement, { childList: true, subtree: true });`;
-const newObserver = `  let observerRefreshPending = false;\n  const observer = new MutationObserver(() => {\n    if (observerRefreshPending) return;\n    observerRefreshPending = true;\n    requestAnimationFrame(() => {\n      observerRefreshPending = false;\n      simplifyHome(); removeLargeAppHeadings(); ensureHomeButton(); removeSeparateTrafficNavigation(); ensureMediaPage(); ensureTrackingTimePanel(); ensureArrivalTaxiControls(); constrainTaxiMap();\n    });\n  });\n  observer.observe(document.documentElement, { childList: true, subtree: true });`;
-if (!after.includes('let observerRefreshPending = false;')) {
-  if (!after.includes(oldObserver)) throw new Error('1.21.0 mutation-observer hotfix anchor missing.');
-  after = after.replace(oldObserver, newObserver);
-}
-
+// The MutationObserver watches child-list changes. Avoid writing the same
+// heading text on every observer pass: setting textContent recreates the text
+// node and otherwise feeds the observer indefinitely, starving Electron/CDP.
 if (after !== before) await fs.writeFile(filename, after, 'utf8');
 console.log('Flight Deck EFB 1.21.0 renderer mutation-loop hotfix applied.');
