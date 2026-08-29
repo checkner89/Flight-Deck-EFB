@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 
 const filename = 'src/flight-recorder.mjs';
 const before = await fs.readFile(filename, 'utf8');
-let source = before;
+let source = before.replace(/\r\n/g, '\n');
 
 if (!source.includes('let landingRateFpm = finite(record.stats?.landingRateFpm);')) {
   const marker = 'function calculateStats(record) {';
@@ -22,15 +22,15 @@ if (!source.includes('const touchdownCandidates = [current, ...airborneWindow]')
   source = source.replace(touchdownPattern, block);
 }
 
-if (!source.includes('landingRateFpm,\n    touchdownGroundSpeedKnots,')) {
-  const returnPattern = /^(\s*)takeoffAt,\s*\r?\n\s*landedAt,\s*$/m;
-  const match = source.match(returnPattern);
-  if (!match) throw new Error('1.20.11 landing-rate compatibility patch cannot find stats return fields.');
-  const indent = match[1];
-  source = source.replace(
-    returnPattern,
-    `${indent}landingRateFpm,\n${indent}touchdownGroundSpeedKnots,\n${indent}takeoffAt,\n${indent}landedAt,`,
-  );
+const exactReturnFields = '    landingRateFpm,\n    touchdownGroundSpeedKnots,\n    takeoffAt,\n    landedAt,';
+if (!source.includes(exactReturnFields)) {
+  const returnPattern = /^\s*takeoffAt,\s*\n\s*landedAt,\s*$/m;
+  if (!returnPattern.test(source)) throw new Error('1.20.11 landing-rate compatibility patch cannot find stats return fields.');
+  source = source.replace(returnPattern, exactReturnFields);
+}
+
+if (!source.includes('    landingRateFpm,\n    touchdownGroundSpeedKnots,')) {
+  throw new Error('1.20.11 landing-rate compatibility patch did not produce the expected stats return layout.');
 }
 
 if (source !== before) await fs.writeFile(filename, source, 'utf8');
