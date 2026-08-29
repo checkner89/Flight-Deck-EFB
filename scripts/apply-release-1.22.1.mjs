@@ -17,22 +17,34 @@ await update('public/index.html', (source) => {
   if (!next.includes('release-1.22.1.css?v=1.22.1')) {
     next = next.replace('</head>', '    <link rel="stylesheet" href="/release-1.22.1.css?v=1.22.1">\n  </head>');
   }
+  if (!next.includes('release-1.22.1-ux.css?v=1.22.1')) {
+    next = next.replace('</head>', '    <link rel="stylesheet" href="/release-1.22.1-ux.css?v=1.22.1">\n  </head>');
+  }
+  if (!next.includes('release-1.22.1-ux.js?v=1.22.1')) {
+    next = next.replace('</body>', '    <script src="/release-1.22.1-ux.js?v=1.22.1"></script>\n  </body>');
+  }
   return next;
 });
 
 await update('public/service-worker.js', (source) => {
-  let next = source.replace(/const CACHE_NAME = '[^']+';/, "const CACHE_NAME = 'flight-deck-efb-v1221-ui1';");
+  let next = source.replace(/const CACHE_NAME = '[^']+';/, "const CACHE_NAME = 'flight-deck-efb-v1221-ux1';");
   next = next.replaceAll('?v=1.22.0', '?v=1.22.1');
   if (!next.includes("'/release-1.22.1.css?v=1.22.1'")) {
     next = next.replace("  '/manifest.webmanifest',", "  '/release-1.22.1.css?v=1.22.1',\n  '/manifest.webmanifest',");
+  }
+  if (!next.includes("'/release-1.22.1-ux.css?v=1.22.1'")) {
+    next = next.replace("  '/manifest.webmanifest',", "  '/release-1.22.1-ux.css?v=1.22.1',\n  '/manifest.webmanifest',");
+  }
+  if (!next.includes("'/release-1.22.1-ux.js?v=1.22.1'")) {
+    next = next.replace("  '/manifest.webmanifest',", "  '/release-1.22.1-ux.js?v=1.22.1',\n  '/manifest.webmanifest',");
   }
   return next;
 });
 
 await update('CHANGELOG.md', (source) => {
   if (source.includes('## 1.22.1')) return source;
-  const section = `## 1.22.1 — Cockpit UI Harmonization\n\n- Harmonizes spacing, card hierarchy, controls, focus states and responsive behavior across the persistent EFB shell.\n- Hardens the tracking-first Flight Hub by keeping retired Operations and manual Flight Journey UI out of the pilot-facing workflow.\n- Refines Flight Profile and Archive presentation without changing route, profile or recorder logic.\n- Improves Guided Briefing navigation, section hierarchy and compact operational data cards.\n- Makes Scratchpad tools easier to reach and gives the drawing area a clearer working surface.\n- Reduces visual noise in Ground Services while preserving the 1.22 phase-aware GSX workflow.\n- Rebalances Taxi moving-map overlays and the Taxi planner for desktop and tablet use.\n- Reworks News into a calmer, more readable briefing stream and adds full Light Mode treatment.\n- Uses a darker petrol interaction color in Light Mode so turquoise remains an accent instead of low-contrast body text.\n\n> Flight simulation use only — not for real-world navigation.\n\n`;
+  const section = `## 1.22.1 — Cockpit UI & Pilot UX Harmonization\n\n- Harmonizes spacing, card hierarchy, controls, focus states and responsive behavior across the persistent EFB shell.\n- Adds a lightweight pilot UX layer with consistent action feedback, quick context navigation and a resume-last-module action.\n- Adds Escape-to-close behavior for the active dialog/drawer and improves keyboard focus after module changes.\n- Improves empty-state guidance and explains disabled operational controls instead of leaving dead ends.\n- Surfaces meaningful Taxi/map/connection failures through non-blocking status feedback.\n- Hardens the tracking-first Flight Hub by keeping retired Operations and manual Flight Journey UI out of the pilot-facing workflow.\n- Refines Flight Profile and Archive presentation without changing route, profile or recorder logic.\n- Improves Guided Briefing navigation, section hierarchy and compact operational data cards.\n- Makes Scratchpad tools easier to reach and gives the drawing area a clearer working surface.\n- Reduces visual noise in Ground Services while preserving the 1.22 phase-aware GSX workflow.\n- Rebalances Taxi moving-map overlays and the Taxi planner for desktop and tablet use.\n- Reworks News into a calmer, more readable briefing stream and adds full Light Mode treatment.\n- Uses a darker petrol interaction color in Light Mode so turquoise remains an accent instead of low-contrast body text.\n\n> Flight simulation use only — not for real-world navigation.\n\n`;
   return section + source;
 });
 
-console.log('Flight Deck EFB 1.22.1 cockpit UI harmonization materialized.');
+console.log('Flight Deck EFB 1.22.1 cockpit UI + pilot UX harmonization materialized.');
