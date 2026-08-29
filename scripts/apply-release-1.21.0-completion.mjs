@@ -10,10 +10,18 @@ async function update(filename, transform) {
 }
 
 await update('public/app.js', (source) => {
-  if (source.includes('runwayExit: window.__flightDeckArrivalExit || null')) return source;
-  const anchor = "  return { mode, runway, destination: { type: 'feature', id: destination } };";
-  if (!source.includes(anchor)) throw new Error('1.21.0 arrival request anchor missing.');
-  return source.replace(anchor, "  return { mode, runway, runwayExit: window.__flightDeckArrivalExit || null, destination: { type: 'feature', id: destination } };");
+  let next = source;
+  if (!next.includes('runwayExit: window.__flightDeckArrivalExit || null')) {
+    const anchor = "  return { mode, runway, destination: { type: 'feature', id: destination } };";
+    if (!next.includes(anchor)) throw new Error('1.21.0 arrival request anchor missing.');
+    next = next.replace(anchor, "  return { mode, runway, runwayExit: window.__flightDeckArrivalExit || null, destination: { type: 'feature', id: destination } };");
+  }
+  if (!next.includes('runwayExit: request.runwayExit || null, destination')) {
+    const startAnchor = "body: JSON.stringify({ route, mode: request.mode, runway: request.runway || null, destination }),";
+    if (!next.includes(startAnchor)) throw new Error('1.21.0 taxi start request anchor missing.');
+    next = next.replace(startAnchor, "body: JSON.stringify({ route, mode: request.mode, runway: request.runway || null, runwayExit: request.runwayExit || null, destination }),");
+  }
+  return next;
 });
 
 await update('src/server.mjs', (source) => {
@@ -23,4 +31,4 @@ await update('src/server.mjs', (source) => {
   return source.replace(anchor, "          mode: body.mode,\n          runway: body.runway || null,\n          runwayExit: body.runwayExit || null,");
 });
 
-console.log('Flight Deck EFB 1.21.0 arrival-exit and media lifecycle completion patch applied.');
+console.log('Flight Deck EFB 1.21.0 runway-exit propagation completion patch applied.');
