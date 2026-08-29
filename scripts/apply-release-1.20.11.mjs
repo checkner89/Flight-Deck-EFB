@@ -57,12 +57,22 @@ await update('src/aviation-weather-client.mjs', (source) => {
     "      const byAirport = new Map(normalized.map((airport) => [airport, { airport, metar: null, taf: null, observedAt: null, lat: null, lon: null }]));",
     'weather station coordinate defaults',
   );
-  next = replaceRequired(
-    next,
-    "          flightCategory: entry.fltCat || entry.flight_category || null,\n          windDirection: Number.isFinite(Number(entry.wdir)) ? Number(entry.wdir) : null,\n          windSpeed: Number.isFinite(Number(entry.wspd)) ? Number(entry.wspd) : null,",
-    "          flightCategory: entry.fltCat || entry.flight_category || null,\n          lat: Number.isFinite(Number(entry.lat)) ? Number(entry.lat) : null,\n          lon: Number.isFinite(Number(entry.lon)) ? Number(entry.lon) : null,\n          windDirection: Number.isFinite(Number(entry.wdir)) ? Number(entry.wdir) : null,\n          windSpeed: Number.isFinite(Number(entry.wspd)) ? Number(entry.wspd) : null,\n          windGust: Number.isFinite(Number(entry.wgst)) ? Number(entry.wgst) : null,\n          visibilitySm: Number.isFinite(Number.parseFloat(entry.visib)) ? Number.parseFloat(entry.visib) : null,\n          altimeterHpa: Number.isFinite(Number(entry.altim)) ? Number(entry.altim) : null,\n          temperatureC: Number.isFinite(Number(entry.temp)) ? Number(entry.temp) : null,\n          dewpointC: Number.isFinite(Number(entry.dewp)) ? Number(entry.dewp) : null,\n          weatherString: rawText(entry, ['wxString', 'wx_string']),",
-    'weather station overlay fields',
-  );
+  if (!next.includes('          lat: Number.isFinite(Number(entry.lat)) ? Number(entry.lat) : null,')) {
+    next = replaceRequired(
+      next,
+      "          flightCategory: entry.fltCat || entry.flight_category || null,",
+      "          flightCategory: entry.fltCat || entry.flight_category || null,\n          lat: Number.isFinite(Number(entry.lat)) ? Number(entry.lat) : null,\n          lon: Number.isFinite(Number(entry.lon)) ? Number(entry.lon) : null,",
+      'weather station coordinates',
+    );
+  }
+  if (!next.includes('          windGust: Number.isFinite(Number(entry.wgst)) ? Number(entry.wgst) : null,')) {
+    const windSpeedPattern = /^(\s*)windSpeed:\s*Number\.isFinite\(Number\(entry\.wspd\)\)\s*\?\s*Number\(entry\.wspd\)\s*:\s*null,\s*$/m;
+    const match = next.match(windSpeedPattern);
+    if (!match) throw new Error('1.20.11 patch anchor missing: weather wind speed field');
+    const indent = match[1];
+    const extension = `${match[0]}\n${indent}windGust: Number.isFinite(Number(entry.wgst)) ? Number(entry.wgst) : null,\n${indent}visibilitySm: Number.isFinite(Number.parseFloat(entry.visib)) ? Number.parseFloat(entry.visib) : null,\n${indent}altimeterHpa: Number.isFinite(Number(entry.altim)) ? Number(entry.altim) : null,\n${indent}temperatureC: Number.isFinite(Number(entry.temp)) ? Number(entry.temp) : null,\n${indent}dewpointC: Number.isFinite(Number(entry.dewp)) ? Number(entry.dewp) : null,\n${indent}weatherString: rawText(entry, ['wxString', 'wx_string']),`;
+    next = next.replace(windSpeedPattern, extension);
+  }
   next = replaceRequired(
     next,
     "    return [state.flight?.currentAirport, state.flight?.origin, simbrief.origin, state.flight?.destination, simbrief.destination];",
