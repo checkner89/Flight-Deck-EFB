@@ -4,6 +4,8 @@ const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 if (pkg.version !== '1.21.0') throw new Error(`1.21.0 completion patch requires package version 1.21.0, got ${pkg.version}.`);
 
 await import('./apply-release-1.21.0-arrival-lifecycle.mjs');
+await import('./apply-release-1.21.0-media-capacity.mjs');
+await import('./apply-release-1.21.0-media-runtime-hotfix.mjs');
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');
@@ -33,4 +35,4 @@ await update('src/server.mjs', (source) => {
   return source.replace(anchor, "          mode: body.mode,\n          runway: body.runway || null,\n          runwayExit: body.runwayExit || null,");
 });
 
-console.log('Flight Deck EFB 1.21.0 runway-exit propagation completion patch applied.');
+console.log('Flight Deck EFB 1.21.0 runway-exit and media lifecycle completion patch applied.');
