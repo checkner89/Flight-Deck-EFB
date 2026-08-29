@@ -4,10 +4,12 @@ const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const simconnect = await fs.readFile('src/simconnect-client.mjs', 'utf8');
 const server = await fs.readFile('src/server.mjs', 'utf8');
 const weatherClient = await fs.readFile('src/aviation-weather-client.mjs', 'utf8');
+const recorder = await fs.readFile('src/flight-recorder.mjs', 'utf8');
 const app = await fs.readFile('public/app.js', 'utf8');
 const overlay = await fs.readFile('public/flight-overlay.js', 'utf8');
 const html = await fs.readFile('public/index.html', 'utf8');
 const css = await fs.readFile('public/release-1.20.11.css', 'utf8');
+const serviceWorker = await fs.readFile('public/service-worker.js', 'utf8');
 
 function need(source, token, message) {
   if (!source.includes(token)) throw new Error(message);
@@ -61,4 +63,19 @@ need(overlay, "overlaySet('flight-overlay-local', local);", 'Local clock still c
 need(css, '.flight-overlay-clock-item small', 'Dual-clock label styling is missing.');
 need(css, '.flight-overlay-clock-item strong', 'Dual-clock value styling is missing.');
 
-console.log('Flight Deck EFB 1.20.11 QNH altitude, weather overlay and tracking UI regression checks passed.');
+// Actual track, altitude profile and touchdown analytics.
+need(app, "pane: 'trackingActual', color: '#ffb347'", 'Actual flown track does not use its distinct amber styling.');
+need(app, 'function renderTrackingAltitudeProfile(record)', 'Altitude/time profile renderer is missing.');
+need(app, "trackingProfileChart: $('#tracking-profile-chart')", 'Altitude profile DOM wiring is missing.');
+need(app, 'renderTrackingAltitudeProfile(record);', 'Altitude profile is not refreshed with tracking details.');
+need(html, 'id="tracking-profile-chart"', 'Flight profile card is missing from Tracking.');
+need(html, 'id="tracking-landing-rate"', 'Landing-rate metric is missing from the flight profile.');
+need(html, 'id="tracking-touchdown-speed"', 'Touchdown ground-speed metric is missing from the flight profile.');
+need(css, '.tracking-profile-line', 'Altitude profile styling is missing.');
+need(css, '.tracking-legend i.actual', 'Actual-track legend styling is missing.');
+need(recorder, 'let landingRateFpm = finite(record.stats?.landingRateFpm);', 'Landing-rate stats are not persisted/recalculated.');
+need(recorder, 'const touchdownCandidates = [current, ...airborneWindow]', 'Touchdown vertical-speed sampling is missing.');
+need(recorder, 'touchdownGroundSpeedKnots', 'Touchdown ground speed is not recorded.');
+need(serviceWorker, "flight-deck-efb-v12011-profile-landing1", 'Service-worker cache was not bumped for flight-profile assets.');
+
+console.log('Flight Deck EFB 1.20.11 QNH altitude, weather overlay, flight profile and landing-rate regression checks passed.');
