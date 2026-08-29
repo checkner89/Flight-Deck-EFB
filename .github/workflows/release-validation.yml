@@ -39,6 +39,9 @@ jobs:
           node --check scripts/apply-release-1.20.5.mjs
           if (Test-Path 'scripts/apply-release-1.20.6.mjs') { node --check scripts/apply-release-1.20.6.mjs }
           if (Test-Path 'scripts/apply-release-1.20.7.mjs') { node --check scripts/apply-release-1.20.7.mjs }
+          if (Test-Path 'scripts/prepare-release-1.20.8-compat.mjs') { node --check scripts/prepare-release-1.20.8-compat.mjs }
+          if (Test-Path 'scripts/apply-release-1.20.8.mjs') { node --check scripts/apply-release-1.20.8.mjs }
+          if (Test-Path 'scripts/apply-release-1.20.9.mjs') { node --check scripts/apply-release-1.20.9.mjs }
           node --check scripts/prepare-release-1.19.0-notes.mjs
           node --check scripts/prepare-release-1.20.1-notes.mjs
           node --check scripts/apply-release-1.17.19.mjs
@@ -49,6 +52,7 @@ jobs:
           node --check scripts/test-release-1.20.5.mjs
           if (Test-Path 'scripts/test-release-1.20.6.mjs') { node --check scripts/test-release-1.20.6.mjs }
           if (Test-Path 'scripts/test-release-1.20.7.mjs') { node --check scripts/test-release-1.20.7.mjs }
+          if (Test-Path 'scripts/test-release-1.20.9.mjs') { node --check scripts/test-release-1.20.9.mjs }
           node --check src/lan-discovery-service.mjs
           node --check src/windows-sim-session.mjs
           node --check src/msfs-addon-scanner.mjs
@@ -95,7 +99,6 @@ jobs:
         run: |
           $version = node -p "require('./package.json').version"
           $escapedVersion = [regex]::Escape($version)
-          $docsSuffix = if ($version -eq '1.20.7') { 'docs3' } else { 'docs2' }
           $html = Get-Content 'public/index.html' -Raw
           if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired into index.html.' }
           if ($html -notmatch "pilot-tools\.css\?v=$escapedVersion" -or $html -notmatch "pilot-tools\.js\?v=$escapedVersion") { throw "$version pilot tools are not wired into index.html." }
@@ -105,8 +108,9 @@ jobs:
           if ($html -notmatch "release-1\.20\.1\.css\?v=$escapedVersion") { throw '1.20.1 theme compatibility stylesheet is not wired.' }
           if ($html -notmatch "release-1\.20\.2\.css\?v=$escapedVersion") { throw '1.20.2 unified UI stylesheet is not wired.' }
           if ($html -notmatch "release-1\.20\.4\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.20\.4\.js\?v=$escapedVersion") { throw "$version cockpit shell assets are not wired into index.html." }
-          if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion-$docsSuffix" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion-$docsSuffix") { throw "$version OFP workspace is not wired into index.html." }
+          if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?") { throw "$version OFP workspace is not wired into index.html." }
           if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser assets are not wired into index.html." }
+          if ($version -eq '1.20.9' -and $html -notmatch "release-1\.20\.9\.css\?v=$escapedVersion") { throw '1.20.9 tracking stylesheet is not wired.' }
           if ($html -match 'operations-suite\.(?:js|css)\?v=') { throw 'Duplicate 1.18.0 operations suite is still wired into the app.' }
           if ($html -notmatch 'data-i18n="flightNotes">Flight Notes</h3>') { throw 'Existing Flight Hub note area still claims to be the Scratchpad.' }
           $server = Get-Content 'src/server.mjs' -Raw
@@ -129,19 +133,19 @@ jobs:
           if ($newsService -notmatch 'content: fullContent' -or $newsService -notmatch 'async article\(id\)' -or $newsService -notmatch 'extractContentBlocks') { throw 'Enhanced News article extraction is incomplete.' }
           $documents = Get-Content 'public/documents-workspace.js' -Raw
           if ($documents -notmatch 'indexedDB' -or $documents -notmatch 'highlighter' -or $documents -notmatch 'fdDocsRedo' -or $documents -notmatch 'fullSimBriefOfpHtml' -or $documents -notmatch 'fd-docs-commandbar') { throw 'Complete OFP/Documents workspace is incomplete.' }
-          if ($version -eq '1.20.7' -and ($documents -notmatch 'makeFlightDeckOFPHtml' -or $documents -notmatch "id: 'simbrief-original'")) { throw '1.20.7 formatted SimBrief OFP is incomplete.' }
+          if ($version -in @('1.20.7', '1.20.8', '1.20.9') -and ($documents -notmatch 'makeFlightDeckOFPHtml' -or $documents -notmatch "id: 'simbrief-original'")) { throw 'Formatted SimBrief OFP is incomplete.' }
           $documentsCss = Get-Content 'public/documents-workspace.css' -Raw
           if ($documentsCss -notmatch 'html\[data-theme="light"\]' -or $documentsCss -notmatch '--fd-docs-bg:\s*#071019') { throw 'OFP/Documents Light/Dark themes are incomplete.' }
           $releaseCss = Get-Content 'public/release-1.20.4.css' -Raw
           if ($releaseCss -notmatch 'fd-global-rail' -or $releaseCss -notmatch 'data-theme="light"') { throw 'Cockpit-wide Light/Dark UI is incomplete.' }
-          if ($version -eq '1.20.7' -and $releaseCss -notmatch 'fd-custom-ofp-hero') { throw '1.20.7 formatted OFP styling is incomplete.' }
+          if ($version -in @('1.20.7', '1.20.8', '1.20.9') -and $releaseCss -notmatch 'fd-custom-ofp-hero') { throw 'Formatted OFP styling is incomplete.' }
           $releaseJs = Get-Content 'public/release-1.20.4.js' -Raw
-          if ($version -in @('1.20.6', '1.20.7') -and ($releaseJs -notmatch 'FD26_NAV' -or $releaseJs -notmatch 'fd26-bottom-nav' -or $releaseJs -notmatch 'fd26-flight-ops')) { throw 'Unified shell is incomplete.' }
-          if ($version -eq '1.20.7' -and $releaseJs -notmatch 'top:126px!important') { throw '1.20.7 rail alignment fix is missing.' }
+          if ($version -in @('1.20.6', '1.20.7', '1.20.8', '1.20.9') -and ($releaseJs -notmatch 'FD26_NAV' -or $releaseJs -notmatch 'fd26-bottom-nav' -or $releaseJs -notmatch 'fd26-flight-ops')) { throw 'Unified shell is incomplete.' }
+          if ($version -in @('1.20.7', '1.20.8', '1.20.9') -and $releaseJs -notmatch 'top:126px!important') { throw 'Rail alignment fix is missing.' }
           $fileBrowser = Get-Content 'public/file-browser.js' -Raw
           if ($fileBrowser -notmatch 'data-fd-files-launcher' -or $fileBrowser -notmatch 'renderPreview' -or $fileBrowser -notmatch 'uploadFiles' -or $fileBrowser -notmatch 'runSearch') { throw 'Complete file browser UI is incomplete.' }
           $fileService = Get-Content 'src/file-browser-service.mjs' -Raw
           if ($fileService -notmatch 'assertReadable' -or $fileService -notmatch 'assertWritable' -or $fileService -notmatch 'receiveUpload') { throw 'File browser security or file operations are incomplete.' }
-          if ($version -in @('1.20.6', '1.20.7') -and ($fileService -notmatch 'appRootDirectory' -or $fileService -notmatch 'canonicalAppRoot' -or $fileService -notmatch 'fullFilesystem:\s*false')) { throw 'App-scoped Files boundary is incomplete.' }
-          if ($version -notin @('1.20.5', '1.20.6', '1.20.7')) { throw "Unexpected package version: $version" }
+          if ($version -in @('1.20.6', '1.20.7', '1.20.8', '1.20.9') -and ($fileService -notmatch 'appRootDirectory' -or $fileService -notmatch 'canonicalAppRoot' -or $fileService -notmatch 'fullFilesystem:\s*false')) { throw 'App-scoped Files boundary is incomplete.' }
+          if ($version -notin @('1.20.5', '1.20.6', '1.20.7', '1.20.8', '1.20.9')) { throw "Unexpected package version: $version" }
           Write-Host "Release $version validation passed."

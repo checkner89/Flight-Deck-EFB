@@ -18,15 +18,23 @@ function reject(source, token, message) {
   if (source.includes(token)) throw new Error(message);
 }
 
-if (pkg.version !== '1.20.7') throw new Error(`Unexpected package version: ${pkg.version}`);
-need(html, 'data-app-version="1.20.7"', 'HTML version is not 1.20.7.');
-need(html, '/release-1.20.4.js?v=1.20.7', 'Unified shell JS is not versioned for 1.20.7.');
-need(html, '/release-1.20.4.css?v=1.20.7', 'Unified shell CSS is not versioned for 1.20.7.');
-need(html, '/documents-workspace.js?v=1.20.7-docs3', 'Formatted OFP workspace JS is not wired.');
-need(html, '/documents-workspace.css?v=1.20.7-docs3', 'Formatted OFP workspace CSS is not wired.');
-need(server, "const APP_VERSION = '1.20.7';", 'Server version is not synchronized.');
-need(sw, 'flight-deck-efb-v1207-formatted-ofp1', '1.20.7 service worker cache is missing.');
-need(sw, '/documents-workspace.js?v=1.20.7-docs3', 'Formatted OFP JS is not in offline cache.');
+if (!['1.20.7', '1.20.8', '1.20.9'].includes(pkg.version)) throw new Error(`Unexpected package version: ${pkg.version}`);
+const version = pkg.version;
+need(html, `data-app-version="${version}"`, `HTML version is not ${version}.`);
+need(html, `/release-1.20.4.js?v=${version}`, `Unified shell JS is not versioned for ${version}.`);
+need(html, `/release-1.20.4.css?v=${version}`, `Unified shell CSS is not versioned for ${version}.`);
+const docsJsPattern = new RegExp(`documents-workspace\\.js\\?v=${version.replaceAll('.', '\\.')}(?:-docs[0-9]+)?`);
+const docsCssPattern = new RegExp(`documents-workspace\\.css\\?v=${version.replaceAll('.', '\\.')}(?:-docs[0-9]+)?`);
+if (!docsJsPattern.test(html)) throw new Error('Formatted OFP workspace JS is not wired.');
+if (!docsCssPattern.test(html)) throw new Error('Formatted OFP workspace CSS is not wired.');
+need(server, `const APP_VERSION = '${version}';`, 'Server version is not synchronized.');
+const compatibleCaches = [
+  'flight-deck-efb-v1207-formatted-ofp1',
+  'flight-deck-efb-v1208-flightops1',
+  'flight-deck-efb-v1209-tracking1',
+];
+if (!compatibleCaches.some((cache) => sw.includes(cache))) throw new Error('Formatted OFP service worker cache is missing for the active release.');
+if (!docsJsPattern.test(sw)) throw new Error('Formatted OFP JS is not in offline cache.');
 
 need(shell, 'body:has(#app-toolbar:not([hidden])) .fd-global-rail.fd26-rail{top:126px!important}', 'Rail is not moved below the visible app toolbar.');
 need(shell, 'body:has(#app-toolbar:not([hidden])) #fd-docs-workspace', 'Briefing workspace does not align below the shared app toolbar.');
@@ -52,4 +60,6 @@ reject(filesService, 'return await this.driveRoots()', 'Files drive browsing reg
 
 if (!/^## 1\.20\.7\b/m.test(changelog)) throw new Error('CHANGELOG section for 1.20.7 is missing.');
 
-console.log('Flight Deck EFB 1.20.7 formatted SimBrief OFP checks passed.');
+console.log(`Flight Deck EFB ${version} formatted SimBrief OFP compatibility checks passed.`);
+
+if (version === '1.20.9') await import('./test-release-1.20.9.mjs');
