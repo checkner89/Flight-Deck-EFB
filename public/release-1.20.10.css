@@ -1,0 +1,275 @@
+/* Flight Deck EFB 1.20.10 — responsive tracking + map-first flight context */
+
+/* Tracking gets the full content width. Archive remains available as its own tab,
+   rather than consuming a permanent sidebar next to the map. */
+[data-page="tracking"] .tracking-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+[data-page="tracking"] .tracking-map-card,
+[data-page="tracking"] .tracking-detail-layout {
+  grid-column: 1 / -1;
+}
+
+[data-page="tracking"] .tracking-sidebar[hidden] {
+  display: none !important;
+}
+
+[data-page="tracking"].archive-only .tracking-sidebar {
+  display: block;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+[data-page="tracking"].archive-only .tracking-archive-card {
+  width: 100%;
+  height: auto;
+  min-height: 420px;
+}
+
+[data-page="tracking"].archive-only .flight-archive-list {
+  max-height: min(68vh, 760px);
+}
+
+/* Flight data is attached to the map in a second compact information strip.
+   Values already present in the live strip are deliberately not repeated. */
+.tracking-flight-strip {
+  position: relative;
+  z-index: 560;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-height: 64px;
+  margin: 0;
+  border-top: 1px solid rgba(151, 193, 216, 0.13);
+  background: rgba(5, 20, 30, 0.97);
+}
+
+.tracking-flight-strip div {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 13px;
+  border-right: 1px solid rgba(151, 193, 216, 0.11);
+}
+
+.tracking-flight-strip div:last-child {
+  border-right: 0;
+}
+
+.tracking-flight-strip dt {
+  color: #6f8b9a;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+
+.tracking-flight-strip dd {
+  overflow: hidden;
+  margin: 0;
+  color: #edf8fb;
+  font-size: 13px;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The old third Flight Data card stays in the DOM for renderer compatibility,
+   but is no longer a visible duplicate. Route and weather get the full lower row. */
+[data-page="tracking"] .tracking-data-card {
+  display: none !important;
+}
+
+[data-page="tracking"] .tracking-detail-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 16px;
+  align-items: stretch;
+}
+
+[data-page="tracking"] .tracking-route-card,
+[data-page="tracking"] .tracking-weather-card {
+  min-height: 310px;
+}
+
+[data-page="tracking"] .tracking-waypoint-list,
+[data-page="tracking"] .tracking-weather-list {
+  max-height: 430px;
+}
+
+/* Explicit visual distinction for the original imported SimBrief navlog route. */
+.tracking-legend i.simbrief {
+  width: 18px;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #18cfc3;
+  box-shadow: 0 0 0 1px rgba(24, 207, 195, 0.15);
+}
+
+html[data-theme="light"] .tracking-flight-strip {
+  border-color: #c5d2d9;
+  background: rgba(241, 246, 248, 0.98);
+}
+
+html[data-theme="light"] .tracking-flight-strip dd {
+  color: #132934;
+}
+
+html[data-text-size="large"] .tracking-flight-strip dt {
+  font-size: 11px;
+}
+
+html[data-text-size="large"] .tracking-flight-strip dd {
+  font-size: 15px;
+}
+
+/* Header: remove the fixed minimum widths that made the flight overlay push into
+   UTC/local time and the connection controls at intermediate desktop widths. */
+.topbar > *,
+.flight-summary.flight-overlay-host,
+.connection-summary {
+  min-width: 0;
+}
+
+@media (max-width: 1500px) {
+  .topbar {
+    grid-template-columns: minmax(92px, .34fr) minmax(430px, 1.35fr) auto;
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .flight-summary.flight-overlay-host {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .flight-overlay-top {
+    grid-template-columns: minmax(90px, 1fr) minmax(105px, 1.16fr) minmax(68px, .62fr) minmax(64px, .6fr);
+    gap: 7px;
+  }
+
+  .flight-overlay-top small {
+    font-size: .53rem;
+  }
+
+  .flight-overlay-top-route strong,
+  .flight-overlay-top-stat strong {
+    font-size: .73rem;
+  }
+
+  .flight-overlay-progress-track {
+    min-width: 36px;
+  }
+
+  .connection-summary {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 1220px) {
+  .topbar {
+    grid-template-columns: auto minmax(350px, 1fr) auto;
+    gap: 8px;
+  }
+
+  .brand-copy {
+    display: none;
+  }
+
+  .flight-overlay-top {
+    grid-template-columns: minmax(82px, .9fr) minmax(92px, 1.05fr) minmax(62px, .58fr) minmax(60px, .56fr);
+    gap: 6px;
+  }
+
+  .flight-overlay-top-progress {
+    gap: 5px;
+  }
+
+  .flight-overlay-top-progress b {
+    min-width: 30px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .topbar {
+    grid-template-columns: auto minmax(300px, 1fr) auto;
+  }
+
+  #share-button {
+    display: none;
+  }
+
+  .flight-overlay-top {
+    grid-template-columns: minmax(78px, .9fr) minmax(82px, 1fr) minmax(58px, .56fr) minmax(56px, .54fr);
+  }
+}
+
+/* Tracking breakpoint hierarchy. Avoid the old three-column fallback that
+   reintroduced a narrow map once the archive sidebar is gone. */
+@media (max-width: 1160px) {
+  [data-page="tracking"] .tracking-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-page="tracking"] .tracking-detail-layout {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .tracking-live-strip,
+  .tracking-flight-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tracking-flight-strip div:nth-child(3n),
+  .tracking-live-strip div:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .tracking-flight-strip div:nth-child(-n+3) {
+    border-bottom: 1px solid rgba(151, 193, 216, 0.11);
+  }
+}
+
+@media (max-width: 820px) {
+  [data-page="tracking"] .tracking-detail-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-page="tracking"] .tracking-route-card,
+  [data-page="tracking"] .tracking-weather-card {
+    min-height: 0;
+  }
+
+  #tracking-map {
+    height: 50vh;
+    min-height: 340px;
+  }
+}
+
+@media (max-width: 620px) {
+  .tracking-live-strip,
+  .tracking-flight-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tracking-flight-strip div:nth-child(3n),
+  .tracking-live-strip div:nth-child(3n) {
+    border-right: 1px solid rgba(151, 193, 216, 0.11);
+  }
+
+  .tracking-flight-strip div:nth-child(even),
+  .tracking-live-strip div:nth-child(even) {
+    border-right: 0;
+  }
+
+  .tracking-flight-strip div:nth-child(-n+4) {
+    border-bottom: 1px solid rgba(151, 193, 216, 0.11);
+  }
+
+  .tracking-legend {
+    right: 8px;
+    left: 8px;
+    justify-content: center;
+  }
+}
