@@ -12,6 +12,7 @@ const checks = [
   [bootstrap.indexOf('requestSingleInstanceLock') < bootstrap.indexOf("import('./electron-main.mjs')"), 'lock acquisition must happen before importing electron-main'],
   [bootstrap.includes('if (!hasSingleInstanceLock)'), 'secondary launches must have an explicit rejection branch'],
   [bootstrap.includes('app.quit()'), 'secondary launches must quit immediately'],
+  [!main.includes('requestSingleInstanceLock()'), 'electron-main must not acquire a second single-instance lock'],
   [main.includes("app.on('second-instance'"), 'primary app must handle a second launch'],
   [main.includes('showMainWindow();'), 'second launch must focus/show the existing window'],
 ];
