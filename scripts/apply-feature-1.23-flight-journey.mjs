@@ -6,6 +6,24 @@ async function update(filename, transform) {
   if (after !== before) await fs.writeFile(filename, after, 'utf8');
 }
 
+await update('src/electron-main.mjs', (source) => {
+  const duplicateLock = `app.setAppUserModelId('de.checkner.flightdeckefb');
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) app.quit();
+
+app.on('second-instance', () => {
+  showMainWindow();
+});`;
+  const cleaned = `app.setAppUserModelId('de.checkner.flightdeckefb');
+
+app.on('second-instance', () => {
+  showMainWindow();
+});`;
+  if (source.includes(cleaned)) return source;
+  if (!source.includes(duplicateLock)) throw new Error('1.23 single-instance cleanup anchor missing.');
+  return source.replace(duplicateLock, cleaned);
+});
+
 await update('src/server.mjs', (source) => {
   let next = source;
   if (!next.includes("import { FlightJourneyService } from './flight-journey-service.mjs';")) {
@@ -96,4 +114,4 @@ await update('src/flight-recorder.mjs', (source) => {
   return source.replace(oldBlock, newBlock);
 });
 
-console.log('Flight Deck EFB 1.23 gate-to-gate journey service and recorder completion materialized.');
+console.log('Flight Deck EFB 1.23 lifecycle, gate-to-gate journey and recorder completion materialized.');
