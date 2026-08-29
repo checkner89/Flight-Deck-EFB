@@ -114,9 +114,12 @@ jobs:
           }
 
           if ($version -eq '1.22.1') {
-            if ($html -notmatch "release-1\.22\.1\.css\?v=$escapedVersion") { throw '1.22.1 cockpit UI stylesheet is not wired.' }
+            if ($html -notmatch "release-1\.22\.1\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.js\?v=$escapedVersion") { throw '1.22.1 UI/UX assets are not wired.' }
             $ui = Get-Content 'public/release-1.22.1.css' -Raw
+            $uxCss = Get-Content 'public/release-1.22.1-ux.css' -Raw
+            $ux = Get-Content 'public/release-1.22.1-ux.js' -Raw
             if ($ui -notmatch 'flight-hub-tab=.operations' -or $ui -notmatch 'fd122-briefing-shell' -or $ui -notmatch 'fd122-scratch-toolbar' -or $ui -notmatch 'news-card') { throw '1.22.1 cockpit UI harmonization is incomplete.' }
+            if ($uxCss -notmatch 'fd123-toast-stack' -or $uxCss -notmatch 'fd123-context-actions' -or $ux -notmatch 'flight-deck-last-module' -or $ux -notmatch 'app-home-button') { throw '1.22.1 pilot UX harmonization is incomplete.' }
           }
 
           Write-Host "Release $version validation passed."
