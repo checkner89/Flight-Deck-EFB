@@ -72,6 +72,7 @@ const chain = [
   'scripts/apply-feature-1.24-flight-tracking.mjs',
   'scripts/apply-release-1.24.0.mjs',
   'scripts/apply-release-1.24.1.mjs',
+  'scripts/prepare-release-1.24.2-materializer-fix.mjs',
   'scripts/apply-release-1.24.2.mjs',
   'scripts/apply-release-1.24.2-hotfix.mjs',
 ];
