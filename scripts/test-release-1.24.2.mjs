@@ -15,8 +15,9 @@ const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
 const is1243 = pkg.version === '1.24.3';
+const is1244 = pkg.version === '1.24.4';
 
-if (!['1.24.2', '1.24.3'].includes(pkg.version)) throw new Error(`Expected package version 1.24.2 or 1.24.3, got ${pkg.version}.`);
+if (!['1.24.2', '1.24.3', '1.24.4'].includes(pkg.version)) throw new Error(`Expected package version 1.24.2, 1.24.3 or 1.24.4, got ${pkg.version}.`);
 need(pkg.scripts['prepare:release'], 'prepare-release.mjs', '1.24.2+ release orchestrator is missing from prepare:release.');
 need(orchestrator, 'scripts/apply-release-1.24.2.mjs', '1.24.2 materializer is missing from the release orchestrator.');
 need(orchestrator, 'scripts/apply-release-1.24.2-hotfix.mjs', '1.24.2 hotfix is missing from the release orchestrator.');
@@ -68,5 +69,6 @@ need(css, 'color: #e33d49;', 'Ownship is not styled red.');
 need(css, '.fd1242-traffic-card', 'Modern Traffic popup styling is missing.');
 need(sw, `'/release-1.24.2.css?v=${pkg.version}'`, '1.24.2 CSS is missing from the service-worker cache.');
 if (is1243) need(sw, 'flyxora-v1.24.3-desktop-start', '1.24.3 service-worker cache marker is missing.');
+if (is1244) need(sw, 'flyxora-v1.24.4-host-session', '1.24.4 service-worker cache marker is missing.');
 
 console.log(`FLYXORA 1.24.2 tracking schedule + traffic regression passed for ${pkg.version}.`);
