@@ -1,0 +1,247 @@
+/* FLYXORA 1.24.2 · Flight Tracking / Traffic UX */
+
+/* Keep the map legend readable on every basemap. */
+.tracking-legend {
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+  max-width: calc(100% - 36px);
+  padding: 8px 10px !important;
+  border: 1px solid rgba(183, 211, 224, .22) !important;
+  border-radius: 10px !important;
+  background: rgba(7, 24, 34, .94) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tracking-legend::-webkit-scrollbar { display: none; }
+.tracking-legend > span {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px !important;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .035);
+}
+.tracking-legend b {
+  color: #f2f8fa !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.2;
+  letter-spacing: .015em !important;
+  white-space: nowrap;
+}
+.tracking-legend i.actual { background: #2f6fed !important; }
+.tracking-legend i.traffic { background: #f0a23b !important; }
+.tracking-legend i.simbrief { background: #24c7b8 !important; }
+.tracking-legend i.planned { background: #b6c9d3 !important; }
+
+html[data-theme='light'] .tracking-legend {
+  border-color: rgba(29, 67, 82, .18) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: 0 8px 22px rgba(35, 62, 73, .15);
+}
+html[data-theme='light'] .tracking-legend > span { background: rgba(23, 58, 72, .04); }
+html[data-theme='light'] .tracking-legend b { color: #173642 !important; }
+
+/* One compact source of truth for schedule information. */
+.tracking-flight-strip {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(112px, 1fr)) !important;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.tracking-flight-strip > div { min-width: 112px !important; }
+.tracking-flight-strip > div.fd1242-wide-context { min-width: 190px !important; }
+.fd1242-schedule-value {
+  display: grid !important;
+  gap: 4px;
+  min-height: 35px;
+}
+.fd1242-schedule-value > span {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: baseline;
+  gap: 7px;
+}
+.fd1242-schedule-value em {
+  color: var(--fd122-muted, #78909a);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+.fd1242-schedule-value b {
+  font-size: 12px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fd1242-route-context {
+  display: grid;
+  gap: 3px;
+}
+.fd1242-route-context span { display: block; white-space: nowrap; }
+.fd1242-route-context small {
+  color: var(--fd122-muted, #78909a);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+/* Schedule is no longer repeated inside the Flight Profile. */
+.fd124-time-strip { display: none !important; }
+
+/* Flight Profile is operationally simple: profile basis + unit. Altitude colouring is always on. */
+.fd122-profile-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  padding: 10px 0 14px !important;
+  margin: 0 0 14px !important;
+}
+.fd1242-profile-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fd1242-profile-controls label {
+  display: grid !important;
+  gap: 5px;
+  min-width: 150px;
+  color: var(--fd122-muted, #78909a);
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  letter-spacing: .06em;
+}
+.fd1242-profile-controls select {
+  min-height: 38px;
+  border: 1px solid var(--fd122-border, rgba(130, 160, 173, .22));
+  border-radius: 9px;
+  padding: 0 32px 0 11px;
+  background: var(--fd122-card, #10242f);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+#fd122-alt-colors,
+.fd124-altitude-legend,
+.fd122-altitude-legend { display: none !important; }
+
+/* Ownship: always one unmistakable red aircraft. */
+.tracking-ownship-icon,
+.tracking-ownship-icon div {
+  border: 0 !important;
+  background: transparent !important;
+}
+.fd1242-ownship-plane {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: #e33d49;
+  font-size: 27px;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .7), 0 0 8px rgba(227, 61, 73, .35);
+  transform: rotate(var(--fd1242-heading, 0deg));
+  transform-origin: 50% 50%;
+}
+
+/* Traffic aircraft stay amber; selection is a ring/glow, not another yellow trail marker. */
+.tracking-traffic-icon.fd124-traffic-plane .fd124-traffic-aircraft {
+  color: #f0a23b !important;
+  font-size: 21px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .78) !important;
+}
+.tracking-traffic-icon.fd124-traffic-plane.fd1242-selected-traffic .fd124-traffic-aircraft {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .95)) drop-shadow(0 0 9px rgba(47, 111, 237, .9));
+}
+.fd1242-selected-traffic::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, .42);
+  pointer-events: none;
+}
+
+/* Modern Leaflet traffic popup. */
+.leaflet-popup.fd1242-traffic-popup .leaflet-popup-content-wrapper {
+  min-width: 248px;
+  border: 1px solid rgba(157, 194, 211, .24);
+  border-radius: 14px;
+  background: rgba(11, 31, 42, .98);
+  color: #eef7f9;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .42);
+}
+.leaflet-popup.fd1242-traffic-popup .leaflet-popup-tip { background: rgba(11, 31, 42, .98); }
+.leaflet-popup.fd1242-traffic-popup .leaflet-popup-content { margin: 13px 14px 14px; }
+.leaflet-popup.fd1242-traffic-popup .leaflet-popup-close-button {
+  top: 7px;
+  right: 7px;
+  color: #b8cbd3 !important;
+}
+.fd1242-traffic-card { display: grid; gap: 11px; }
+.fd1242-traffic-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.fd1242-traffic-card header span { display: grid; gap: 2px; }
+.fd1242-traffic-card header strong { font-size: 15px; letter-spacing: .02em; }
+.fd1242-traffic-card header small { color: #93aab4; font-size: 10px; }
+.fd1242-traffic-type {
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(240, 162, 59, .14);
+  color: #ffc56e;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.fd1242-traffic-route {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #dcebee;
+  font-size: 11px;
+  font-weight: 800;
+}
+.fd1242-traffic-route i { flex: 1; height: 1px; background: rgba(188, 214, 225, .28); }
+.fd1242-traffic-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.fd1242-traffic-metrics span {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .045);
+}
+.fd1242-traffic-metrics small { color: #8fa6b0; font-size: 8px; font-weight: 850; letter-spacing: .06em; }
+.fd1242-traffic-metrics b { font-size: 11px; font-weight: 850; }
+.fd1242-traffic-history {
+  color: #91a8b2;
+  font-size: 9px;
+  line-height: 1.4;
+}
+html[data-theme='light'] .leaflet-popup.fd1242-traffic-popup .leaflet-popup-content-wrapper {
+  border-color: #c8d8df;
+  background: rgba(255, 255, 255, .99);
+  color: #183640;
+  box-shadow: 0 16px 40px rgba(31, 62, 74, .2);
+}
+html[data-theme='light'] .leaflet-popup.fd1242-traffic-popup .leaflet-popup-tip { background: #fff; }
+html[data-theme='light'] .fd1242-traffic-card header small,
+html[data-theme='light'] .fd1242-traffic-history { color: #657f8a; }
+html[data-theme='light'] .fd1242-traffic-route { color: #244651; }
+html[data-theme='light'] .fd1242-traffic-metrics span { background: #f0f5f7; }
+
+@media (max-width: 900px) {
+  .tracking-flight-strip { grid-template-columns: repeat(7, minmax(126px, 1fr)) !important; }
+  .fd1242-profile-controls { width: 100%; }
+  .fd1242-profile-controls label { flex: 1 1 150px; }
+}
