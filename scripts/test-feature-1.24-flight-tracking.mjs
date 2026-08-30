@@ -13,7 +13,11 @@ const reject = (source, value, message) => { if (source.includes(value)) throw n
 
 need(app, 'let openTrafficPopupId = null;', 'Sticky traffic popup state is missing.');
 if (pkg.version === '1.24.2') {
-  need(app, 'fd1242-traffic-popup', 'Modern sticky traffic popup handling is missing.');
+  if (!app.includes('fd1242-traffic-popup')) {
+    const start = app.indexOf('function renderTrackingTraffic');
+    const snippet = start >= 0 ? app.slice(start, start + 5000) : app.slice(Math.max(0, app.indexOf('function updateTrafficTrails')), Math.max(0, app.indexOf('function updateTrafficTrails')) + 5000);
+    throw new Error(`Modern sticky traffic popup handling is missing. Generated traffic block:\n${snippet}`);
+  }
   need(app, 'selectedTrafficTrailId = key;', 'Selected traffic trail handling is missing.');
   need(app, 'openTrafficPopupId = key;', 'Traffic click does not persist the detail popup.');
 } else {
