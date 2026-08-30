@@ -87,10 +87,6 @@ for (const script of chain) {
   if (result.status !== 0) {
     throw new Error(`Release materializer failed: ${script} (exit ${result.status})`);
   }
-  if (script.includes('1.24')) {
-    const currentApp = await fs.readFile('public/app.js', 'utf8');
-    console.log(`[1.24 renderer invariant] ${script}: ${JSON.stringify(trafficInvariant(currentApp))} schedule=${currentApp.includes('function trackingScheduleMarkup(')}`);
-  }
 }
 
 const finalApp = await fs.readFile('public/app.js', 'utf8');
