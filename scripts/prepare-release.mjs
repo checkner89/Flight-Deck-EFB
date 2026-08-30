@@ -5,8 +5,14 @@ const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const app = await fs.readFile('public/app.js', 'utf8').catch(() => '');
 const html = await fs.readFile('public/index.html', 'utf8').catch(() => '');
 
+const rendererHas1242Traffic = (source) => source.includes('function renderTrackingTraffic(')
+  && source.includes('function renderSelectedTrafficTrail(')
+  && source.includes('fd1242-traffic-popup')
+  && source.includes('selectedTrafficTrailId = key;');
+
 const alreadyMaterialized = pkg.version === '1.24.2'
   && app.includes('function trackingScheduleMarkup(')
+  && rendererHas1242Traffic(app)
   && html.includes('/release-1.24.2.css?v=1.24.2');
 
 if (alreadyMaterialized) {
@@ -76,6 +82,15 @@ for (const script of chain) {
   if (result.status !== 0) {
     throw new Error(`Release materializer failed: ${script} (exit ${result.status})`);
   }
+  if (script.includes('1.24')) {
+    const currentApp = await fs.readFile('public/app.js', 'utf8');
+    console.log(`[1.24 renderer invariant] ${script}: traffic=${rendererHas1242Traffic(currentApp)} schedule=${currentApp.includes('function trackingScheduleMarkup(')}`);
+  }
+}
+
+const finalApp = await fs.readFile('public/app.js', 'utf8');
+if (pkg.version === '1.24.2' && !rendererHas1242Traffic(finalApp)) {
+  throw new Error('FLYXORA 1.24.2 materialization completed without the required Traffic route/popup renderer.');
 }
 
 console.log(`FLYXORA ${pkg.version} release materialization completed.`);
