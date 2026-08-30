@@ -15,6 +15,7 @@ need(electronMain, 'window.webContents.session.flushStorageData()', 'Chromium st
 need(electronMain, "persistBrowserStateSnapshot({ reason: 'update', restoreAll: true })", 'Updater does not snapshot current browser state before install.');
 need(electronMain, 'restoreBrowserStateSnapshot(mainWindow)', 'Browser state is not restored on startup.');
 need(electronMain, 'if (browserStateRestored) await mainWindow.loadURL', 'Renderer is not reloaded after restoring state.');
+need(electronMain, "persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false })", 'Existing browser state is not seeded into the update-safe backup on upgraded startup.');
 need(electronMain, "persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })", 'Normal shutdown does not preserve a fallback browser snapshot.');
 need(electronMain, "TRANSIENT_BROWSER_STORAGE_KEYS = new Set(['si-taxi-token'])", 'Transient pairing token exclusion is missing.');
 need(materializer, 'restoreAll: Boolean(restoreAll)', 'Update restore mode is not persisted in snapshot metadata.');
