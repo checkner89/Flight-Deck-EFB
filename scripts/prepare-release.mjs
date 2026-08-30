@@ -17,16 +17,26 @@ const trafficInvariant = (source) => ({
 const rendererHas1242Traffic = (source) => Object.values(trafficInvariant(source)).every(Boolean);
 const desktopRecoveryReady = (appSource, serverSource) => appSource.includes('async function recoverDesktopHostToken(')
   && serverSource.includes("pathname === '/api/desktop/session'");
+const desktopSessionReady1244 = (appSource, serverSource) => desktopRecoveryReady(appSource, serverSource)
+  && appSource.includes("authenticatedUrl('/api/session/validate')")
+  && appSource.includes('function desktopSessionSecret()')
+  && serverSource.includes('const desktopSessionToken = randomBytes(24)')
+  && serverSource.includes("pathname === '/api/session/validate'");
 
-const alreadyMaterialized = targetVersion === '1.24.3'
+const alreadyMaterialized = targetVersion === '1.24.4'
   ? app.includes('function trackingScheduleMarkup(')
     && rendererHas1242Traffic(app)
-    && desktopRecoveryReady(app, server)
-    && html.includes('data-app-version="1.24.3"')
-  : targetVersion === '1.24.2'
-    && app.includes('function trackingScheduleMarkup(')
-    && rendererHas1242Traffic(app)
-    && html.includes('/release-1.24.2.css?v=1.24.2');
+    && desktopSessionReady1244(app, server)
+    && html.includes('data-app-version="1.24.4"')
+  : targetVersion === '1.24.3'
+    ? app.includes('function trackingScheduleMarkup(')
+      && rendererHas1242Traffic(app)
+      && desktopRecoveryReady(app, server)
+      && html.includes('data-app-version="1.24.3"')
+    : targetVersion === '1.24.2'
+      && app.includes('function trackingScheduleMarkup(')
+      && rendererHas1242Traffic(app)
+      && html.includes('/release-1.24.2.css?v=1.24.2');
 
 if (alreadyMaterialized) {
   console.log(`FLYXORA ${targetVersion} release sources are already materialized; skipping repeated legacy patch chain.`);
@@ -96,33 +106,44 @@ function runScript(script) {
   if (result.status !== 0) throw new Error(`Release materializer failed: ${script} (exit ${result.status})`);
 }
 
+async function writePackageVersion(version) {
+  const value = JSON.parse(await fs.readFile('package.json', 'utf8'));
+  value.version = version;
+  await fs.writeFile('package.json', `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
 let compatibilityVersionApplied = false;
 try {
-  if (targetVersion === '1.24.3') {
-    const compatibilityPkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-    compatibilityPkg.version = '1.24.2';
-    await fs.writeFile('package.json', `${JSON.stringify(compatibilityPkg, null, 2)}\n`, 'utf8');
+  if (['1.24.3', '1.24.4'].includes(targetVersion)) {
+    await writePackageVersion('1.24.2');
     compatibilityVersionApplied = true;
   }
 
   for (const script of legacyChain) runScript(script);
 } finally {
-  if (compatibilityVersionApplied) {
-    const restoredPkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-    restoredPkg.version = targetVersion;
-    await fs.writeFile('package.json', `${JSON.stringify(restoredPkg, null, 2)}\n`, 'utf8');
-  }
+  if (compatibilityVersionApplied) await writePackageVersion(targetVersion);
 }
 
-if (targetVersion === '1.24.3') runScript('scripts/apply-release-1.24.3.mjs');
+if (['1.24.3', '1.24.4'].includes(targetVersion)) {
+  if (targetVersion === '1.24.4') await writePackageVersion('1.24.3');
+  try {
+    runScript('scripts/apply-release-1.24.3.mjs');
+  } finally {
+    if (targetVersion === '1.24.4') await writePackageVersion(targetVersion);
+  }
+}
+if (targetVersion === '1.24.4') runScript('scripts/apply-release-1.24.4.mjs');
 
 const finalApp = await fs.readFile('public/app.js', 'utf8');
 const finalServer = await fs.readFile('src/server.mjs', 'utf8');
-if (['1.24.2', '1.24.3'].includes(targetVersion) && !rendererHas1242Traffic(finalApp)) {
+if (['1.24.2', '1.24.3', '1.24.4'].includes(targetVersion) && !rendererHas1242Traffic(finalApp)) {
   throw new Error(`FLYXORA ${targetVersion} materialization completed without the required Traffic route/popup renderer: ${JSON.stringify(trafficInvariant(finalApp))}`);
 }
 if (targetVersion === '1.24.3' && !desktopRecoveryReady(finalApp, finalServer)) {
   throw new Error('FLYXORA 1.24.3 materialization completed without desktop session recovery.');
+}
+if (targetVersion === '1.24.4' && !desktopSessionReady1244(finalApp, finalServer)) {
+  throw new Error('FLYXORA 1.24.4 materialization completed without hardened desktop session recovery.');
 }
 
 console.log(`FLYXORA ${targetVersion} release materialization completed.`);
