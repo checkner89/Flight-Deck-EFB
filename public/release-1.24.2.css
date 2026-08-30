@@ -33,8 +33,8 @@
   letter-spacing: .015em !important;
   white-space: nowrap;
 }
-.tracking-legend i.actual { background: #2f6fed !important; }
-.tracking-legend i.traffic { background: #f0a23b !important; }
+.tracking-legend i.actual { background: linear-gradient(90deg, #2b9b78, #d7ad30, #e67f2e, #7c52b8) !important; }
+.tracking-legend i.traffic { background: #4aa3ff !important; }
 .tracking-legend i.simbrief { background: #24c7b8 !important; }
 .tracking-legend i.planned { background: #b6c9d3 !important; }
 
@@ -49,7 +49,7 @@ html[data-theme='light'] .tracking-legend b { color: #173642 !important; }
 /* One compact source of truth for schedule information. */
 .tracking-flight-strip {
   display: grid !important;
-  grid-template-columns: repeat(7, minmax(112px, 1fr)) !important;
+  grid-template-columns: repeat(8, minmax(112px, 1fr)) !important;
   align-items: stretch;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -151,14 +151,14 @@ html[data-theme='light'] .tracking-legend b { color: #173642 !important; }
   transform-origin: 50% 50%;
 }
 
-/* Traffic aircraft stay amber; selection is a ring/glow, not another yellow trail marker. */
+/* Traffic is blue. Selection is a white/blue ring, never duplicate yellow aircraft markers. */
 .tracking-traffic-icon.fd124-traffic-plane .fd124-traffic-aircraft {
-  color: #f0a23b !important;
+  color: #4aa3ff !important;
   font-size: 21px !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .78) !important;
 }
 .tracking-traffic-icon.fd124-traffic-plane.fd1242-selected-traffic .fd124-traffic-aircraft {
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .95)) drop-shadow(0 0 9px rgba(47, 111, 237, .9));
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, .95)) drop-shadow(0 0 9px rgba(74, 163, 255, .9));
 }
 .fd1242-selected-traffic::after {
   content: '';
@@ -166,7 +166,7 @@ html[data-theme='light'] .tracking-legend b { color: #173642 !important; }
   inset: 1px;
   border: 2px solid rgba(255, 255, 255, .9);
   border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(47, 111, 237, .42);
+  box-shadow: 0 0 0 3px rgba(74, 163, 255, .42);
   pointer-events: none;
 }
 
@@ -194,8 +194,8 @@ html[data-theme='light'] .tracking-legend b { color: #173642 !important; }
 .fd1242-traffic-type {
   padding: 4px 7px;
   border-radius: 7px;
-  background: rgba(240, 162, 59, .14);
-  color: #ffc56e;
+  background: rgba(74, 163, 255, .14);
+  color: #8bc5ff;
   font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
@@ -241,7 +241,7 @@ html[data-theme='light'] .fd1242-traffic-route { color: #244651; }
 html[data-theme='light'] .fd1242-traffic-metrics span { background: #f0f5f7; }
 
 @media (max-width: 900px) {
-  .tracking-flight-strip { grid-template-columns: repeat(7, minmax(126px, 1fr)) !important; }
+  .tracking-flight-strip { grid-template-columns: repeat(8, minmax(126px, 1fr)) !important; }
   .fd1242-profile-controls { width: 100%; }
   .fd1242-profile-controls label { flex: 1 1 150px; }
 }
