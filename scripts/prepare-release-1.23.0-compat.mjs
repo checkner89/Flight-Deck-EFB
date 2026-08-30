@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const targetVersion = pkg.version;
-if (!['1.23.0', '1.23.1', '1.23.2', '1.24.0'].includes(targetVersion)) throw new Error(`1.23 compatibility preparation requires package version 1.23.0/1.23.1/1.23.2/1.24.0, got ${targetVersion}.`);
+if (!['1.23.0', '1.23.1', '1.23.2', '1.24.0', '1.24.1'].includes(targetVersion)) throw new Error(`1.23 compatibility preparation requires package version 1.23.0/1.23.1/1.23.2/1.24.0/1.24.1, got ${targetVersion}.`);
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');

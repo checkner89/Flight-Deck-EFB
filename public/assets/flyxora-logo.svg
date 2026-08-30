@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 132" role="img" aria-labelledby="title desc">
+  <title id="title">FLYXORA</title><desc id="desc">FLYXORA Simulation EFB logo</desc><rect width="620" height="132" rx="22" fill="#0b1d28"/>
+  <g transform="translate(28 26)"><path d="M6 2 40 40 74 2" fill="none" stroke="#55c7c8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 78 40 40 74 78" fill="none" stroke="#edf7f6" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 71c16-14 27-22 37-31S61 18 77 3" fill="none" stroke="#f2b84b" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 9"/><circle cx="40" cy="40" r="7" fill="#0b1d28" stroke="#f2b84b" stroke-width="4"/></g>
+  <text x="132" y="72" fill="#f3f8f8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="50" font-weight="800" letter-spacing="8">FLYXORA</text><text x="136" y="101" fill="#89a4ae" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="6">SIMULATION EFB</text>
+</svg>

@@ -1,13 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FLYXORA">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#0ce7d8"/>
-      <stop offset="1" stop-color="#17a8ff"/>
-    </linearGradient>
+    <linearGradient id="bg" x1="76" y1="54" x2="438" y2="456" gradientUnits="userSpaceOnUse"><stop stop-color="#102b3a"/><stop offset="1" stop-color="#07141e"/></linearGradient>
+    <linearGradient id="route" x1="122" y1="118" x2="398" y2="402" gradientUnits="userSpaceOnUse"><stop stop-color="#66d5d2"/><stop offset="1" stop-color="#238fa4"/></linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#07121c"/>
-  <path d="M256 72 422 440l-166-72L90 440 256 72Z" fill="url(#g)"/>
-  <path d="m256 164 76 170-76-33-76 33 76-170Z" fill="#07121c"/>
-  <circle cx="256" cy="348" r="28" fill="#fff"/>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <path d="M122 116 256 256 390 116" fill="none" stroke="url(#route)" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M122 396 256 256 390 396" fill="none" stroke="#eef8f7" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M111 366c62-55 111-81 145-110 38-33 82-80 145-137" fill="none" stroke="#f2b84b" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 31"/>
+  <circle cx="256" cy="256" r="25" fill="#07141e" stroke="#f2b84b" stroke-width="13"/>
 </svg>
-
