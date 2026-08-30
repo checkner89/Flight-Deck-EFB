@@ -21,6 +21,7 @@ html[data-theme='dark'] {
 .efb-app-tile .app-tile-copy small{color:#55717d!important}
 html[data-theme='dark'] .efb-app-tile .app-tile-copy small{color:#91a8b3!important}
 .efb-app-tile .app-open-arrow{color:#6c838e!important}
+[data-app-id="news"],[data-open-module="news"]{display:none!important}
 
 /* Remove cross-module quick-nav injected by 1.22.1. It put Taxi/Ground actions into Briefing. */
 .fd123-context-actions{display:none!important}
