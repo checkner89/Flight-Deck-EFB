@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-if (pkg.version !== '1.24.0') throw new Error(`1.24.0 materializer requires package version 1.24.0, got ${pkg.version}.`);
+if (!['1.24.0', '1.24.1'].includes(pkg.version)) throw new Error(`1.24.0 materializer requires package version 1.24.0 or 1.24.1, got ${pkg.version}.`);
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');
