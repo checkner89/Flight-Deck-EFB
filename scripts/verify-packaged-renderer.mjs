@@ -69,9 +69,42 @@ try {
       pilotFetch = { status: response.status, contentType: response.headers.get('content-type'), length: (await response.text()).length };
     } catch (error) { pilotFetch = { error: error.message }; }
 
+    let desktopSessionRecovery = null;
+    try {
+      const currentUrl = new URL(window.location.href);
+      const desktop = currentUrl.searchParams.get('desktop') || sessionStorage.getItem('flyxora-desktop-session');
+      const previousToken = localStorage.getItem('si-taxi-token');
+      localStorage.removeItem('si-taxi-token');
+      const endpoint = new URL('/api/desktop/session', window.location.origin);
+      if (desktop) endpoint.searchParams.set('desktop', desktop);
+      const response = await fetch(endpoint, { cache: 'no-store', credentials: 'same-origin' });
+      const payload = await response.json().catch(() => ({}));
+      let validateStatus = null;
+      if (payload?.token) {
+        const validate = new URL('/api/session/validate', window.location.origin);
+        validate.searchParams.set('token', payload.token);
+        validateStatus = (await fetch(validate, { cache: 'no-store' })).status;
+        localStorage.setItem('si-taxi-token', payload.token);
+      } else if (previousToken) {
+        localStorage.setItem('si-taxi-token', previousToken);
+      }
+      desktopSessionRecovery = {
+        hasDesktopSecret: Boolean(desktop),
+        status: response.status,
+        recoveredToken: Boolean(payload?.token),
+        validateStatus,
+      };
+    } catch (error) {
+      desktopSessionRecovery = { error: error.message };
+    }
+
     const scratchTile = grid?.querySelector('[data-pilot-tool="scratchpad"]');
     const setupTile = grid?.querySelector('[data-pilot-tool="sim-session"]');
-    const newsTile = grid?.querySelector('[data-news-app-tile]');
+    let newsTile = grid?.querySelector('[data-news-app-tile]');
+    for (let attempt = 0; !newsTile && attempt < 20; attempt += 1) {
+      await sleep(100);
+      newsTile = grid?.querySelector('[data-news-app-tile]');
+    }
     const establishedTile = [...(grid?.querySelectorAll('.efb-app-tile') || [])].find((tile) => !tile.matches('[data-pilot-tool],[data-news-app-tile]'));
     const tileMetrics = (tile) => {
       if (!tile) return null;
@@ -115,6 +148,7 @@ try {
         nativeScript: nativeScript?.src || null,
         resourceNames,
         pilotFetch,
+        desktopSessionRecovery,
         mutations,
         scratch,
         tiles: { established: tileMetrics(establishedTile), scratchpad: tileMetrics(scratchTile), setup: tileMetrics(setupTile), news: tileMetrics(newsTile) },
@@ -141,6 +175,10 @@ try {
   if (!value.pilotScript) throw new Error('Pilot Tools script tag is missing from the packaged HTML.');
   if (value.pilotFetch?.status !== 200) throw new Error(`Pilot Tools asset is not served correctly: ${JSON.stringify(value.pilotFetch)}`);
   if (!value.pilotShell) throw new Error('Pilot Tools shell was not initialized.');
+  if (!value.desktopSessionRecovery?.hasDesktopSecret) throw new Error(`Packaged Electron renderer has no private desktop session: ${JSON.stringify(value.desktopSessionRecovery)}`);
+  if (value.desktopSessionRecovery?.status !== 200 || !value.desktopSessionRecovery?.recoveredToken || value.desktopSessionRecovery?.validateStatus !== 200) {
+    throw new Error(`Packaged desktop host token recovery failed: ${JSON.stringify(value.desktopSessionRecovery)}`);
+  }
   if (value.mutations > 80) throw new Error(`Home launcher is mutating continuously (${value.mutations} mutations / 900 ms).`);
   if (!value.scratch?.visible) throw new Error('Scratchpad did not open visibly in the packaged renderer.');
   if (!value.scratch?.canvasBackground || /rgba?\(0,\s*0,\s*0(?:,\s*(?:0|1))?\)/.test(value.scratch.canvasBackground)) throw new Error(`Scratchpad canvas is still dark: ${value.scratch?.canvasBackground}`);
@@ -157,7 +195,7 @@ try {
       if (Math.abs((metrics?.iconWidth || 0) - reference.iconWidth) > 3) throw new Error(`New app tile ${name} uses a different icon geometry.`);
     }
   }
-  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
+  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, desktop session recovery verified, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
 } finally {
   socket.close();
 }
