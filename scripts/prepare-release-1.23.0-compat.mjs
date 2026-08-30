@@ -54,9 +54,26 @@ for (const name of legacyMaterializers) {
   });
 }
 
-// Keep the historical 1.20.11 map control patch tolerant when a newer selector is
-// already present during the first materialization pass.
+// 1.20.10 has a slightly different import/layout shape, so ensure its repeated-pass
+// skip explicitly. This guard has already proven stable in the 1.24.2 CI workspace.
+await update('scripts/apply-release-1.20.10.mjs', (source) => {
+  const marker = "const fd1242CurrentApp = await fs.readFile(path.join(root, 'public/app.js'), 'utf8').catch(() => '');";
+  if (source.includes(marker)) return source;
+  const anchor = "const version = String(pkg.version || '1.20.10');";
+  if (!source.includes(anchor)) return source;
+  return source.replace(anchor, `${anchor}\n${marker}\nif (version === '1.24.2' && fd1242CurrentApp.includes('function trackingScheduleMarkup(')) {\n  console.log('Flight Deck EFB 1.20.10 legacy map materializer skipped after 1.24.2 materialization.');\n  process.exit(0);\n}`);
+});
+
+// 1.20.11 also owns legacy map/weather rendering anchors. Skip it explicitly after
+// 1.24.2 has already produced the current renderer to keep repeated prepares idempotent.
 await update('scripts/apply-release-1.20.11.mjs', (source) => {
+  const marker = "const fd1242CurrentApp = await fs.readFile(path.join(root, 'public/app.js'), 'utf8').catch(() => '');";
+  if (!source.includes(marker)) {
+    const anchor = "const version = String(pkg.version || '1.20.11');";
+    if (source.includes(anchor)) {
+      source = source.replace(anchor, `${anchor}\n${marker}\nif (version === '1.24.2' && fd1242CurrentApp.includes('function trackingScheduleMarkup(')) {\n  console.log('Flight Deck EFB 1.20.11 legacy map/weather materializer skipped after 1.24.2 materialization.');\n  process.exit(0);\n}`);
+    }
+  }
   const compatibilityGuard = "    if (label === 'unified map/satellite controls' && source.includes('id=\"tracking-basemap-select\"')) return source;";
   if (source.includes(compatibilityGuard)) return source;
   return source.replace(
