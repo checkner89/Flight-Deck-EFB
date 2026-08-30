@@ -42,9 +42,10 @@ await update('public/release-1.22.0.js',source=>{
     next=next.replace(/panels\[3\]=card\('NOTAMs',[^;]+;/, "panels[3]=card('NOTAMs',sb.notamsText?`<pre class=\"fd1231-notams\">${esc(sb.notamsText)}</pre>`:'<p>Im importierten SimBrief-OFP sind keine NOTAMs verfügbar.</p>',sb.notamsText?'SimBrief OFP':'SimBrief',sb.generatedAt||null,true);");
   }
   next=next.replace(/<dt>Gate \/ Stand<\/dt><dd>\$\{esc\(record\.flight\?\.gate\|\|live\.gate\?\.name\|\|'–'\)\}<\/dd>/g, "");
-  const renderAnchor="  function renderBriefing() {";
-  if(next.includes(renderAnchor) && !next.includes('fd1231BriefingFingerprintValue')){
-    next=next.replace(renderAnchor,`  function fd1231BriefingFingerprintValue(){\n    const live=state.latest||{},sb=live.integrations?.simbrief||{},wx=live.integrations?.aviationWeather||{};\n    return JSON.stringify([state.briefingStep,state.record?.id||null,sb.generatedAt||null,sb.notamsText||null,wx.updatedAt||null,live.flight?.departureRunway||null,live.flight?.arrivalRunway||null]);\n  }\n  function renderBriefing() {\n    const fd1231Fingerprint=fd1231BriefingFingerprintValue();\n    if(state.fd1231BriefingFingerprint===fd1231Fingerprint && document.querySelector('.fd122-briefing-panel .fd122-brief-section')) return;\n    state.fd1231BriefingFingerprint=fd1231Fingerprint;`);
+  if(!next.includes('fd1231BriefingFingerprintValue')){
+    const renderPattern=/  function renderBriefing\s*\(\s*\)\s*\{/;
+    if(!renderPattern.test(next)) throw new Error('1.23.1 Briefing render function missing');
+    next=next.replace(renderPattern,`  function fd1231BriefingFingerprintValue(){\n    const live=state.latest||{},sb=live.integrations?.simbrief||{},wx=live.integrations?.aviationWeather||{};\n    return JSON.stringify([state.briefingStep,state.record?.id||null,sb.generatedAt||null,sb.notamsText||null,wx.updatedAt||null,live.flight?.departureRunway||null,live.flight?.arrivalRunway||null]);\n  }\n  function renderBriefing(){\n    const fd1231Fingerprint=fd1231BriefingFingerprintValue();\n    if(state.fd1231BriefingFingerprint===fd1231Fingerprint && document.querySelector('.fd122-briefing-panel .fd122-brief-section')) return;\n    state.fd1231BriefingFingerprint=fd1231Fingerprint;`);
   }
   return next;
 });
