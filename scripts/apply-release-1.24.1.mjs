@@ -110,4 +110,16 @@ await update('src/server.mjs', (source) => source.replace(/const APP_VERSION = '
 await update('src/electron-main.mjs', (source) => source.replaceAll('Flight Deck EFB', 'FLYXORA'));
 await update('public/service-worker.js', (source) => source.replace(/const CACHE_NAME = '[^']+';/, "const CACHE_NAME = 'flight-deck-efb-v1241-tracking-layout';").replaceAll('?v=1.24.0', '?v=1.24.1'));
 
-console.log('Flight Deck EFB 1.24.1 tracking layout materialized.');
+await update('CHANGELOG.md', (source) => {
+  if (source.includes('## 1.24.1')) return source;
+  const section = `## 1.24.1 — FLYXORA Branding & Tracking UI\n\n- Introduces the new **FLYXORA · Simulation EFB** branding, including the wordmark, app mark and updated Windows product/shortcut names.\n- Keeps the existing technical app ID and local data paths so settings, cached data and flight archives remain available after the update.\n- Modernizes the Live Map header with a compact map-style selector and layer dropdown.\n- Prevents the map legend and map content from visually bleeding behind the flight-data strips.\n- Shows planned and actual Take-off/Landing times directly in the top flight strip and removes the redundant schedule card.\n- Relaxes Flight Profile spacing and improves responsive layout behavior.\n- Publishes the Windows installer as **FLYXORA-Setup-1.24.1.exe** while preserving the existing GitHub updater channel.\n\n> Flight simulation use only — not for real-world navigation.\n\n`;
+  if (source.startsWith('# Flight Deck EFB changelog\n')) {
+    return source.replace('# Flight Deck EFB changelog\n', `# FLYXORA changelog\n\n${section}`);
+  }
+  if (source.startsWith('# FLYXORA changelog\n')) {
+    return source.replace('# FLYXORA changelog\n', `# FLYXORA changelog\n\n${section}`);
+  }
+  return section + source;
+});
+
+console.log('FLYXORA 1.24.1 tracking layout materialized.');
