@@ -34,4 +34,17 @@ for (const filename of targets) {
   });
 }
 
+// Newer releases replace the legacy 1.20.11 map/satellite toolbar with a compact
+// selector after the first materialization pass. npm install and prepare-data both
+// run the materializer chain in CI, so teach the legacy patch to accept that newer
+// selector on subsequent passes while preserving its strict anchor checks otherwise.
+await update('scripts/apply-release-1.20.11.mjs', (source) => {
+  const compatibilityGuard = "    if (label === 'unified map/satellite controls' && source.includes('id=\"tracking-basemap-select\"')) return source;";
+  if (source.includes(compatibilityGuard)) return source;
+  return source.replace(
+    "    if (label === 'record weather overlay fields') return source;",
+    "    if (label === 'record weather overlay fields') return source;\n" + compatibilityGuard,
+  );
+});
+
 console.log(`Prepared prior Flight Deck release materializers and regression suites for the ${targetVersion} chain.`);
