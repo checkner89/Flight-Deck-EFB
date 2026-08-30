@@ -10,9 +10,10 @@ const [pkgRaw, app, runtime, css] = await Promise.all([
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
+const modernTraffic = ['1.24.2', '1.24.3'].includes(pkg.version);
 
 need(app, 'let openTrafficPopupId = null;', 'Sticky traffic popup state is missing.');
-if (pkg.version === '1.24.2') {
+if (modernTraffic) {
   if (!app.includes('fd1242-traffic-popup')) {
     const start = app.indexOf('function renderTrackingTraffic');
     const snippet = start >= 0 ? app.slice(start, start + 5000) : app.slice(Math.max(0, app.indexOf('function updateTrafficTrails')), Math.max(0, app.indexOf('function updateTrafficTrails')) + 5000);
