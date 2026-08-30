@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-if (pkg.version !== '1.23.0') throw new Error(`1.23.0 materializer requires package version 1.23.0, got ${pkg.version}.`);
+if (!['1.23.0', '1.23.1'].includes(pkg.version)) throw new Error(`1.23.0 materializer requires package version 1.23.0/1.23.1, got ${pkg.version}.`);
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');
@@ -25,7 +25,7 @@ await update('public/service-worker.js', (source) => {
 
 await update('scripts/test-release-1.22.1.mjs', (source) => {
   let next = source;
-  next = next.replace("if (pkg.version !== '1.22.1') throw new Error(`Expected package version 1.22.1, got ${pkg.version}.`);", "if (!['1.22.1', '1.23.0'].includes(pkg.version)) throw new Error(`Expected package version 1.22.1/1.23.0, got ${pkg.version}.`);");
+  next = next.replace("if (pkg.version !== '1.22.1') throw new Error(`Expected package version 1.22.1, got ${pkg.version}.`);", "if (!['1.22.1', '1.23.0', '1.23.1'].includes(pkg.version)) throw new Error(`Expected package version 1.22.1/1.23.0/1.23.1, got ${pkg.version}.`);");
   next = next.replaceAll('data-app-version="1.22.1"', 'data-app-version="1.23.0"');
   next = next.replaceAll('?v=1.22.1', '?v=1.23.0');
   next = next.replace("const APP_VERSION = '1.22.1';", "const APP_VERSION = '1.23.0';");
@@ -41,5 +41,4 @@ await update('CHANGELOG.md', (source) => {
     : section + source;
 });
 
-await import('./apply-feature-1.23.1-ui-review.mjs');
-console.log('Flight Deck EFB 1.23.0 release materialized.');
+console.log('Flight Deck EFB 1.23.0 baseline materialized.');
