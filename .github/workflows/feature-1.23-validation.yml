@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install dependencies and materialize baseline
+      - name: Install dependencies and materialize release
         run: npm install
 
       - name: Verify 1.23 JavaScript syntax
@@ -34,12 +34,15 @@ jobs:
           node --check src/flight-journey-service.mjs
           node --check src/briefing-readiness-engine.mjs
           node --check src/briefing-readiness-service.mjs
+          node --check scripts/prepare-release-1.23.0-compat.mjs
           node --check scripts/apply-feature-1.23-flight-journey.mjs
           node --check scripts/apply-feature-1.23-briefing-readiness.mjs
+          node --check scripts/apply-release-1.23.0.mjs
           node --check scripts/test-single-instance-bootstrap.mjs
           node --check scripts/test-flight-journey-engine.mjs
           node --check scripts/test-flight-journey-service.mjs
           node --check scripts/test-briefing-readiness-engine.mjs
+          node --check scripts/test-release-1.23.0.mjs
 
       - name: Run focused 1.23 regressions
         run: |
@@ -47,13 +50,19 @@ jobs:
           node scripts/test-flight-journey-engine.mjs
           node scripts/test-flight-journey-service.mjs
           node scripts/test-briefing-readiness-engine.mjs
+          node scripts/test-release-1.23.0.mjs
 
       - name: Verify live 1.23 materialization
         shell: pwsh
         run: |
+          $version = node -p "require('./package.json').version"
           $server = Get-Content 'src/server.mjs' -Raw
           $state = Get-Content 'src/state-engine.mjs' -Raw
           $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
+          $html = Get-Content 'public/index.html' -Raw
+          if ($version -ne '1.23.0') { throw "Unexpected release version: $version" }
+          if ($server -notmatch "const APP_VERSION = '1\.23\.0';") { throw 'Server version was not materialized to 1.23.0.' }
+          if ($html -notmatch 'data-app-version="1\.23\.0"') { throw 'HTML version was not materialized to 1.23.0.' }
           if ($server -notmatch 'FlightJourneyService' -or $server -notmatch 'flightJourney\.start\(\)') { throw 'Flight Journey service is not wired into the live server.' }
           if ($server -notmatch 'BriefingReadinessService' -or $server -notmatch 'briefingReadiness\.start\(\)') { throw 'Briefing Readiness service is not wired into the live server.' }
           if ($state -notmatch "'planning'.*'boarding'.*'pushback'" -or $state -notmatch 'flightJourney: \{') { throw 'Flight Journey state and manual phases are not materialized.' }
@@ -66,3 +75,4 @@ jobs:
           node scripts/test-release-1.21.0.mjs
           node scripts/test-release-1.22.0.mjs
           node scripts/test-release-1.22.1.mjs
+          node scripts/test-release-1.23.0.mjs
