@@ -48,4 +48,16 @@ await update('scripts/apply-release-1.20.11.mjs', (source) => {
   );
 });
 
+// 1.20.10 owns the old SimBrief-route insertion. Once 1.24.2 has already been
+// materialized, running that historical patch again can no longer find its original
+// anchor because the current tracking renderer intentionally has a newer structure.
+// Skip only repeated 1.20.10 passes; the first pass still runs in full.
+await update('scripts/apply-release-1.20.10.mjs', (source) => {
+  const marker = "const fd1242CurrentApp = await fs.readFile(path.join(root, 'public/app.js'), 'utf8').catch(() => '');";
+  if (source.includes(marker)) return source;
+  const anchor = "const version = String(pkg.version || '1.20.10');";
+  if (!source.includes(anchor)) return source;
+  return source.replace(anchor, `${anchor}\n${marker}\nif (version === '1.24.2' && fd1242CurrentApp.includes('function trackingScheduleMarkup(')) {\n  console.log('Flight Deck EFB 1.20.10 legacy map materializer skipped after 1.24.2 materialization.');\n  process.exit(0);\n}`);
+});
+
 console.log(`Prepared prior Flight Deck release materializers and regression suites for the ${targetVersion} chain.`);
