@@ -36,9 +36,26 @@ for (const filename of targets) {
   });
 }
 
-// Newer releases replace the legacy 1.20.11 map/satellite toolbar with a compact
-// selector after the first materialization pass. npm install, prepare-data and dist
-// run the materializer chain repeatedly, so accept that newer selector on later passes.
+// The release chain is intentionally materialized several times inside one CI job
+// (npm install -> prepare-data -> dist). After 1.24.2 has completed once, historical
+// apply-* scripts must not rewrite its modern tracking DOM/renderers on later passes.
+// They still execute fully on the first pass because the 1.24.2 marker is not present yet.
+const legacyMaterializers = names
+  .filter((name) => name.startsWith('apply-') && name.endsWith('.mjs'))
+  .filter((name) => !['apply-release-1.24.2.mjs', 'apply-release-1.24.2-hotfix.mjs'].includes(name));
+for (const name of legacyMaterializers) {
+  await update(path.join('scripts', name), (source) => {
+    const marker = 'const fd1242AlreadyMaterialized =';
+    if (source.includes(marker)) return source;
+    const fsImport = "import fs from 'node:fs/promises';\n";
+    if (!source.includes(fsImport)) return source;
+    const guard = `\nconst fd1242AlreadyMaterialized = (await fs.readFile('public/app.js', 'utf8').catch(() => '')).includes('function trackingScheduleMarkup(');\nconst fd1242CurrentVersion = JSON.parse(await fs.readFile('package.json', 'utf8')).version;\nif (fd1242CurrentVersion === '1.24.2' && fd1242AlreadyMaterialized) {\n  console.log('${name} skipped: FLYXORA 1.24.2 is already materialized in this build workspace.');\n  process.exit(0);\n}\n`;
+    return source.replace(fsImport, fsImport + guard);
+  });
+}
+
+// Keep the historical 1.20.11 map control patch tolerant when a newer selector is
+// already present during the first materialization pass.
 await update('scripts/apply-release-1.20.11.mjs', (source) => {
   const compatibilityGuard = "    if (label === 'unified map/satellite controls' && source.includes('id=\"tracking-basemap-select\"')) return source;";
   if (source.includes(compatibilityGuard)) return source;
@@ -46,18 +63,6 @@ await update('scripts/apply-release-1.20.11.mjs', (source) => {
     "    if (label === 'record weather overlay fields') return source;",
     "    if (label === 'record weather overlay fields') return source;\n" + compatibilityGuard,
   );
-});
-
-// 1.20.10 owns the old SimBrief-route insertion. Once 1.24.2 has already been
-// materialized, running that historical patch again can no longer find its original
-// anchor because the current tracking renderer intentionally has a newer structure.
-// Skip only repeated 1.20.10 passes; the first pass still runs in full.
-await update('scripts/apply-release-1.20.10.mjs', (source) => {
-  const marker = "const fd1242CurrentApp = await fs.readFile(path.join(root, 'public/app.js'), 'utf8').catch(() => '');";
-  if (source.includes(marker)) return source;
-  const anchor = "const version = String(pkg.version || '1.20.10');";
-  if (!source.includes(anchor)) return source;
-  return source.replace(anchor, `${anchor}\n${marker}\nif (version === '1.24.2' && fd1242CurrentApp.includes('function trackingScheduleMarkup(')) {\n  console.log('Flight Deck EFB 1.20.10 legacy map materializer skipped after 1.24.2 materialization.');\n  process.exit(0);\n}`);
 });
 
 console.log(`Prepared prior Flight Deck release materializers and regression suites for the ${targetVersion} chain.`);
