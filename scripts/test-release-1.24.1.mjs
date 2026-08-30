@@ -10,6 +10,7 @@ const [pkgRaw, html, app, tracking, lifecycle, css] = await Promise.all([
 ]);
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
+const modern1242 = ['1.24.2', '1.24.3'].includes(pkg.version);
 
 need(html, 'id="tracking-basemap-select"', 'Compact map-style selector is missing.');
 need(html, '<strong>FLYXORA</strong>', 'FLYXORA wordmark is missing.');
@@ -18,9 +19,9 @@ need(html, 'SIMULATION EFB', 'FLYXORA product descriptor is missing.');
 need(html, 'fd1241-layer-menu', 'Layer dropdown is missing.');
 need(html, 'id="tracking-weather-toggle"', 'Native weather-overlay control was removed.');
 need(html, 'id="tracking-waypoints-toggle"', 'Native waypoint control was removed.');
-if (pkg.version === '1.24.2') {
-  need(html, 'fd1242-schedule-value', '1.24.2 consolidated PLAN/IST schedule layout is missing.');
-  need(app, 'function trackingScheduleMarkup(planned, actual)', '1.24.2 planned/actual schedule renderer is missing.');
+if (modern1242) {
+  need(html, 'fd1242-schedule-value', '1.24.2+ consolidated PLAN/IST schedule layout is missing.');
+  need(app, 'function trackingScheduleMarkup(planned, actual)', '1.24.2+ planned/actual schedule renderer is missing.');
 } else {
   need(html, 'fd1241-time-value', 'Top Take-off/Landing PLAN/IST layout is missing.');
   need(app, '<em>PLAN</em>', 'Planned Take-off/Landing values are not rendered in the top strip.');
