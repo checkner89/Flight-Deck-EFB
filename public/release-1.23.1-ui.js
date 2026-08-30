@@ -30,26 +30,14 @@
     });
   }
 
-  // Keep the nodes in the DOM because the established app runtime owns their event handlers.
-  // Visibility is handled in CSS so hiding News cannot break startup bindings.
-  function removeNewsNavigation(){
-    qsa('[data-app-id="news"], [data-open-module="news"]').forEach(node=>{
-      if(node.dataset.fd1231Suppressed!=='true')node.dataset.fd1231Suppressed='true';
-    });
-  }
+  // News and cross-module context actions stay mounted because established runtimes own them.
+  // Their visibility is handled exclusively by CSS to avoid layout/runtime tug-of-war.
+  function removeNewsNavigation(){}
+  function removeWrongContextNavigation(){}
 
-  // The release materializer removes Gate / Stand from the briefing source. This is a defensive
-  // fallback for dynamically supplied Gate Assignment blocks and never removes DOM nodes.
   function removeGateAssignment(){
     qsa('.fd122-briefing-nav button, .fd122-brief-section, .fd122-brief-card').forEach(node=>{
       if(/gate\s*assignment/i.test(node.textContent||'')&&!node.hidden)node.hidden=true;
-    });
-  }
-
-  // Existing 1.22.1 context actions remain mounted for runtime compatibility and are hidden by CSS.
-  function removeWrongContextNavigation(){
-    qsa('.fd123-context-actions').forEach(node=>{
-      if(node.dataset.fd1231Suppressed!=='true')node.dataset.fd1231Suppressed='true';
     });
   }
 
@@ -68,13 +56,23 @@
     if(plan.hidden!==shouldHide)plan.hidden=shouldHide;
   }
 
-  function refresh(){normalizeHome();removeNewsNavigation();removeGateAssignment();removeWrongContextNavigation();updateTaxiEmptyState();enforceToolbarContext();}
-  refresh();
+  // Home copy is normalized once. Re-running it from a body-wide observer would compete with
+  // established translation/state renderers and cause hundreds of needless character mutations.
+  normalizeHome();
+
+  function refreshOperationalContext(){
+    removeGateAssignment();
+    updateTaxiEmptyState();
+    enforceToolbarContext();
+  }
+  refreshOperationalContext();
+
   let scheduled=false;
   new MutationObserver(()=>{
     if(scheduled)return;
     scheduled=true;
-    requestAnimationFrame(()=>{scheduled=false;refresh();});
+    requestAnimationFrame(()=>{scheduled=false;refreshOperationalContext();});
   }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class']});
-  window.FlightDeckUI124={refresh};
+
+  window.FlightDeckUI124={refresh:refreshOperationalContext,normalizeHome};
 })();
