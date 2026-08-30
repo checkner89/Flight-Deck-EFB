@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const targetVersion = pkg.version;
-if (!['1.23.0', '1.23.1', '1.23.2', '1.24.0', '1.24.1'].includes(targetVersion)) throw new Error(`1.23 compatibility preparation requires package version 1.23.0/1.23.1/1.23.2/1.24.0/1.24.1, got ${targetVersion}.`);
+if (!['1.23.0', '1.23.1', '1.23.2', '1.24.0', '1.24.1', '1.24.2'].includes(targetVersion)) throw new Error(`1.23 compatibility preparation requires package version 1.23.0/1.23.1/1.23.2/1.24.0/1.24.1/1.24.2, got ${targetVersion}.`);
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');
@@ -14,7 +14,9 @@ async function update(filename, transform) {
 const names = await fs.readdir('scripts');
 const targets = names
   .filter((name) => name.endsWith('.mjs'))
-  .filter((name) => !['prepare-release-1.23.0-compat.mjs', 'apply-release-1.23.1.mjs', 'test-release-1.23.1.mjs', 'apply-release-1.23.2.mjs', 'test-release-1.23.2.mjs', 'apply-release-1.24.0.mjs', 'test-release-1.24.0.mjs'].includes(name))
+  // All historical materializers/tests need the current patch version added before
+  // they execute. The compatibility preparer itself is the only file excluded.
+  .filter((name) => name !== 'prepare-release-1.23.0-compat.mjs')
   .map((name) => path.join('scripts', name));
 
 for (const filename of targets) {
@@ -35,9 +37,8 @@ for (const filename of targets) {
 }
 
 // Newer releases replace the legacy 1.20.11 map/satellite toolbar with a compact
-// selector after the first materialization pass. npm install and prepare-data both
-// run the materializer chain in CI, so teach the legacy patch to accept that newer
-// selector on subsequent passes while preserving its strict anchor checks otherwise.
+// selector after the first materialization pass. npm install, prepare-data and dist
+// run the materializer chain repeatedly, so accept that newer selector on later passes.
 await update('scripts/apply-release-1.20.11.mjs', (source) => {
   const compatibilityGuard = "    if (label === 'unified map/satellite controls' && source.includes('id=\"tracking-basemap-select\"')) return source;";
   if (source.includes(compatibilityGuard)) return source;
