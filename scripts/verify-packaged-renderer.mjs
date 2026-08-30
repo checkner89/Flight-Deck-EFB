@@ -45,7 +45,7 @@ async function session(socket) {
       if (!pending.has(id)) return;
       pending.delete(id);
       reject(new Error(`DevTools command timed out: ${method}`));
-    }, 8_000);
+    }, 25_000);
   });
   return { command, runtimeEvents };
 }
@@ -59,10 +59,31 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 700));
   const expression = `new Promise(async (resolve) => {
     const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
-    const app = document.querySelector('#app');
-    const grid = document.querySelector('.app-launcher-grid');
-    const pilotScript = document.querySelector('[data-pilot-tools]');
-    const nativeScript = document.querySelector('[data-sim-session-native]');
+
+    for (let attempt = 0; document.readyState !== 'complete' && attempt < 100; attempt += 1) {
+      await sleep(100);
+    }
+
+    let app = null;
+    let grid = null;
+    let pilotScript = null;
+    let nativeScript = null;
+    let scratchTile = null;
+    let setupTile = null;
+    let newsTile = null;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      app = document.querySelector('#app');
+      grid = document.querySelector('.app-launcher-grid');
+      pilotScript = document.querySelector('[data-pilot-tools]');
+      nativeScript = document.querySelector('[data-sim-session-native]');
+      scratchTile = grid?.querySelector('[data-pilot-tool="scratchpad"]') || null;
+      setupTile = grid?.querySelector('[data-pilot-tool="sim-session"]') || null;
+      newsTile = grid?.querySelector('[data-news-app-tile]') || null;
+      const pilotShell = document.querySelector('#pilot-tools-shell');
+      if (document.readyState === 'complete' && app && grid && pilotScript && nativeScript && scratchTile && setupTile && newsTile && pilotShell) break;
+      await sleep(100);
+    }
+
     let pilotFetch = null;
     try {
       const response = await fetch('/pilot-tools.js?v=1.20.2', { cache: 'no-store' });
@@ -98,13 +119,6 @@ try {
       desktopSessionRecovery = { error: error.message };
     }
 
-    const scratchTile = grid?.querySelector('[data-pilot-tool="scratchpad"]');
-    const setupTile = grid?.querySelector('[data-pilot-tool="sim-session"]');
-    let newsTile = grid?.querySelector('[data-news-app-tile]');
-    for (let attempt = 0; !newsTile && attempt < 20; attempt += 1) {
-      await sleep(100);
-      newsTile = grid?.querySelector('[data-news-app-tile]');
-    }
     const establishedTile = [...(grid?.querySelectorAll('.efb-app-tile') || [])].find((tile) => !tile.matches('[data-pilot-tool],[data-news-app-tile]'));
     const tileMetrics = (tile) => {
       if (!tile) return null;
@@ -116,9 +130,14 @@ try {
     let scratch = null;
     if (scratchTile) {
       scratchTile.click();
-      await sleep(180);
-      const canvas = document.querySelector('#real-scratchpad-canvas');
-      const paper = document.querySelector('.scratchpad-paper');
+      let canvas = null;
+      let paper = null;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        canvas = document.querySelector('#real-scratchpad-canvas');
+        paper = document.querySelector('.scratchpad-paper');
+        if (canvas && paper && paper.getBoundingClientRect().width > 300) break;
+        await sleep(100);
+      }
       scratch = {
         visible: Boolean(paper && paper.getBoundingClientRect().width > 300),
         canvasBackground: canvas ? getComputedStyle(canvas).backgroundColor : null,
