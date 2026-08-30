@@ -1,7 +1,7 @@
 {
   "name": "flight-deck-efb",
   "productName": "Flight Deck EFB",
-  "version": "1.23.0",
+  "version": "1.23.1",
   "description": "Flight Deck EFB for MSFS with gate-to-gate journey intelligence, operational briefing readiness, unified flight tracking, taxi and ground safety, persistent scratchpads and a harmonized cockpit UI.",
   "author": "Christoph Heckner",
   "license": "MIT",
