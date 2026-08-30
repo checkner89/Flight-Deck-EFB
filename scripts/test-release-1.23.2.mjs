@@ -21,7 +21,7 @@ need(html, 'release-1.23.1-ui.js?v=1.23.2', '1.23.1 UI compatibility JS is not c
 need(electronMain, "const BROWSER_STATE_BACKUP_FILE = 'browser-state-backup.json';", 'Update-safe browser backup is missing.');
 need(electronMain, "persistBrowserStateSnapshot({ reason: 'update', restoreAll: true })", 'Update snapshot is missing.');
 need(electronMain, 'restoreBrowserStateSnapshot(mainWindow)', 'Startup state restore is missing.');
-need(electronMain, 'persistBrowserStateSnapshot({ reason: \'migration\', restoreAll: false })', 'First-upgrade migration snapshot is missing.');
+need(electronMain, "persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false })", 'First-upgrade startup migration snapshot is missing.');
 need(changelog, '## 1.23.2', '1.23.2 changelog section missing.');
 
 console.log('Flight Deck EFB 1.23.2 update persistence release regression passed.');
