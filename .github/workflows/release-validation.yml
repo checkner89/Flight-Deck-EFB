@@ -1,143 +1,35 @@
-name: Validate Release Branch
+name: Debug 1.23.1 Renderer
 
 on:
   push:
     branches:
-      - 'release/**'
+      - 'release/debug-1.23.1-renderer'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  validate:
+  debug:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Install dependencies and materialize release
+      - name: Materialize 1.23.1
         run: npm install
-
-      - name: Verify JavaScript and release scripts
+      - name: Print failing app binding area
         shell: pwsh
         run: |
-          $files = @()
-          $files += Get-ChildItem 'scripts' -Filter '*.mjs' -File
-          $files += Get-ChildItem 'src' -Filter '*.mjs' -File
-          $files += Get-ChildItem 'public' -Filter '*.js' -File
-          foreach ($file in $files) {
-            node --check $file.FullName
-            if ($LASTEXITCODE -ne 0) { throw "Syntax check failed: $($file.FullName)" }
+          $lines = Get-Content 'public/app.js'
+          $start = [Math]::Max(0, 5545)
+          $end = [Math]::Min($lines.Length - 1, 5575)
+          for ($i = $start; $i -le $end; $i++) {
+            Write-Host (("{0,5}: {1}" -f ($i + 1), $lines[$i]))
           }
-
-      - name: Run traffic and integration regressions
-        shell: pwsh
-        run: |
-          $version = node -p "require('./package.json').version"
-          node scripts/test-live-traffic.mjs
-          if (Test-Path 'scripts/test-traffic-merge.mjs') { node scripts/test-traffic-merge.mjs }
-          node scripts/verify-msfs-efb-builder.mjs
-          node scripts/test-gsx-profile-manager.mjs
-          node scripts/test-pilot-tools.mjs
-
-          if ($version -eq '1.23.1') {
-            node scripts/test-single-instance-bootstrap.mjs
-            node scripts/test-flight-journey-engine.mjs
-            node scripts/test-flight-journey-service.mjs
-            node scripts/test-briefing-readiness-engine.mjs
-            node scripts/test-release-1.23.1.mjs
-          } else {
-            node scripts/test-release-1.19.0.mjs
-            node scripts/test-release-1.20.5.mjs
-            if (Test-Path 'scripts/test-release-1.20.6.mjs') { node scripts/test-release-1.20.6.mjs }
-            if (Test-Path 'scripts/test-release-1.20.7.mjs') { node scripts/test-release-1.20.7.mjs }
-            if (Test-Path 'scripts/test-release-1.20.9.mjs') { node scripts/test-release-1.20.9.mjs }
-            if (Test-Path 'scripts/test-release-1.20.10.mjs') { node scripts/test-release-1.20.10.mjs }
-            if (Test-Path 'scripts/test-release-1.20.11.mjs') { node scripts/test-release-1.20.11.mjs }
-            if (Test-Path 'scripts/test-release-1.21.0.mjs') { node scripts/test-release-1.21.0.mjs }
-            if (Test-Path 'scripts/test-release-1.22.0.mjs') { node scripts/test-release-1.22.0.mjs }
-            if (Test-Path 'scripts/test-release-1.22.1.mjs') { node scripts/test-release-1.22.1.mjs }
-          }
-
-      - name: Verify release assets are wired
-        shell: pwsh
-        run: |
-          $version = node -p "require('./package.json').version"
-          $escapedVersion = [regex]::Escape($version)
-          $html = Get-Content 'public/index.html' -Raw
-
-          if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired.' }
-          if ($html -notmatch "pilot-tools\.css\?v=$escapedVersion" -or $html -notmatch "pilot-tools\.js\?v=$escapedVersion") { throw "$version pilot tools are not wired." }
-          if ($html -notmatch "sim-session-native\.css\?v=$escapedVersion" -or $html -notmatch "sim-session-native\.js\?v=$escapedVersion") { throw "$version Flight Setup assets are not wired." }
-          if ($html -notmatch "news-app\.css\?v=$escapedVersion" -or $html -notmatch "news-app\.js\?v=$escapedVersion") { throw "$version News app assets are not wired internally." }
-          if ($html -notmatch "release-1\.20\.4\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.20\.4\.js\?v=$escapedVersion") { throw "$version cockpit shell assets are not wired." }
-          if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?") { throw "$version OFP workspace is not wired." }
-          if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser is not wired." }
-
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1')) {
-            if ($html -notmatch "release-1\.20\.9\.css\?v=$escapedVersion") { throw '1.20.9 tracking compatibility stylesheet is not wired.' }
-            if ($html -notmatch "release-1\.20\.10\.css\?v=$escapedVersion") { throw '1.20.10 tracking layout stylesheet is not wired.' }
-            if ($html -notmatch 'tracking-context-callsign' -or $html -notmatch '<i class="simbrief"></i>') { throw 'Tracking map markup is incomplete.' }
-          }
-
-          $server = Get-Content 'src/server.mjs' -Raw
-          if ($server -notmatch "const APP_VERSION = '$escapedVersion';") { throw "Server version does not match $version." }
-
-          $simbrief = Get-Content 'src/simbrief-client.mjs' -Raw
-          if ($simbrief -notmatch 'navlogFixes' -or $simbrief -notmatch 'pos_lon' -or $simbrief -notmatch 'latestDocument') { throw 'Robust SimBrief OFP/navlog support is incomplete.' }
-
-          $app = Get-Content 'public/app.js' -Raw
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1') -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
-            throw 'Map-first Tracking integration is incomplete.'
-          }
-
-          if ($version -in @('1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1')) {
-            $simconnect = Get-Content 'src/simconnect-client.mjs' -Raw
-            if ($simconnect -notmatch "INDICATED ALTITUDE" -or $simconnect -notmatch "KOHLSMAN SETTING MB:1" -or $simconnect -notmatch 'trueAltitudeFeet') {
-              throw 'Barometric altitude/QNH telemetry is incomplete.'
-            }
-          }
-
-          if ($version -in @('1.21.0', '1.22.0', '1.22.1', '1.23.1')) {
-            if ($html -notmatch "release-1\.21\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.21\.0\.js\?v=$escapedVersion") { throw '1.21.0 backlog compatibility assets are not wired.' }
-            $media = Get-Content 'src/flight-media-service.mjs' -Raw
-            $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
-            $state = Get-Content 'src/state-engine.mjs' -Raw
-            if ($media -notmatch 'class FlightMediaService' -or $server -notmatch '/api/media/screenshot') { throw '1.21.0 flight media persistence is incomplete.' }
-            if ($recorder -notmatch 'stable-parked-at-gate' -or $state -notmatch 'taxiPositive' -or $state -notmatch 'routes: \{ departure: null, arrival: null \}') { throw '1.21.0 flight lifecycle/taxi core is incomplete.' }
-          }
-
-          if ($version -in @('1.22.0', '1.22.1', '1.23.1')) {
-            if ($html -notmatch "release-1\.22\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.0\.js\?v=$escapedVersion") { throw '1.22.0 pilot workflow assets are not wired.' }
-            $runtime = Get-Content 'public/release-1.22.0.js' -Raw
-            $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
-            if ($runtime -notmatch 'fd122-profile-axis' -or $runtime -notmatch 'BRIEF_STEPS' -or $runtime -notmatch 'fd122-scratch-canvas' -or $runtime -notmatch 'SERVICE_DEFS') { throw '1.22.0 pilot workflow runtime is incomplete.' }
-            if ($recorder -notmatch 'originalPlan' -or $recorder -notmatch 'planHistory' -or $recorder -notmatch 'groundEvents') { throw '1.22.0 flight archive persistence is incomplete.' }
-          }
-
-          if ($version -in @('1.22.1', '1.23.1')) {
-            if ($html -notmatch "release-1\.22\.1\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.js\?v=$escapedVersion") { throw '1.22.1 UI/UX assets are not wired.' }
-            $ui = Get-Content 'public/release-1.22.1.css' -Raw
-            $uxCss = Get-Content 'public/release-1.22.1-ux.css' -Raw
-            $ux = Get-Content 'public/release-1.22.1-ux.js' -Raw
-            if ($ui -notmatch 'flight-hub-tab=.operations' -or $ui -notmatch 'fd122-briefing-shell' -or $ui -notmatch 'fd122-scratch-toolbar' -or $ui -notmatch 'news-card') { throw '1.22.1 cockpit UI harmonization is incomplete.' }
-            if ($uxCss -notmatch 'fd123-toast-stack' -or $uxCss -notmatch 'fd123-context-actions' -or $ux -notmatch 'flight-deck-last-module' -or $ux -notmatch 'app-home-button') { throw '1.22.1 pilot UX harmonization is incomplete.' }
-          }
-
-          if ($version -eq '1.23.1') {
-            if ($html -notmatch "release-1\.23\.1-ui\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.23\.1-ui\.js\?v=$escapedVersion") { throw '1.23.1 UI hotfix assets are not wired.' }
-            $hotfixCss = Get-Content 'public/release-1.23.1-ui.css' -Raw
-            $hotfixJs = Get-Content 'public/release-1.23.1-ui.js' -Raw
-            if ($hotfixCss -notmatch '\.planner-modal\{width:min\(760px' -or $hotfixCss -notmatch 'fd124-traffic-plane') { throw '1.23.1 Taxi/Traffic styling is incomplete.' }
-            if ($hotfixJs -notmatch 'removeNewsNavigation' -or $hotfixJs -notmatch 'removeGateAssignment') { throw '1.23.1 visible navigation cleanup is incomplete.' }
-          }
-
-          Write-Host "Release $version validation passed."
+          Write-Host "TOTAL APP LINES: $($lines.Length)"
+          Write-Host '--- element bindings around footer ---'
+          Select-String -Path 'public/app.js' -Pattern 'addEventListener' | Select-Object -Last 35 | ForEach-Object { Write-Host ("$($_.LineNumber): $($_.Line)") }
+          Write-Host '--- NEWS / HOME IDs in HTML ---'
+          Select-String -Path 'public/index.html' -Pattern 'news|home-|plan-button|destination-prefetch|weather-refresh|export-backup|import-backup' | ForEach-Object { Write-Host ("$($_.LineNumber): $($_.Line)") }
