@@ -29,8 +29,12 @@ need(app, 'bindTooltip(escapeHtml(flightLabel)', 'Live Traffic hover identity mi
 need(app, 'bindPopup', 'Live Traffic click detail popup missing.');
 need(uiCss, '.planner-modal{width:min(760px', 'Responsive Taxi planner sizing missing.');
 need(uiCss, 'overflow-x:hidden!important', 'Taxi planner horizontal clipping guard missing.');
-need(uiJs, 'removeNewsNavigation', 'News navigation removal missing.');
-need(uiJs, 'removeGateAssignment', 'Gate Assignment removal guard missing.');
+need(uiCss, '[data-app-id="news"],[data-open-module="news"]{display:none!important}', 'News is not safely hidden by CSS.');
+need(uiJs, 'removeNewsNavigation', 'News navigation suppression missing.');
+need(uiJs, 'removeGateAssignment', 'Gate Assignment suppression guard missing.');
+need(uiJs, 'const setText=', 'Idempotent Home text update guard missing.');
+need(uiJs, "node.dataset.fd1231Suppressed", 'Runtime-safe visibility suppression missing.');
+reject(uiJs, 'node.remove()', '1.23.1 UI runtime must not remove app-owned DOM nodes.');
 need(simbrief, 'summary.notamsText = this.latestOFP.notamsText', 'SimBrief NOTAM extraction not exposed.');
 need(state, 'notamsText: summary.notamsText', 'SimBrief NOTAM state field missing.');
 need(briefing, 'sb.notamsText', 'Briefing does not render SimBrief NOTAMs.');
@@ -38,4 +42,4 @@ need(briefing, 'fd1231BriefingFingerprintValue', 'Briefing render stabilization 
 reject(briefing, '<dt>Gate / Stand</dt>', 'Gate / Stand still visible in departure briefing.');
 need(changelog, '## 1.23.1', '1.23.1 changelog section missing.');
 
-console.log('Flight Deck EFB 1.23.1 cockpit UI and briefing hotfix regression checks passed.');
+console.log('Flight Deck EFB 1.23.1 cockpit UI, renderer stability and briefing hotfix regression checks passed.');
