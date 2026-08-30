@@ -14,14 +14,15 @@ const [pkgRaw, orchestrator, html, app, profile, traffic, i18n, css, sw] = await
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
+const is1243 = pkg.version === '1.24.3';
 
-if (pkg.version !== '1.24.2') throw new Error(`Expected package version 1.24.2, got ${pkg.version}.`);
-need(pkg.scripts['prepare:release'], 'prepare-release.mjs', '1.24.2 release orchestrator is missing from prepare:release.');
+if (!['1.24.2', '1.24.3'].includes(pkg.version)) throw new Error(`Expected package version 1.24.2 or 1.24.3, got ${pkg.version}.`);
+need(pkg.scripts['prepare:release'], 'prepare-release.mjs', '1.24.2+ release orchestrator is missing from prepare:release.');
 need(orchestrator, 'scripts/apply-release-1.24.2.mjs', '1.24.2 materializer is missing from the release orchestrator.');
 need(orchestrator, 'scripts/apply-release-1.24.2-hotfix.mjs', '1.24.2 hotfix is missing from the release orchestrator.');
 need(pkg.scripts.dist, 'test-release-1.24.2.mjs', '1.24.2 regression test is missing from dist.');
 
-need(html, '/release-1.24.2.css?v=1.24.2', '1.24.2 CSS is not loaded.');
+need(html, `/release-1.24.2.css?v=${pkg.version}`, '1.24.2 CSS is not cache-busted for the current release.');
 need(html, 'id="tracking-context-gate"', 'Gate is missing from the tracking context.');
 need(html, 'id="tracking-context-departure"', 'Planned/actual Departure is missing.');
 need(html, 'id="tracking-context-takeoff"', 'Planned/actual Take-off is missing.');
@@ -65,6 +66,7 @@ need(css, '.fd124-time-strip { display: none !important; }', 'Duplicate Flight P
 need(css, '#fd122-alt-colors,', 'Altitude colour controls are not hidden.');
 need(css, 'color: #e33d49;', 'Ownship is not styled red.');
 need(css, '.fd1242-traffic-card', 'Modern Traffic popup styling is missing.');
-need(sw, "'/release-1.24.2.css?v=1.24.2'", '1.24.2 CSS is missing from the service-worker cache.');
+need(sw, `'/release-1.24.2.css?v=${pkg.version}'`, '1.24.2 CSS is missing from the service-worker cache.');
+if (is1243) need(sw, 'flyxora-v1.24.3-desktop-start', '1.24.3 service-worker cache marker is missing.');
 
-console.log('FLYXORA 1.24.2 tracking schedule + traffic regression passed.');
+console.log(`FLYXORA 1.24.2 tracking schedule + traffic regression passed for ${pkg.version}.`);
