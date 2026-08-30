@@ -103,7 +103,11 @@ ${anchor}`);
   if (!next.includes('const browserStateRestored = await restoreBrowserStateSnapshot(mainWindow);')) {
     const anchor = '  await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);\n  mainWindow.maximize();';
     if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: first window load');
-    next = next.replace(anchor, "  await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);\n  const browserStateRestored = await restoreBrowserStateSnapshot(mainWindow);\n  if (browserStateRestored) await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);\n  mainWindow.maximize();");
+    next = next.replace(anchor, "  await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);\n  const browserStateRestored = await restoreBrowserStateSnapshot(mainWindow);\n  if (browserStateRestored) await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);\n  await persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false });\n  mainWindow.maximize();");
+  } else if (!next.includes("persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false })")) {
+    const anchor = '  if (browserStateRestored) await mainWindow.loadURL(taxiServer.authenticatedLocalUrl);';
+    if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: restored renderer reload');
+    next = next.replace(anchor, `${anchor}\n  await persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false });`);
   }
 
   if (!next.includes("persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })")) {
