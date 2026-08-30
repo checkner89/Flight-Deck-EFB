@@ -14,7 +14,6 @@
     fenix:['AIRCRAFT','Aircraft Adapters','Flugzeugspezifische lokale Integrationen'],
     automations:['ASSISTANCE','Automationen','Kontextbezogene Simulator-Aktionen'],
     files:['DOCUMENTS','Dokumente','OFP und Briefing-Unterlagen'],
-    news:['COMMUNITY','News','Flight-Sim-News und Updates'],
     settings:['SYSTEM','Einstellungen','Verbindungen, Darstellung und Geräte'],
   };
 
@@ -28,6 +27,10 @@
       if(strong)strong.textContent=meta[1];
       if(detail)detail.textContent=meta[2];
     });
+  }
+
+  function removeNewsNavigation(){
+    qsa('[data-app-id="news"], [data-open-module="news"]').forEach(node=>node.remove());
   }
 
   function removeWrongContextNavigation(){qsa('.fd123-context-actions').forEach(n=>n.remove());}
@@ -46,7 +49,7 @@
     plan.hidden=!taxiVisible;
   }
 
-  function refresh(){normalizeHome();removeWrongContextNavigation();updateTaxiEmptyState();enforceToolbarContext();}
+  function refresh(){normalizeHome();removeNewsNavigation();removeWrongContextNavigation();updateTaxiEmptyState();enforceToolbarContext();}
   refresh();
   let scheduled=false;
   new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;refresh();});}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class']});
