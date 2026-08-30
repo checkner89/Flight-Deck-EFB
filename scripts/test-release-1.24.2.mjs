@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 
-const [pkgRaw, html, app, profile, traffic, i18n, css, sw] = await Promise.all([
+const [pkgRaw, orchestrator, html, app, profile, traffic, i18n, css, sw] = await Promise.all([
   fs.readFile('package.json', 'utf8'),
+  fs.readFile('scripts/prepare-release.mjs', 'utf8').catch(() => ''),
   fs.readFile('public/index.html', 'utf8'),
   fs.readFile('public/app.js', 'utf8'),
   fs.readFile('public/release-1.22.0.js', 'utf8'),
@@ -15,7 +16,9 @@ const need = (source, value, message) => { if (!source.includes(value)) throw ne
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
 
 if (pkg.version !== '1.24.2') throw new Error(`Expected package version 1.24.2, got ${pkg.version}.`);
-need(pkg.scripts['prepare:release'], 'apply-release-1.24.2.mjs', '1.24.2 materializer is missing from prepare:release.');
+need(pkg.scripts['prepare:release'], 'prepare-release.mjs', '1.24.2 release orchestrator is missing from prepare:release.');
+need(orchestrator, 'scripts/apply-release-1.24.2.mjs', '1.24.2 materializer is missing from the release orchestrator.');
+need(orchestrator, 'scripts/apply-release-1.24.2-hotfix.mjs', '1.24.2 hotfix is missing from the release orchestrator.');
 need(pkg.scripts.dist, 'test-release-1.24.2.mjs', '1.24.2 regression test is missing from dist.');
 
 need(html, '/release-1.24.2.css?v=1.24.2', '1.24.2 CSS is not loaded.');
