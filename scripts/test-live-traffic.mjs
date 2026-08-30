@@ -23,8 +23,8 @@ assert.equal(classifyLiveTraffic(cruise, ownship).inferred, true, 'reader-synthe
 assert.equal(classifyLiveTraffic(reportedApproach, ownship).inferred, false, 'AI traffic-plan state should be marked reported');
 assert.equal(isGenericPassiveTraffic(passive), true, 'generic Asobo PassiveAircraft placeholders must be filtered');
 assert.equal(isGenericPassiveTraffic({ ...passive, atcId: 'DLH123', callsign: 'DLH123' }), false, 'a real traffic identity must not be filtered just because the model is passive');
-assert.equal(trafficAircraftLabel(ground), 'A320');
-assert.equal(trafficAircraftLabel({ title: 'AIGAM SunExpress Boeing 737-800' }), 'B737');
+assert.equal(trafficAircraftLabel(ground), 'A320-200');
+assert.equal(trafficAircraftLabel({ title: 'AIGAM SunExpress Boeing 737-800' }), 'B737-800');
 
 const model = buildLiveTrafficModel([ground, taxi, arriving, syntheticEnrouteArrival, cruise, longApproach, regional, farAway, passive], ownship, 'nearby');
 assert.equal(model.limits.arrivingRadiusNm, 80);
