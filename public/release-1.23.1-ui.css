@@ -39,6 +39,14 @@ html[data-theme='dark'] .efb-app-tile .app-tile-copy small{color:#91a8b3!importa
 .fd122-brief-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
 .fd122-brief-card{box-shadow:none!important;background:transparent!important}
 html[data-theme='light'] .fd122-brief-card{background:#f8fbfc!important}
+.fd1231-notams{margin:0;max-height:520px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;color:inherit}
+
+/* Live Traffic: aircraft only on the map, identity on hover, details on click. */
+.tracking-traffic-icon.fd124-traffic-plane{background:transparent!important;border:0!important}
+.tracking-traffic-icon.fd124-traffic-plane .fd124-traffic-aircraft{display:grid!important;place-items:center!important;width:28px!important;height:28px!important;transform:rotate(var(--fd124-heading,0deg))!important;padding:0!important;border:0!important;border-radius:50%!important;background:rgba(10,29,40,.88)!important;color:#f1b94d!important;box-shadow:0 2px 8px rgba(0,0,0,.28)!important;font-size:20px!important;line-height:1!important}
+.tracking-traffic-icon.fd124-traffic-plane .fd124-traffic-aircraft:before{content:none!important}
+.fd124-traffic-tooltip{border:1px solid rgba(255,255,255,.22)!important;border-radius:7px!important;background:#102632!important;color:#fff!important;box-shadow:0 5px 16px rgba(0,0,0,.25)!important;font-size:11px!important;font-weight:800!important}
+.fd124-traffic-tooltip:before{display:none!important}
 
 /* Taxi: before a route exists, show a clean planning state — not an airport map behind a modal. */
 .map-stage.fd124-no-route #map{opacity:0!important;pointer-events:none!important}
