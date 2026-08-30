@@ -1,0 +1,84 @@
+name: Validate 1.24 Windows RC
+
+on:
+  push:
+    branches:
+      - 'release/validate-1.24-flight-tracking'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-rc:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify release candidate version
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.24.0') { throw "Expected 1.24.0 release candidate, got $version" }
+          node scripts/test-feature-1.24-flight-tracking.mjs
+          node scripts/test-release-1.24.0.mjs
+
+      - name: Build offline data and Windows installer
+        run: |
+          npm run prepare-data
+          npm run dist
+
+      - name: Smoke test packaged Windows renderer
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-unpacked/Flight Deck EFB.exe'
+          if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
+          $debugPort = 9333
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
+          try {
+            Start-Sleep -Seconds 4
+            $process.Refresh()
+            if ($process.HasExited) { throw "Packaged Flight Deck EFB exited during startup smoke test with code $($process.ExitCode)." }
+            node scripts/verify-packaged-renderer.mjs $debugPort
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged Flight Deck EFB renderer health check failed.' }
+            Write-Host 'Packaged Flight Deck EFB process + renderer smoke test passed.'
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Verify updater assets
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $required = @(
+            "dist/Flight-Deck-EFB-Setup-$version.exe",
+            "dist/Flight-Deck-EFB-Setup-$version.exe.blockmap",
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing release candidate asset: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch "version:\s*$([regex]::Escape($version))") { throw "latest.yml does not advertise version $version." }
+          Write-Host '1.24 Windows release candidate assets verified.'
+
+      - name: Upload candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flight-Deck-EFB-1.24.0-RC
+          path: |
+            dist/Flight-Deck-EFB-Setup-1.24.0.exe
+            dist/Flight-Deck-EFB-Setup-1.24.0.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error

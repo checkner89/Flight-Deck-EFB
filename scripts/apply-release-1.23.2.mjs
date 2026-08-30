@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 
 const pkg = JSON.parse(await fs.readFile('package.json', 'utf8'));
-if (pkg.version !== '1.23.2') throw new Error(`1.23.2 materializer requires package version 1.23.2, got ${pkg.version}.`);
+if (!['1.23.2', '1.24.0'].includes(pkg.version)) throw new Error(`1.23.2 compatibility materializer requires package version 1.23.2 or 1.24.0, got ${pkg.version}.`);
 
 async function update(filename, transform) {
   const before = await fs.readFile(filename, 'utf8');
@@ -31,4 +31,4 @@ await update('CHANGELOG.md', (source) => {
     : section + source;
 });
 
-console.log('Flight Deck EFB 1.23.2 release materialized.');
+console.log(`Flight Deck EFB 1.23.2 compatibility layer materialized for ${pkg.version}.`);
