@@ -33,6 +33,12 @@
     qsa('[data-app-id="news"], [data-open-module="news"]').forEach(node=>node.remove());
   }
 
+  function removeGateAssignment(){
+    qsa('.fd122-briefing-nav button, .fd122-brief-section, .fd122-brief-card').forEach(node=>{
+      if(/gate\s*assignment/i.test(node.textContent||'')) node.remove();
+    });
+  }
+
   function removeWrongContextNavigation(){qsa('.fd123-context-actions').forEach(n=>n.remove());}
 
   function updateTaxiEmptyState(){
@@ -49,7 +55,7 @@
     plan.hidden=!taxiVisible;
   }
 
-  function refresh(){normalizeHome();removeNewsNavigation();removeWrongContextNavigation();updateTaxiEmptyState();enforceToolbarContext();}
+  function refresh(){normalizeHome();removeNewsNavigation();removeGateAssignment();removeWrongContextNavigation();updateTaxiEmptyState();enforceToolbarContext();}
   refresh();
   let scheduled=false;
   new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;refresh();});}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class']});
