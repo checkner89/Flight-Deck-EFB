@@ -67,7 +67,8 @@ await update('src/state-engine.mjs', (source) => {
 });
 
 await update('src/flight-recorder.mjs', (source) => {
-  if (source.includes("await this.#finalizeInternal('journey-complete-at-gate')")) return source;
+  if (source.includes('const journeyCompletion = state.integrations?.flightJourney?.completion;')
+    && source.includes("'journey-complete-at-gate'")) return source;
   const oldBlock = `    const landedForMs = this.active.stats.landedAt ? now.getTime() - Date.parse(this.active.stats.landedAt) : 0;
     const hasParkingContext = Boolean(state.gate?.name || state.taxi?.pathMetadata?.destination?.name || state.flight?.currentAirport);
     const parkedSignal = Boolean(this.active.stats.takeoffAt)
