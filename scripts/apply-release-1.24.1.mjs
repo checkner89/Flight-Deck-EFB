@@ -35,11 +35,14 @@ await update('public/index.html', (source) => {
 
 await update('public/release-1.22.0.js', (source) => {
   let next = source;
-  next = next.replace(
-    "const bar = document.createElement('div'); bar.className = 'fd122-map-toolbar';\n    bar.innerHTML = `<button data-layer=\"planned\" aria-pressed=\"true\">PLAN</button><button data-layer=\"actual\" aria-pressed=\"true\">GEFLOGEN</button><button data-layer=\"taxi\" aria-pressed=\"true\">TAXI</button><button data-layer=\"waypoints\" aria-pressed=\"true\">WEGPUNKTE</button><button data-layer=\"events\" aria-pressed=\"true\">EREIGNISSE</button>`;\n    anchor.insertAdjacentElement('afterend', bar);",
-    "const bar = document.createElement('div'); bar.className = 'fd122-map-toolbar';\n    bar.innerHTML = `<button data-layer=\"planned\" aria-pressed=\"true\"><span>Geplante Route</span><b>PLAN</b></button><button data-layer=\"actual\" aria-pressed=\"true\"><span>Flugspur</span><b>GEFLOGEN</b></button><button data-layer=\"taxi\" aria-pressed=\"true\"><span>Bodenroute</span><b>TAXI</b></button><button data-layer=\"waypoints\" aria-pressed=\"true\"><span>Navigation</span><b>WEGPUNKTE</b></button><button data-layer=\"events\" aria-pressed=\"true\"><span>Flugereignisse</span><b>EREIGNISSE</b></button>`;\n    const popover = document.querySelector('.fd1241-layer-popover');\n    if (popover) popover.append(bar); else anchor.insertAdjacentElement('afterend', bar);",
-  );
-  if (!next.includes("tracking-basemap-select")) {
+  const compactToolbar = "const bar = document.createElement('div'); bar.className = 'fd122-map-toolbar';\n    bar.innerHTML = `<button data-layer=\"planned\" aria-pressed=\"true\"><span>Geplante Route</span><b>PLAN</b></button><button data-layer=\"actual\" aria-pressed=\"true\"><span>Flugspur</span><b>GEFLOGEN</b></button><button data-layer=\"taxi\" aria-pressed=\"true\"><span>Bodenroute</span><b>TAXI</b></button><button data-layer=\"waypoints\" aria-pressed=\"true\"><span>Navigation</span><b>WEGPUNKTE</b></button><button data-layer=\"events\" aria-pressed=\"true\"><span>Flugereignisse</span><b>EREIGNISSE</b></button>`;\n    const popover = document.querySelector('.fd1241-layer-popover');\n    if (popover) popover.append(bar); else anchor.insertAdjacentElement('afterend', bar);";
+  if (!next.includes('popover.append(bar)')) {
+    next = next.replace(
+      /const bar = document\.createElement\('div'\); bar\.className = 'fd122-map-toolbar';\s*bar\.innerHTML = `[^`]*`;\s*anchor\.insertAdjacentElement\('afterend', bar\);/,
+      compactToolbar,
+    );
+  }
+  if (!next.includes('function bindCompactMapControls()')) {
     next = next.replace(
       "function layerEnabled(name) {",
       `function bindCompactMapControls() {
@@ -57,6 +60,8 @@ await update('public/release-1.22.0.js', (source) => {
   }
   function layerEnabled(name) {`,
     );
+  }
+  if (!next.includes('bindCompactMapControls();\n    const map = window.__flightDeckTrackingMap;')) {
     next = next.replace('ensureMapControls();\n    const map = window.__flightDeckTrackingMap;', 'ensureMapControls();\n    bindCompactMapControls();\n    const map = window.__flightDeckTrackingMap;');
   }
   return next;
