@@ -41,4 +41,5 @@ await update('CHANGELOG.md', (source) => {
     : section + source;
 });
 
+await import('./apply-feature-1.23.1-ui-review.mjs');
 console.log('Flight Deck EFB 1.23.0 release materialized.');
