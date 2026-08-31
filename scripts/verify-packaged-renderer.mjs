@@ -60,9 +60,7 @@ try {
   const expression = `new Promise(async (resolve) => {
     const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-    for (let attempt = 0; document.readyState !== 'complete' && attempt < 100; attempt += 1) {
-      await sleep(100);
-    }
+    for (let attempt = 0; document.readyState !== 'complete' && attempt < 100; attempt += 1) await sleep(100);
 
     let app = null;
     let grid = null;
@@ -83,6 +81,10 @@ try {
       if (document.readyState === 'complete' && app && grid && pilotScript && nativeScript && scratchTile && setupTile && newsTile && pilotShell) break;
       await sleep(100);
     }
+
+    const pairOverlay = document.querySelector('#pair-overlay');
+    const pairOverlayStyle = pairOverlay ? getComputedStyle(pairOverlay) : null;
+    const pairOverlayVisible = Boolean(pairOverlay && !pairOverlay.hidden && pairOverlayStyle?.display !== 'none' && pairOverlayStyle?.visibility !== 'hidden' && Number(pairOverlayStyle?.opacity || 1) !== 0);
 
     let pilotFetch = null;
     try {
@@ -161,6 +163,8 @@ try {
         title: document.title,
         textLength: (document.body?.innerText || '').trim().length,
         appVisible: Boolean(app && rect && rect.width > 300 && rect.height > 300 && getComputedStyle(app).display !== 'none'),
+        pairOverlayVisible,
+        pairOverlayDisplay: pairOverlayStyle?.display || null,
         tileCount: grid?.querySelectorAll('.efb-app-tile').length || 0,
         pilotShell: Boolean(document.querySelector('#pilot-tools-shell')),
         pilotScript: pilotScript?.src || null,
@@ -189,6 +193,7 @@ try {
   }
   if (value.readyState !== 'complete') throw new Error(`Renderer did not finish loading: ${value.readyState}`);
   if (!value.appVisible) throw new Error('Renderer app shell is not visibly laid out.');
+  if (value.pairOverlayVisible) throw new Error(`Desktop pairing/recovery overlay is visible in packaged Electron (display=${value.pairOverlayDisplay}).`);
   if (value.textLength < 200) throw new Error(`Renderer looks blank: only ${value.textLength} visible text characters.`);
   if (value.tileCount < 8) throw new Error(`Home app launcher is incomplete: ${value.tileCount} tiles.`);
   if (!value.pilotScript) throw new Error('Pilot Tools script tag is missing from the packaged HTML.');
@@ -214,7 +219,7 @@ try {
       if (Math.abs((metrics?.iconWidth || 0) - reference.iconWidth) > 3) throw new Error(`New app tile ${name} uses a different icon geometry.`);
     }
   }
-  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, desktop session recovery verified, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
+  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, desktop overlay suppressed, session recovery verified, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
 } finally {
   socket.close();
 }
