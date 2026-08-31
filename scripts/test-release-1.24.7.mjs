@@ -22,7 +22,7 @@ need(pkg.scripts.dist, 'test-release-1.24.7.mjs', '1.24.7 regression is missing 
 need(pkg.scripts['test:ui'], 'test-release-1.24.7.mjs', '1.24.7 regression is missing from UI tests.');
 need(materializer, 'persistent Traffic markers', '1.24.7 materializer does not define persistent Traffic markers.');
 need(materializer, 'cached actual route rendering', '1.24.7 materializer does not define cached flown-route rendering.');
-need(materializer, 'persistent ownship marker', '1.24.7 materializer does not define persistent ownship rendering.');
+need(materializer, "const ownshipStart = next.lastIndexOf(", '1.24.7 materializer does not scope persistent ownship rendering to the map renderer.');
 
 need(html, 'data-app-version="1.24.7"', 'HTML app version is not 1.24.7.');
 need(html, '/release-1.24.7.css?v=1.24.7', '1.24.7 stylesheet is not loaded.');
