@@ -14,6 +14,7 @@ const reject = (source, value, message) => { if (source.includes(value)) throw n
 
 assert.equal(pkg.version, '1.24.8', '1.24.9 candidate stays on the last published package version until explicit release.');
 need(pkg.scripts['prepare:release'], 'apply-release-1.24.9-candidate.mjs', '1.24.9 candidate materializer is not wired into prepare:release.');
+need(pkg.scripts['prepare:release'], 'apply-release-1.24.9-idempotency.mjs', '1.24.9 repeat-safe finalizer is not wired into prepare:release.');
 need(pkg.scripts['test:ui'], 'test-release-1.24.9-candidate.mjs', '1.24.9 candidate regression is not wired into UI tests.');
 
 // Dedicated SimBrief geometry must survive the 1.24.7 performance renderer.
@@ -39,7 +40,9 @@ reject(app, 'class="fd1242-traffic-history"', 'Traffic popup still renders a his
 
 // All Traffic uses one marker renderer and overlapping simulator/network targets are deduplicated.
 need(app, 'function fd1249DedupeTraffic(entries = [])', 'Traffic spatial deduplication is missing.');
-need(app, 'fd1249DedupeTraffic(fd1248TrafficEntries(state)).slice(0, 120)', 'Traffic renderer does not consume deduplicated entries.');
+need(app, 'return fd1249DedupeTraffic(values).slice(0, 160);', 'Merged simulator/network Traffic does not apply spatial dedupe.');
+need(app, 'const entries = fd1248TrafficEntries(state).slice(0, 120);', '1.24.8 Traffic renderer contract was altered, breaking repeat materialization.');
+reject(app, 'fd1249DedupeTraffic(fd1248TrafficEntries(state)).slice(0, 120)', 'Traffic dedupe is applied twice at renderer level.');
 need(app, 'fd1249WeakTrafficIdentity', 'Traffic duplicate detection does not handle weak simulator identities.');
 need(app, 'exactOverlay = distance <= (bothGround ? 7 : 55)', 'Traffic duplicate detection lacks the safe tight overlay threshold.');
 need(app, 'fd1249-traffic-marker', 'Unified Traffic marker class is missing.');
