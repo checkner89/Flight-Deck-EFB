@@ -71,6 +71,30 @@ await update('public/service-worker.js', (source) => source
   .replace(/^const CACHE_NAME = .*;$/m, `const CACHE_NAME = 'flyxora-v${VERSION}-recovery';`)
   .replace(/\?v=1\.24\.9\b/g, `?v=${VERSION}`));
 
+// The generic release-branch workflow still executes a small set of historical
+// regression contracts. Extend only their accepted-version guard so those tests
+// continue validating behavior instead of failing solely on the new version.
+for (const filename of [
+  'scripts/test-release-1.20.5.mjs',
+  'scripts/test-release-1.20.6.mjs',
+  'scripts/test-release-1.20.7.mjs',
+  'scripts/test-release-1.20.9.mjs',
+  'scripts/test-release-1.20.10.mjs',
+  'scripts/test-release-1.20.11.mjs',
+  'scripts/test-release-1.21.0.mjs',
+  'scripts/test-release-1.22.0.mjs',
+  'scripts/test-release-1.22.1.mjs',
+]) {
+  await update(filename, (source) => {
+    if (source.includes(`'${VERSION}'`)) return source;
+    if (source.includes('const compatibleVersions = [')) {
+      return source.replace('const compatibleVersions = [', `const compatibleVersions = ['${VERSION}', `);
+    }
+    return source.replace(/if \(!\[([^\n]+)\]\.includes\(pkg\.version\)\)/, (match, versions) =>
+      `if (!['${VERSION}', ${versions}].includes(pkg.version))`);
+  });
+}
+
 await update('CHANGELOG.md', (source) => {
   if (source.includes('## 1.24.10 — Windows Startup & Updater Recovery')) return source;
   const heading = '# FLYXORA changelog';
