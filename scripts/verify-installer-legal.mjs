@@ -36,7 +36,9 @@ for (const required of ['OpenStreetMap', 'OurAirports', 'Electron', 'Leaflet', '
   assert.ok(notices.includes(required), `Installer third-party notice missing: ${required}`);
 }
 assert.doesNotMatch(notices, /TaxiNow|Sky Ning|X-Plane Scenery Gateway|micromamba|osmium-tool/i);
-assert.match(thirdParty, /Flight Deck EFB/i);
-assert.match(privacy, /Flight Deck EFB/i);
+assert.match(thirdParty, /FLYXORA/i);
+assert.match(privacy, /FLYXORA/i);
+assert.doesNotMatch(thirdParty, /Flight Deck EFB/i, 'Current third-party notices still expose the retired product name.');
+assert.doesNotMatch(privacy, /Flight Deck EFB/i, 'Current privacy notice still exposes the retired product name.');
 
 console.log('Installer legal/tasks regression checks passed.');
