@@ -1,0 +1,48 @@
+name: Validate 1.24.11 Release Pipeline Hotfix
+
+on:
+  push:
+    branches:
+      - 'release/validate-1.24.11-pipeline'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-pipeline:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install and materialize 1.24.11
+        run: npm install
+
+      - name: Verify legal branding
+        run: node scripts/verify-installer-legal.mjs
+
+      - name: Verify update-state persistence chain
+        run: node scripts/test-update-state-persistence.mjs
+
+      - name: Build complete Windows distribution
+        run: npm run dist
+
+      - name: Verify installer and updater assets
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.24.11') { throw "Expected 1.24.11, got $version" }
+          foreach ($file in @("dist/FLYXORA-Setup-$version.exe", "dist/FLYXORA-Setup-$version.exe.blockmap", 'dist/latest.yml')) {
+            if (!(Test-Path $file)) { throw "Missing release asset: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch 'version:\s*1\.24\.11') { throw 'latest.yml does not advertise 1.24.11.' }
+          Write-Host 'FLYXORA 1.24.11 release pipeline hotfix validation passed.'
