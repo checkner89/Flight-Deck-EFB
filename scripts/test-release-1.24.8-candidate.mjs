@@ -27,10 +27,11 @@ need(stateSource, 'routedTaxiContinuationPattern', 'Non-taxi SayIntentions calls
 reject(stateSource, 'taxiMessages.at(-1) ?? candidates.at(-1)', 'Arbitrary radio calls can still become taxi clearances.');
 need(stateSource, "this.state.aircraft?.onGround === false", 'Exact SI taxi paths are still dropped on transient flightJSON polls.');
 need(stateSource, 'exactPathMatchesClearance', 'Exact SI paths are not tied to their taxi clearance.');
+need(stateSource, 'adoptUnboundExactTaxiPath', 'An exact SI taxi path cannot be bound when flightJSON arrives before the clearance.');
 need(serverSource, 'scheduleAutomaticSayIntentionsTaxiRoute', 'SayIntentions clearances do not trigger automatic taxi route derivation.');
 need(plannerSource, '1.24.8 candidate arrival-to-gate fallback', 'Arrival taxi-to-gate fallback is missing.');
 need(networkSource, 'pollMs = 15_000', 'Enabled VATSIM/IVAO traffic is not refreshed continuously.');
-need(networkSource, '#scheduleRefresh()', 'Online-network refresh scheduler is missing.');
+need(networkSource, '  #scheduleRefresh() {', 'Online-network refresh scheduler is missing.');
 need(app, 'function fd1248TrafficEntries(state = {})', 'Tracking map does not merge simulator and online-network traffic.');
 need(app, 'fd1248TrafficEntries(state).slice(0, 120)', 'Tracking map still reads simulator-only traffic.');
 need(app, 'function trackingRouteContext1248(record)', 'Tracking flight-plan route renderer is missing.');
@@ -48,7 +49,7 @@ clearanceEngine.applyComms([{ id: 2, outgoing_message_english: 'Taxi to runway 2
 assert.equal(clearanceEngine.publicState().taxi.clearance?.provider, 'sayintentions');
 assert.match(clearanceEngine.publicState().taxi.clearance?.text || '', /Taxi to runway/i);
 
-// An exact SI path must survive an empty flightJSON poll while the aircraft is still on the ground.
+// An exact SI path must survive both path-before-clearance ordering and an empty ground flightJSON poll.
 const exactPathEngine = new StateEngine();
 exactPathEngine.setAtcProvider('sayintentions');
 exactPathEngine.setAircraft({ lat: 51.2800, lon: 6.7600, onGround: true, groundSpeed: 5 });
@@ -74,6 +75,10 @@ exactPathEngine.applyFlightJson({
 });
 assert.equal(exactPathEngine.publicState().taxi.pathSource, 'sayintentions');
 assert.equal(exactPathEngine.publicState().taxi.path.length, 2);
+assert.equal(exactPathEngine.publicState().taxi.pathMetadata?.clearanceId ?? null, null);
+exactPathEngine.applyComms([{ id: 77, outgoing_message_english: 'Taxi to runway 23L via Alpha.' }]);
+assert.equal(exactPathEngine.publicState().taxi.path.length, 2, 'A taxi clearance arriving after flightJSON erased the exact SI path.');
+assert.equal(String(exactPathEngine.publicState().taxi.pathMetadata?.clearanceId), '77');
 exactPathEngine.applyFlightJson({ flight_details: baseFlight });
 assert.equal(exactPathEngine.publicState().taxi.path.length, 2, 'Transient missing taxi_path erased the live route.');
 exactPathEngine.setAircraft({ lat: 51.2803, lon: 6.7610, onGround: false, groundSpeed: 145, altitudeFeet: 2500 });
