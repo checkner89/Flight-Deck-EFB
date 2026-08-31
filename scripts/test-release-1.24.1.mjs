@@ -10,7 +10,7 @@ const [pkgRaw, html, app, tracking, lifecycle, css] = await Promise.all([
 ]);
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
-const modern1242 = ['1.24.2', '1.24.3', '1.24.4'].includes(pkg.version);
+const modern1242 = ['1.24.2', '1.24.3', '1.24.4', '1.24.5'].includes(pkg.version);
 
 need(html, 'id="tracking-basemap-select"', 'Compact map-style selector is missing.');
 need(html, '<strong>FLYXORA</strong>', 'FLYXORA wordmark is missing.');
