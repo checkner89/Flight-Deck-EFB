@@ -1,0 +1,100 @@
+name: Validate 1.24.10 Recovery
+
+on:
+  push:
+    branches:
+      - 'release/1.24.10'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-recovery:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install and materialize FLYXORA 1.24.10
+        run: npm install
+
+      - name: Run UI regressions
+        run: npm run test:ui
+
+      - name: Run operational regressions
+        run: npm run test:ops
+
+      - name: Build OurAirports offline catalog
+        run: npm run prepare-data
+
+      - name: Smoke test local FLYXORA host
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'flyxora-12410-smoke.out.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'flyxora-12410-smoke.err.log'
+          $process = Start-Process -FilePath node -ArgumentList @('src/server.mjs', '--demo', '--port', '8745') -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          try {
+            $deadline = (Get-Date).AddSeconds(25)
+            $ready = $false
+            do {
+              Start-Sleep -Milliseconds 500
+              try {
+                $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8745/' -UseBasicParsing -TimeoutSec 2
+                if ($response.StatusCode -eq 200 -and $response.Content -match 'FLYXORA') { $ready = $true }
+              } catch {}
+            } until ($ready -or (Get-Date) -gt $deadline)
+            if (!$ready) {
+              if (Test-Path $stdout) { Get-Content $stdout }
+              if (Test-Path $stderr) { Get-Content $stderr }
+              throw 'FLYXORA host smoke test did not become ready.'
+            }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Build Windows recovery installer
+        run: npm run dist
+
+      - name: Smoke test packaged FLYXORA startup
+        shell: pwsh
+        run: |
+          $exe = 'dist/win-unpacked/FLYXORA.exe'
+          if (!(Test-Path $exe)) { throw "Packaged executable missing: $exe" }
+          $debugPort = 9333
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            $process.Refresh()
+            if ($process.HasExited) {
+              throw "Packaged FLYXORA exited during startup smoke test with code $($process.ExitCode)."
+            }
+            node scripts/verify-packaged-renderer.mjs $debugPort
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged FLYXORA renderer health check failed.' }
+          } finally {
+            if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Verify FLYXORA installer and updater artifacts
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ($version -ne '1.24.10') { throw "Expected 1.24.10, got $version" }
+          $required = @(
+            "dist/FLYXORA-Setup-$version.exe",
+            "dist/FLYXORA-Setup-$version.exe.blockmap",
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing recovery asset: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch 'version:\s*1\.24\.10') { throw 'latest.yml does not advertise 1.24.10.' }
+          Write-Host 'FLYXORA 1.24.10 packaged Windows recovery validation passed.'
