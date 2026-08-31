@@ -10,7 +10,7 @@ const [pkgRaw, app, runtime, css] = await Promise.all([
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
-const modernTraffic = ['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7', '1.24.8'].includes(pkg.version);
+const modernTraffic = ['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7', '1.24.8', '1.24.9'].includes(pkg.version);
 
 need(app, 'let openTrafficPopupId = null;', 'Sticky traffic popup state is missing.');
 if (modernTraffic) {
@@ -37,4 +37,4 @@ need(css, '.fd124-time-strip', 'Flight time strip styling is missing.');
 need(css, '.fd124-actual-segment', 'Altitude profile segment styling is missing.');
 need(css, 'background:transparent!important', 'Traffic aircraft still has a forced dark marker background.');
 
-console.log(`Flight Deck EFB ${pkg.version} flight tracking regression passed.`);
+console.log(`FLYXORA ${pkg.version} flight tracking regression passed.`);
