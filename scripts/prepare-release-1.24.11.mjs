@@ -37,6 +37,7 @@ async function isMaterialized() {
     readText('public/service-worker.js'),
   ]);
   return main.includes('function createStartupWindow()')
+    && main.includes('startupDocument({ failed: true')
     && main.includes("title: 'FLYXORA'")
     && !main.includes('const hasSingleInstanceLock = app.requestSingleInstanceLock();')
     && html.includes('data-app-version="1.24.11"')
@@ -51,6 +52,7 @@ if (pkg.version !== FINAL_VERSION) {
 
 if (await isMaterialized()) {
   run('scripts/apply-release-1.24.11.mjs');
+  run('scripts/apply-release-1.24.11-hotfix.mjs');
   console.log(`FLYXORA ${FINAL_VERSION} sources already materialized; 1.24.10 chain skipped.`);
 } else {
   await writePackageVersion(BASE_VERSION);
@@ -60,6 +62,7 @@ if (await isMaterialized()) {
     await writePackageVersion(FINAL_VERSION);
   }
   run('scripts/apply-release-1.24.11.mjs');
+  run('scripts/apply-release-1.24.11-hotfix.mjs');
 }
 
 const finalPackage = await readPackage();
