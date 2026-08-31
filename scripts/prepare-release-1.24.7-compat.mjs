@@ -82,7 +82,7 @@ const baselinePatches = [
     ["['1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
     ['Expected package version 1.24.5 or 1.24.6', 'Expected package version 1.24.5 through 1.24.7'],
     ["const title = pkg.version === '1.24.6'", "const title = pkg.version === '1.24.7' ? \"title: 'FLYXORA 1.24.7'\" : pkg.version === '1.24.6'"],
-    ["need(app, pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'", "need(app, pkg.version === '1.24.7' ? 'WINDOWS APP · v1.24.7' : pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'"],
+    ["need(app, pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'", "need(app, pkg.version === '1.24.7' ? 'WINDOWS APP · v1.24.6' : pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'"],
     ["need(sw, pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell' : 'flyxora-v1.24.5-stale-process'", "need(sw, pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance' : pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell' : 'flyxora-v1.24.5-stale-process'"],
   ]],
   ['scripts/test-release-1.24.6.mjs', [
