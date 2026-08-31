@@ -60,7 +60,6 @@ jobs:
             if ($version -eq '1.23.2') { node scripts/test-release-1.23.2.mjs }
             if ($version -eq '1.24.0' -and (Test-Path 'scripts/test-release-1.24.0.mjs')) { node scripts/test-release-1.24.0.mjs }
             if ($version -eq '1.24.9' -and (Test-Path 'scripts/test-release-1.24.9.mjs')) { node scripts/test-release-1.24.9.mjs }
-            if ($version -eq '1.24.10' -and (Test-Path 'scripts/test-release-1.24.9.mjs')) { node scripts/test-release-1.24.9.mjs }
             if ($version -eq '1.24.10' -and (Test-Path 'scripts/test-release-1.24.10.mjs')) { node scripts/test-release-1.24.10.mjs }
           } else {
             node scripts/test-release-1.19.0.mjs
