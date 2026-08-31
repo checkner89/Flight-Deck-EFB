@@ -41,23 +41,22 @@ await update('src/electron-main.mjs', (source) => source
   .replace(/title: 'Flight Deck EFB'/g, "title: 'FLYXORA'")
   .replace(/dialog\.showErrorBox\('Flight Deck EFB'/g, "dialog.showErrorBox('FLYXORA'")
   .replace(/tray\.setToolTip\('Flight Deck EFB/g, "tray.setToolTip('FLYXORA")
-  .replace(/label: 'Flight Deck EFB öffnen'/g, "label: 'FLYXORA öffnen'")
-  .replace(/title: 'Flight Deck EFB'/g, "title: 'FLYXORA'"));
+  .replace(/label: 'Flight Deck EFB öffnen'/g, "label: 'FLYXORA öffnen'"));
 
 await update('src/electron-bootstrap.mjs', (source) => source
   .replace(/\[Flight Deck EFB\]/g, '[FLYXORA]'));
 
 await update('build/installer.nsh', (source) => {
-  let next = source;
+  let next = source.replace(/Flight Deck EFB/g, 'FLYXORA');
   if (!next.includes('/IM "flight-deck-efb.exe"')) {
-    next = next.replace(
-      /nsExec::ExecToStack '\"\$SYSDIR\\taskkill\.exe\" \/IM \"Flight Deck EFB\.exe\" \/T \/F'\n  Pop \$0\n  Pop \$1/,
-      `nsExec::ExecToStack '\"$SYSDIR\\taskkill.exe\" /IM \"Flight Deck EFB.exe\" /T /F'\n  Pop $0\n  Pop $1\n  nsExec::ExecToStack '\"$SYSDIR\\taskkill.exe\" /IM \"flight-deck-efb.exe\" /T /F'\n  Pop $0\n  Pop $1`,
-    );
+    const legacyKill = `  nsExec::ExecToStack '\"$SYSDIR\\taskkill.exe\" /IM \"flight-deck-efb.exe\" /T /F'\n  Pop $0\n  Pop $1\n`;
+    if (next.includes('  Sleep 450')) {
+      next = next.replace('  Sleep 450', `${legacyKill}  Sleep 450`);
+    } else {
+      throw new Error('Installer process-cleanup anchor is missing.');
+    }
   }
-  return next
-    .replace(/Flight Deck EFB/g, 'FLYXORA')
-    .replace(/flight-deck-third-party-notices/g, 'flyxora-third-party-notices');
+  return next.replace(/flight-deck-third-party-notices/g, 'flyxora-third-party-notices');
 });
 
 await update('public/index.html', (source) => source
@@ -72,8 +71,8 @@ await update('public/service-worker.js', (source) => source
   .replace(/\?v=1\.24\.9\b/g, `?v=${VERSION}`));
 
 // The generic release-branch workflow still executes a small set of historical
-// regression contracts. Extend only their accepted-version guard so those tests
-// continue validating behavior instead of failing solely on the new version.
+// regression contracts for older releases. Extending their version guards is
+// harmless and keeps manual invocations from failing only because of 1.24.10.
 for (const filename of [
   'scripts/test-release-1.20.5.mjs',
   'scripts/test-release-1.20.6.mjs',
