@@ -10,6 +10,19 @@ Var DesktopShortcutCheckbox
 Var DesktopShortcutSelection
 
 !macro customInit
+  ; A normal window close only hides FLYXORA to the tray. An old tray process can
+  ; therefore survive a manual upgrade and keep presenting the previous renderer.
+  ; Setup owns the upgrade boundary, so terminate both the current and legacy
+  ; executable names before files/shortcuts are replaced. Exit codes are ignored
+  ; when no matching process exists.
+  nsExec::ExecToStack '"$SYSDIR\taskkill.exe" /IM "FLYXORA.exe" /T /F'
+  Pop $0
+  Pop $1
+  nsExec::ExecToStack '"$SYSDIR\taskkill.exe" /IM "Flight Deck EFB.exe" /T /F'
+  Pop $0
+  Pop $1
+  Sleep 450
+
   ; Interactive installs default to creating a desktop shortcut. Silent
   ; auto-updates do not render wizard pages and therefore keep this default.
   StrCpy $DesktopShortcutSelection ${BST_CHECKED}
@@ -85,6 +98,10 @@ Function AdditionalTasksPageLeave
 FunctionEnd
 
 !macro customInstall
+  ; Remove branding-era shortcuts that can still point to an obsolete install.
+  Delete "$DESKTOP\Flight Deck EFB.lnk"
+  Delete "$SMPROGRAMS\Flight Deck EFB.lnk"
+
   ; electron-builder creates its configured desktop shortcut during install.
   ; Remove it only when the interactive Additional Tasks page was explicitly
   ; unchecked. Silent updates keep the initialized checked state.
