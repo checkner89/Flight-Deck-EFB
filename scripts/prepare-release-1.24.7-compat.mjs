@@ -31,3 +31,65 @@ if (changed) {
 } else {
   console.log('FLYXORA 1.24.7 materializer compatibility already applied.');
 }
+
+async function patchBaseline(filename, replacements) {
+  let text = await fs.readFile(filename, 'utf8');
+  let next = text;
+  for (const [from, to] of replacements) next = next.replace(from, to);
+  if (next !== text) {
+    await fs.writeFile(filename, next, 'utf8');
+    return true;
+  }
+  return false;
+}
+
+const baselinePatches = [
+  ['scripts/test-release-1.24.0.mjs', [
+    ["['1.24.0', '1.24.1', '1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.0', '1.24.1', '1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ['Expected package version 1.24.0 through 1.24.6', 'Expected package version 1.24.0 through 1.24.7'],
+    ["['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ["const expectedCache = pkg.version === '1.24.6'", "const expectedCache = pkg.version === '1.24.7'\n  ? 'flyxora-v1.24.7-tracking-performance'\n  : pkg.version === '1.24.6'"],
+  ]],
+  ['scripts/test-release-1.24.1.mjs', [
+    ["['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+  ]],
+  ['scripts/test-release-1.24.2.mjs', [
+    ["const is1246 = pkg.version === '1.24.6';", "const is1246 = pkg.version === '1.24.6';\nconst is1247 = pkg.version === '1.24.7';"],
+    ["['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ['Expected package version 1.24.2 through 1.24.6', 'Expected package version 1.24.2 through 1.24.7'],
+    ["if (is1246) need(sw, 'flyxora-v1.24.6-desktop-shell', '1.24.6 service-worker cache marker is missing.');", "if (is1246) need(sw, 'flyxora-v1.24.6-desktop-shell', '1.24.6 service-worker cache marker is missing.');\nif (is1247) need(sw, 'flyxora-v1.24.7-tracking-performance', '1.24.7 service-worker cache marker is missing.');"],
+  ]],
+  ['scripts/test-release-1.24.3.mjs', [
+    ["['1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ["['1.24.3', '1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ['Expected package version 1.24.3 through 1.24.6', 'Expected package version 1.24.3 through 1.24.7'],
+    ["const title = pkg.version === '1.24.6'", "const title = pkg.version === '1.24.7' ? \"title: 'FLYXORA 1.24.7'\" : pkg.version === '1.24.6'"],
+    ["const expectedCache = pkg.version === '1.24.6'", "const expectedCache = pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance' : pkg.version === '1.24.6'"],
+  ]],
+  ['scripts/test-release-1.24.4.mjs', [
+    ["['1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.4', '1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ['Expected package version 1.24.4 through 1.24.6', 'Expected package version 1.24.4 through 1.24.7'],
+    ["const cache = pkg.version === '1.24.6'", "const cache = pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance' : pkg.version === '1.24.6'"],
+  ]],
+  ['scripts/test-release-1.24.5.mjs', [
+    ["['1.24.5', '1.24.6'].includes(pkg.version)", "['1.24.5', '1.24.6', '1.24.7'].includes(pkg.version)"],
+    ['Expected package version 1.24.5 or 1.24.6', 'Expected package version 1.24.5 through 1.24.7'],
+    ["const title = pkg.version === '1.24.6'", "const title = pkg.version === '1.24.7' ? \"title: 'FLYXORA 1.24.7'\" : pkg.version === '1.24.6'"],
+    ["need(app, pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'", "need(app, pkg.version === '1.24.7' ? 'WINDOWS APP · v1.24.7' : pkg.version === '1.24.6' ? 'WINDOWS APP · v1.24.6' : 'WINDOWS APP · v1.24.5'"],
+    ["need(sw, pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell' : 'flyxora-v1.24.5-stale-process'", "need(sw, pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance' : pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell' : 'flyxora-v1.24.5-stale-process'"],
+  ]],
+  ['scripts/test-release-1.24.6.mjs', [
+    ["if (pkg.version !== '1.24.6') throw new Error(`Expected package version 1.24.6, got ${pkg.version}.`);", "if (!['1.24.6', '1.24.7'].includes(pkg.version)) throw new Error(`Expected package version 1.24.6 or 1.24.7, got ${pkg.version}.`);"],
+    ["need(electronMain, \"title: 'FLYXORA 1.24.6'\"", "need(electronMain, pkg.version === '1.24.7' ? \"title: 'FLYXORA 1.24.7'\" : \"title: 'FLYXORA 1.24.6'\""],
+    ["need(html, 'data-app-version=\"1.24.6\"'", "need(html, `data-app-version=\"${pkg.version}\"`"],
+    ["need(sw, 'flyxora-v1.24.6-desktop-shell'", "need(sw, pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance' : 'flyxora-v1.24.6-desktop-shell'"],
+  ]],
+];
+
+let patchedBaselines = 0;
+for (const [testFile, replacements] of baselinePatches) {
+  if (await patchBaseline(testFile, replacements)) patchedBaselines += 1;
+}
+console.log(patchedBaselines
+  ? `FLYXORA 1.24.7 baseline compatibility applied to ${patchedBaselines} regression files.`
+  : 'FLYXORA 1.24.7 baseline regressions already compatible.');
