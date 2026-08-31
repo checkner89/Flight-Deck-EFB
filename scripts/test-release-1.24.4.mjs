@@ -16,8 +16,9 @@ const [pkgRaw, orchestrator, materializer, server, electronMain, app, html, sw, 
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
+const is1245 = pkg.version === '1.24.5';
 
-if (pkg.version !== '1.24.4') throw new Error(`Expected package version 1.24.4, got ${pkg.version}.`);
+if (!['1.24.4', '1.24.5'].includes(pkg.version)) throw new Error(`Expected package version 1.24.4 or 1.24.5, got ${pkg.version}.`);
 need(orchestrator, "runScript('scripts/apply-release-1.24.4.mjs')", '1.24.4 materializer is missing from the release orchestrator.');
 need(pkg.scripts.dist, 'test-release-1.24.4.mjs', '1.24.4 regression is missing from dist.');
 need(materializer, "pathname === '/api/session/validate'", '1.24.4 materializer does not create lightweight session validation.');
@@ -41,12 +42,12 @@ need(app, "endpoint.searchParams.set('desktop', desktop);", 'Desktop token recov
 need(app, 'async function validateDesktopSession(candidate)', 'Desktop session validation fallback is missing.');
 need(app, 'Keine Pairing-PIN erforderlich.', 'Windows recovery UI does not clearly separate itself from mobile pairing.');
 
-need(html, 'data-app-version="1.24.4"', 'HTML app version is not 1.24.4.');
-need(sw, 'flyxora-v1.24.4-host-session', 'Service worker cache is not bumped for 1.24.4.');
+need(html, `data-app-version="${pkg.version}"`, `HTML app version is not ${pkg.version}.`);
+need(sw, is1245 ? 'flyxora-v1.24.5-stale-process' : 'flyxora-v1.24.4-host-session', 'Service worker cache is not bumped for the current build.');
 need(changelog, '## 1.24.4 — Windows Host Session', '1.24.4 changelog section is missing.');
 
 need(rendererSmoke, 'desktopSessionRecovery', 'Packaged renderer smoke test does not exercise desktop session recovery.');
 need(rendererSmoke, "localStorage.removeItem('si-taxi-token')", 'Packaged renderer smoke test does not remove the host token.');
 need(rendererSmoke, "'/api/desktop/session'", 'Packaged renderer smoke test does not call the desktop recovery endpoint.');
 
-console.log('FLYXORA 1.24.4 Windows host session regression passed.');
+console.log(`FLYXORA 1.24.4 Windows host session regression passed for ${pkg.version}.`);
