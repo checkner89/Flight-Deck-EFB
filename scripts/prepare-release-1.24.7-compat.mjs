@@ -14,10 +14,14 @@ if (source.includes(unsafe)) {
   throw new Error('1.24.7 compatibility patch could not find the ownship materializer anchor.');
 }
 
-// Keep the established 1.24.2 Traffic-selection contract literal while retaining
-// the persistent marker closure. `key` is block-scoped per marker and is stable.
+// Keep the established 1.24.2 Traffic-selection and sticky-popup contracts literal
+// while retaining the persistent marker closure. `key` is block-scoped per marker.
 if (source.includes('        selectedTrafficTrailId = currentKey;')) {
   source = source.replace('        selectedTrafficTrailId = currentKey;', '        selectedTrafficTrailId = key;');
+  changed = true;
+}
+if (source.includes('        openTrafficPopupId = currentKey;')) {
+  source = source.replace('        openTrafficPopupId = currentKey;', '        openTrafficPopupId = key;');
   changed = true;
 }
 
