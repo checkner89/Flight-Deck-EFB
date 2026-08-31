@@ -54,4 +54,5 @@ need(app, 'function connectEvents()', '1.24.6 SSE event bridge was lost.');
 need(app, "eventSource = new EventSource(authenticatedUrl('/api/events'));", '1.24.6 authenticated SSE event bridge was lost.');
 need(electronMain, '#pair-overlay{display:none!important;pointer-events:none!important}', '1.24.6 native overlay guard was lost.');
 
+// Full Windows installer, packaged renderer and updater gate validated before publish.
 console.log('FLYXORA 1.24.7 tracking density + map performance regression passed.');
