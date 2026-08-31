@@ -1,0 +1,53 @@
+name: Validate 1.24.8 Candidate
+
+on:
+  push:
+    branches:
+      - 'release/validate-1.24.8-taxi-vatsim-profile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-candidate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install and materialize candidate
+        run: npm install
+
+      - name: Verify generated JavaScript
+        shell: pwsh
+        run: |
+          $files = @()
+          $files += Get-ChildItem 'scripts' -Filter '*.mjs' -File
+          $files += Get-ChildItem 'src' -Filter '*.mjs' -File
+          $files += Get-ChildItem 'public' -Filter '*.js' -File
+          foreach ($file in $files) {
+            node --check $file.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Syntax check failed: $($file.FullName)" }
+          }
+
+      - name: Run 1.24.8 candidate regression
+        run: node scripts/test-release-1.24.8-candidate.mjs
+
+      - name: Run current release regressions
+        shell: pwsh
+        run: |
+          node scripts/test-live-traffic.mjs
+          node scripts/test-pilot-tools.mjs
+          node scripts/test-feature-1.24-flight-tracking.mjs
+          node scripts/test-release-1.24.7.mjs
+
+      - name: Run complete UI regression suite
+        run: npm run test:ui
