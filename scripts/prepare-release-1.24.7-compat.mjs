@@ -33,9 +33,16 @@ if (changed) {
 }
 
 async function patchBaseline(filename, replacements) {
-  let text = await fs.readFile(filename, 'utf8');
+  const text = await fs.readFile(filename, 'utf8');
   let next = text;
   for (const [from, to] of replacements) next = next.replace(from, to);
+
+  // The release chain intentionally invokes prepare:release multiple times. Keep
+  // additive compatibility lines idempotent across npm install, prepare-data and dist.
+  next = next.replace(/(?:const is1247 = pkg\.version === '1\.24\.7';\r?\n){2,}/g, "const is1247 = pkg.version === '1.24.7';\n");
+  const cacheLine = "if (is1247) need(sw, 'flyxora-v1.24.7-tracking-performance', '1.24.7 service-worker cache marker is missing.');";
+  next = next.replace(new RegExp(`(?:${cacheLine.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}\\r?\\n){2,}`, 'g'), `${cacheLine}\n`);
+
   if (next !== text) {
     await fs.writeFile(filename, next, 'utf8');
     return true;
