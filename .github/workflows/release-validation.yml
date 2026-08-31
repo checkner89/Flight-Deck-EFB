@@ -48,7 +48,8 @@ jobs:
           node scripts/test-gsx-profile-manager.mjs
           node scripts/test-pilot-tools.mjs
 
-          if ($version -in @('1.23.1', '1.23.2', '1.24.0')) {
+          $modernVersions = @('1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          if ($version -in $modernVersions) {
             node scripts/test-single-instance-bootstrap.mjs
             node scripts/test-flight-journey-engine.mjs
             node scripts/test-flight-journey-service.mjs
@@ -58,6 +59,9 @@ jobs:
             if ($version -eq '1.23.1') { node scripts/test-release-1.23.1.mjs }
             if ($version -eq '1.23.2') { node scripts/test-release-1.23.2.mjs }
             if ($version -eq '1.24.0' -and (Test-Path 'scripts/test-release-1.24.0.mjs')) { node scripts/test-release-1.24.0.mjs }
+            if ($version -eq '1.24.9' -and (Test-Path 'scripts/test-release-1.24.9.mjs')) { node scripts/test-release-1.24.9.mjs }
+            if ($version -eq '1.24.10' -and (Test-Path 'scripts/test-release-1.24.9.mjs')) { node scripts/test-release-1.24.9.mjs }
+            if ($version -eq '1.24.10' -and (Test-Path 'scripts/test-release-1.24.10.mjs')) { node scripts/test-release-1.24.10.mjs }
           } else {
             node scripts/test-release-1.19.0.mjs
             node scripts/test-release-1.20.5.mjs
@@ -77,7 +81,13 @@ jobs:
           $version = node -p "require('./package.json').version"
           $escapedVersion = [regex]::Escape($version)
           $html = Get-Content 'public/index.html' -Raw
-          $currentVersions = @('1.23.1', '1.23.2', '1.24.0')
+          $currentVersions = @('1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $trackingVersions = @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $altitudeVersions = @('1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $journeyVersions = @('1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $pilotWorkflowVersions = @('1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $uxVersions = @('1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $flightPolishVersions = @('1.23.2', '1.24.0', '1.24.9', '1.24.10')
 
           if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired.' }
           if ($html -notmatch "pilot-tools\.css\?v=$escapedVersion" -or $html -notmatch "pilot-tools\.js\?v=$escapedVersion") { throw "$version pilot tools are not wired." }
@@ -87,7 +97,7 @@ jobs:
           if ($html -notmatch "documents-workspace\.css\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?") { throw "$version OFP workspace is not wired." }
           if ($html -notmatch "file-browser\.css\?v=$escapedVersion" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version file browser is not wired." }
 
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')) {
+          if ($version -in $trackingVersions) {
             if ($html -notmatch "release-1\.20\.9\.css\?v=$escapedVersion") { throw '1.20.9 tracking compatibility stylesheet is not wired.' }
             if ($html -notmatch "release-1\.20\.10\.css\?v=$escapedVersion") { throw '1.20.10 tracking layout stylesheet is not wired.' }
             if ($html -notmatch 'tracking-context-callsign' -or $html -notmatch '<i class="simbrief"></i>') { throw 'Tracking map markup is incomplete.' }
@@ -100,18 +110,18 @@ jobs:
           if ($simbrief -notmatch 'navlogFixes' -or $simbrief -notmatch 'pos_lon' -or $simbrief -notmatch 'latestDocument') { throw 'Robust SimBrief OFP/navlog support is incomplete.' }
 
           $app = Get-Content 'public/app.js' -Raw
-          if ($version -in @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0') -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
+          if ($version -in $trackingVersions -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
             throw 'Map-first Tracking integration is incomplete.'
           }
 
-          if ($version -in @('1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')) {
+          if ($version -in $altitudeVersions) {
             $simconnect = Get-Content 'src/simconnect-client.mjs' -Raw
             if ($simconnect -notmatch "INDICATED ALTITUDE" -or $simconnect -notmatch "KOHLSMAN SETTING MB:1" -or $simconnect -notmatch 'trueAltitudeFeet') {
               throw 'Barometric altitude/QNH telemetry is incomplete.'
             }
           }
 
-          if ($version -in @('1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')) {
+          if ($version -in $journeyVersions) {
             if ($html -notmatch "release-1\.21\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.21\.0\.js\?v=$escapedVersion") { throw '1.21.0 backlog compatibility assets are not wired.' }
             $media = Get-Content 'src/flight-media-service.mjs' -Raw
             $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
@@ -120,7 +130,7 @@ jobs:
             if ($recorder -notmatch 'stable-parked-at-gate' -or $state -notmatch 'taxiPositive' -or $state -notmatch 'routes: \{ departure: null, arrival: null \}') { throw '1.21.0 flight lifecycle/taxi core is incomplete.' }
           }
 
-          if ($version -in @('1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')) {
+          if ($version -in $pilotWorkflowVersions) {
             if ($html -notmatch "release-1\.22\.0\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.0\.js\?v=$escapedVersion") { throw '1.22.0 pilot workflow assets are not wired.' }
             $runtime = Get-Content 'public/release-1.22.0.js' -Raw
             $recorder = Get-Content 'src/flight-recorder.mjs' -Raw
@@ -128,7 +138,7 @@ jobs:
             if ($recorder -notmatch 'originalPlan' -or $recorder -notmatch 'planHistory' -or $recorder -notmatch 'groundEvents') { throw '1.22.0 flight archive persistence is incomplete.' }
           }
 
-          if ($version -in @('1.22.1', '1.23.1', '1.23.2', '1.24.0')) {
+          if ($version -in $uxVersions) {
             if ($html -notmatch "release-1\.22\.1\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.css\?v=$escapedVersion" -or $html -notmatch "release-1\.22\.1-ux\.js\?v=$escapedVersion") { throw '1.22.1 UI/UX assets are not wired.' }
             $ui = Get-Content 'public/release-1.22.1.css' -Raw
             $uxCss = Get-Content 'public/release-1.22.1-ux.css' -Raw
@@ -145,7 +155,7 @@ jobs:
             if ($hotfixJs -notmatch 'removeNewsNavigation' -or $hotfixJs -notmatch 'removeGateAssignment') { throw '1.23.1 visible navigation cleanup is incomplete.' }
           }
 
-          if ($version -in @('1.23.2', '1.24.0')) {
+          if ($version -in $flightPolishVersions) {
             if ($app -notmatch 'openTrafficPopupId' -or $runtime -notmatch 'renderFlightTimeStrip' -or $runtime -match 'Archiv: Originalplanung \+ tatsächliche Spur') { throw '1.24 Flight/Tracking polish is not present in the materialized runtime.' }
           }
 
