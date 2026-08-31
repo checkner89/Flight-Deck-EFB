@@ -82,11 +82,11 @@ jobs:
           $html = Get-Content 'public/index.html' -Raw
           $currentVersions = @('1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
           $trackingVersions = @('1.20.10', '1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
-          $altitudeVersions = @('1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
-          $journeyVersions = @('1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
-          $pilotWorkflowVersions = @('1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
-          $uxVersions = @('1.22.1', '1.23.1', '1.23.2', '1.24.0', '1.24.9', '1.24.10')
-          $flightPolishVersions = @('1.23.2', '1.24.0', '1.24.9', '1.24.10')
+          $altitudeVersions = @('1.20.11', '1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')
+          $journeyVersions = @('1.21.0', '1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')
+          $pilotWorkflowVersions = @('1.22.0', '1.22.1', '1.23.1', '1.23.2', '1.24.0')
+          $uxVersions = @('1.22.1', '1.23.1', '1.23.2', '1.24.0')
+          $flightPolishVersions = @('1.23.2', '1.24.0')
 
           if ($html -notmatch 'release-1\.7\.19\.css' -or $html -notmatch 'release-1\.7\.19\.js') { throw '1.17.19 compatibility assets are not wired.' }
           if ($html -notmatch "pilot-tools\.css\?v=$escapedVersion" -or $html -notmatch "pilot-tools\.js\?v=$escapedVersion") { throw "$version pilot tools are not wired." }
@@ -111,6 +111,21 @@ jobs:
           $app = Get-Content 'public/app.js' -Raw
           if ($version -in $trackingVersions -and ($app -notmatch 'trackingSimBriefPoints' -or $app -notmatch 'trackingLayers\.simbrief' -or $app -notmatch 'archive-only')) {
             throw 'Map-first Tracking integration is incomplete.'
+          }
+
+          if ($version -in @('1.24.9', '1.24.10')) {
+            if ($html -notmatch "release-1\.24\.7\.css\?v=$escapedVersion") { throw "$version current Tracking stylesheet is not wired." }
+            if ($app -notmatch 'fd1249DedupeTraffic' -or $app -notmatch 'fd1249-traffic-marker' -or $app -notmatch 'trackingSimBriefPoints') { throw "$version Traffic/SimBrief runtime is incomplete." }
+            if ($version -eq '1.24.10') {
+              $pkg = Get-Content 'package.json' -Raw | ConvertFrom-Json
+              $electronMain = Get-Content 'src/electron-main.mjs' -Raw
+              $installer = Get-Content 'build/installer.nsh' -Raw
+              if ($pkg.name -ne 'flight-deck-efb' -or $pkg.productName -ne 'FLYXORA' -or $pkg.build.appId -ne 'de.checkner.flightdeckefb') { throw '1.24.10 stable technical identity is incomplete.' }
+              if ($electronMain -match 'app\.requestSingleInstanceLock\(\)' -or $electronMain -notmatch 'autoUpdater\.quitAndInstall\(true, true\)') { throw '1.24.10 Windows startup/updater recovery is incomplete.' }
+              if ($installer -notmatch '/IM "FLYXORA\.exe"' -or $installer -notmatch '/IM "flight-deck-efb\.exe"') { throw '1.24.10 repair installer process cleanup is incomplete.' }
+            }
+            Write-Host "Release $version current asset validation passed."
+            exit 0
           }
 
           if ($version -in $altitudeVersions) {
@@ -155,6 +170,7 @@ jobs:
           }
 
           if ($version -in $flightPolishVersions) {
+            $runtime = Get-Content 'public/release-1.22.0.js' -Raw
             if ($app -notmatch 'openTrafficPopupId' -or $runtime -notmatch 'renderFlightTimeStrip' -or $runtime -match 'Archiv: Originalplanung \+ tatsächliche Spur') { throw '1.24 Flight/Tracking polish is not present in the materialized runtime.' }
           }
 
