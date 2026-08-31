@@ -1,0 +1,108 @@
+name: Diagnose Windows Installer Upgrade
+
+on:
+  push:
+    branches:
+      - 'fix/1.24.11-installer-repair'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer-upgrade:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies and materialize current recovery build
+        run: npm install
+
+      - name: Build airport catalog
+        run: npm run prepare-data
+
+      - name: Build current Windows installer
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Download released 1.24.8 and 1.24.9 installers
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\previous" | Out-Null
+          gh release download v1.24.8 --repo '${{ github.repository }}' --pattern 'FLYXORA-Setup-1.24.8.exe' --dir "$env:RUNNER_TEMP\previous"
+          gh release download v1.24.9 --repo '${{ github.repository }}' --pattern 'FLYXORA-Setup-1.24.9.exe' --dir "$env:RUNNER_TEMP\previous"
+
+      - name: Install 1.24.8 silently and verify real installed executable
+        shell: pwsh
+        run: |
+          $setup = "$env:RUNNER_TEMP\previous\FLYXORA-Setup-1.24.8.exe"
+          $p = Start-Process -FilePath $setup -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "1.24.8 installer exited with $($p.ExitCode)" }
+          Start-Sleep -Seconds 2
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter 'FLYXORA.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (!$exe) { throw '1.24.8 reported success but FLYXORA.exe was not installed under LocalAppData Programs.' }
+          "INSTALL_1248=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "1.24.8 installed at $($exe.FullName)"
+
+      - name: Upgrade installed 1.24.8 to released 1.24.9 and inspect state
+        shell: pwsh
+        run: |
+          $setup = "$env:RUNNER_TEMP\previous\FLYXORA-Setup-1.24.9.exe"
+          $p = Start-Process -FilePath $setup -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "1.24.9 installer exited with $($p.ExitCode)" }
+          Start-Sleep -Seconds 2
+          $matches = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter 'FLYXORA.exe' -File -Recurse -ErrorAction SilentlyContinue
+          Write-Host "FLYXORA executables after 1.24.9: $($matches.Count)"
+          $matches | ForEach-Object { Write-Host $_.FullName }
+          if (!$matches) { throw '1.24.9 reported success but no FLYXORA.exe remains installed.' }
+          Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue } |
+            Where-Object { $_.DisplayName -match 'FLYXORA|Flight Deck' } |
+            Select-Object DisplayName, DisplayVersion, InstallLocation, UninstallString, QuietUninstallString |
+            Format-List | Out-String | Write-Host
+
+      - name: Repair-upgrade released 1.24.9 with current 1.24.10 installer
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $setup = Join-Path $PWD "dist\FLYXORA-Setup-$version.exe"
+          if (!(Test-Path $setup)) { throw "Current installer missing: $setup" }
+          $p = Start-Process -FilePath $setup -ArgumentList '/S' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Current installer exited with $($p.ExitCode)" }
+          Start-Sleep -Seconds 2
+          $matches = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter 'FLYXORA.exe' -File -Recurse -ErrorAction SilentlyContinue
+          Write-Host "FLYXORA executables after current repair: $($matches.Count)"
+          $matches | ForEach-Object { Write-Host $_.FullName }
+          if (!$matches) { throw 'Current recovery installer reported success but FLYXORA.exe is not installed.' }
+          $exe = $matches | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $proc = Start-Process -FilePath $exe.FullName -ArgumentList @('--demo','--remote-debugging-port=9444') -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            $proc.Refresh()
+            if ($proc.HasExited) { throw "Installed FLYXORA.exe exited immediately with code $($proc.ExitCode)." }
+            Write-Host "Installed FLYXORA launched successfully from $($exe.FullName)"
+          } finally {
+            if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
+
+      - name: Dump final uninstall/install registry state
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue } |
+            Where-Object { $_.DisplayName -match 'FLYXORA|Flight Deck' } |
+            Select-Object DisplayName, DisplayVersion, InstallLocation, UninstallString, QuietUninstallString |
+            Format-List | Out-String | Write-Host
+          Get-ChildItem "$env:LOCALAPPDATA\Programs" -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match 'FLYXORA|Flight|flyxora|flight-deck' } |
+            Select-Object FullName | Format-List | Out-String | Write-Host
