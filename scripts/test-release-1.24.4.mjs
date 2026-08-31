@@ -16,7 +16,7 @@ const [pkgRaw, orchestrator, materializer, server, electronMain, app, html, sw, 
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
-if (!['1.24.4', '1.24.5', '1.24.6'].includes(pkg.version)) throw new Error(`Expected package version 1.24.4 through 1.24.6, got ${pkg.version}.`);
+if (!['1.24.4', '1.24.5', '1.24.6', '1.24.7', '1.24.8'].includes(pkg.version)) throw new Error(`Expected package version 1.24.4 through 1.24.8, got ${pkg.version}.`);
 need(orchestrator, "runScript('scripts/apply-release-1.24.4.mjs')", '1.24.4 materializer is missing from the release orchestrator.');
 need(pkg.scripts.dist, 'test-release-1.24.4.mjs', '1.24.4 regression is missing from dist.');
 need(materializer, "pathname === '/api/session/validate'", '1.24.4 materializer does not create lightweight session validation.');
@@ -36,7 +36,11 @@ need(app, "authenticatedUrl('/api/session/validate')", 'Token validation still d
 need(app, "endpoint.searchParams.set('desktop', desktop);", 'Desktop token recovery does not present the per-process desktop session secret.');
 need(app, 'async function validateDesktopSession(candidate)', 'Desktop session validation fallback is missing.');
 need(html, `data-app-version="${pkg.version}"`, `HTML app version is not ${pkg.version}.`);
-const cache = pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell' : pkg.version === '1.24.5' ? 'flyxora-v1.24.5-stale-process' : 'flyxora-v1.24.4-host-session';
+const cache = pkg.version === '1.24.8' ? 'flyxora-v1.24.8-taxi-vatsim-profile'
+  : pkg.version === '1.24.7' ? 'flyxora-v1.24.7-tracking-performance'
+  : pkg.version === '1.24.6' ? 'flyxora-v1.24.6-desktop-shell'
+  : pkg.version === '1.24.5' ? 'flyxora-v1.24.5-stale-process'
+  : 'flyxora-v1.24.4-host-session';
 need(sw, cache, 'Service worker cache is not bumped for the current build.');
 need(changelog, '## 1.24.4 — Windows Host Session', '1.24.4 changelog section is missing.');
 need(rendererSmoke, 'desktopSessionRecovery', 'Packaged renderer smoke test does not exercise desktop session recovery.');

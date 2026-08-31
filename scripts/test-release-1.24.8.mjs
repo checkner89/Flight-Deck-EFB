@@ -1,0 +1,142 @@
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { StateEngine } from '../src/state-engine.mjs';
+import { deriveTaxiRouteFromClearance } from '../src/taxi-route-planner.mjs';
+import { OnlineNetworkClient } from '../src/online-network-client.mjs';
+
+const [pkgRaw, stateSource, serverSource, plannerSource, networkSource, app, profile, css, html, sw, electronMain, changelog] = await Promise.all([
+  fs.readFile('package.json', 'utf8'),
+  fs.readFile('src/state-engine.mjs', 'utf8'),
+  fs.readFile('src/server.mjs', 'utf8'),
+  fs.readFile('src/taxi-route-planner.mjs', 'utf8'),
+  fs.readFile('src/online-network-client.mjs', 'utf8'),
+  fs.readFile('public/app.js', 'utf8'),
+  fs.readFile('public/release-1.22.0.js', 'utf8'),
+  fs.readFile('public/release-1.24.7.css', 'utf8'),
+  fs.readFile('public/index.html', 'utf8'),
+  fs.readFile('public/service-worker.js', 'utf8'),
+  fs.readFile('src/electron-main.mjs', 'utf8'),
+  fs.readFile('CHANGELOG.md', 'utf8'),
+]);
+
+const pkg = JSON.parse(pkgRaw);
+const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
+const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
+
+assert.equal(pkg.version, '1.24.8');
+need(pkg.scripts['prepare:release'], 'apply-release-1.24.8.mjs', '1.24.8 finalizer is not wired into prepare:release.');
+need(pkg.scripts.dist, 'test-release-1.24.8.mjs', '1.24.8 regression is missing from dist.');
+need(pkg.scripts['test:ui'], 'test-release-1.24.8.mjs', '1.24.8 regression is missing from UI tests.');
+
+need(html, 'data-app-version="1.24.8"', 'HTML version is not 1.24.8.');
+need(html, '/release-1.24.7.css?v=1.24.8', 'Tracking stylesheet is not cache-busted for 1.24.8.');
+need(serverSource, "const APP_VERSION = '1.24.8';", 'Server version is not 1.24.8.');
+need(sw, 'flyxora-v1.24.8-taxi-vatsim-profile', '1.24.8 service-worker cache marker is missing.');
+need(electronMain, "title: 'FLYXORA 1.24.8'", 'Windows title is not 1.24.8.');
+need(changelog, '## 1.24.8 — TaxiNow, Network Traffic & Tracking Polish', '1.24.8 changelog section is missing.');
+
+need(stateSource, 'routedTaxiContinuationPattern', 'Non-taxi SayIntentions calls are not filtered out.');
+reject(stateSource, 'taxiMessages.at(-1) ?? candidates.at(-1)', 'Arbitrary radio calls can still become taxi clearances.');
+need(stateSource, "this.state.aircraft?.onGround === false", 'Exact SI taxi paths are still dropped on transient flightJSON polls.');
+need(stateSource, 'exactPathMatchesClearance', 'Exact SI paths are not tied to their taxi clearance.');
+need(stateSource, 'adoptUnboundExactTaxiPath', 'SI path-before-clearance ordering is not handled.');
+need(serverSource, 'scheduleAutomaticSayIntentionsTaxiRoute', 'SayIntentions clearances do not trigger automatic taxi route derivation.');
+need(plannerSource, '1.24.8 candidate arrival-to-gate fallback', 'Arrival taxi-to-gate fallback is missing.');
+need(networkSource, 'pollMs = 15_000', 'Enabled VATSIM/IVAO traffic is not refreshed continuously.');
+need(networkSource, '  #scheduleRefresh() {', 'Online-network refresh scheduler is missing.');
+need(app, 'function fd1248TrafficEntries(state = {})', 'Tracking map does not merge simulator and online-network traffic.');
+need(app, 'fd1248TrafficEntries(state).slice(0, 120)', 'Tracking map still reads simulator-only traffic.');
+need(app, 'function trackingRouteContext1248(record)', 'Tracking route renderer is missing.');
+need(app, 'route.innerHTML = trackingRouteContext1248(record);', 'Expanded route context is not active.');
+reject(profile, 'Keine geplanten Profildaten verfügbar · tatsächlicher Flug bleibt vollständig sichtbar.', 'Obsolete Flight Profile footer note is still rendered.');
+need(css, '.tracking-profile-metrics {', 'Flight Profile metric alignment override is missing.');
+need(css, 'padding-left: 0 !important;', 'MAX ALT row is not aligned with PROFIL NACH.');
+need(css, '.fd1248-route-endpoints', 'DEP/ARR responsive route layout is missing.');
+
+const clearanceEngine = new StateEngine();
+clearanceEngine.applyComms([{ id: 1, outgoing_message_english: 'Climb and maintain flight level one two zero.' }]);
+assert.equal(clearanceEngine.publicState().taxi.clearance, null);
+clearanceEngine.applyComms([{ id: 2, outgoing_message_english: 'Taxi to runway 23L via Alpha, Bravo. Hold short runway 23L.' }]);
+assert.equal(clearanceEngine.publicState().taxi.clearance?.provider, 'sayintentions');
+
+const exactPathEngine = new StateEngine();
+exactPathEngine.setAtcProvider('sayintentions');
+exactPathEngine.setAircraft({ lat: 51.2800, lon: 6.7600, onGround: true, groundSpeed: 5 });
+const baseFlight = {
+  flight_id: 'release-si-1',
+  callsign_icao: 'TEST123',
+  current_flight: { flight_origin: 'EDDL', flight_destination: 'EDDM' },
+};
+exactPathEngine.applyFlightJson({
+  flight_details: {
+    ...baseFlight,
+    current_flight: {
+      ...baseFlight.current_flight,
+      taxi_path: [
+        { lat: 51.2800, lon: 6.7600 },
+        { lat: 51.2803, lon: 6.7610 },
+      ],
+    },
+  },
+});
+assert.equal(exactPathEngine.publicState().taxi.path.length, 2);
+exactPathEngine.applyComms([{ id: 77, outgoing_message_english: 'Taxi to runway 23L via Alpha.' }]);
+assert.equal(exactPathEngine.publicState().taxi.path.length, 2, 'Path-before-clearance ordering erased the exact route.');
+assert.equal(String(exactPathEngine.publicState().taxi.pathMetadata?.clearanceId), '77');
+exactPathEngine.applyFlightJson({ flight_details: baseFlight });
+assert.equal(exactPathEngine.publicState().taxi.path.length, 2, 'Transient missing taxi_path erased the exact route.');
+exactPathEngine.setAircraft({ lat: 51.2803, lon: 6.7610, onGround: false, groundSpeed: 145, altitudeFeet: 2500 });
+exactPathEngine.applyFlightJson({ flight_details: baseFlight });
+assert.equal(exactPathEngine.publicState().taxi.path.length, 0, 'Departure taxi route was not retired after takeoff.');
+
+const simpleMap = {
+  features: [{
+    id: 'taxiway-A', kind: 'taxiway', geometry: 'line', ref: 'A',
+    coordinates: [
+      { lat: 51.2800, lon: 6.7600 },
+      { lat: 51.2800, lon: 6.7620 },
+      { lat: 51.2800, lon: 6.7640 },
+    ],
+  }],
+};
+const arrivalResult = deriveTaxiRouteFromClearance(simpleMap, {
+  aircraft: { lat: 51.2800, lon: 6.7600, onGround: true },
+  gate: { name: '42', lat: 51.2800, lon: 6.7640 },
+  flight: { clearedForLanding: true },
+  taxi: { clearance: { text: 'Taxi to gate 42 via Alpha.' } },
+});
+assert.equal(arrivalResult.mode, 'arrival');
+assert.ok(arrivalResult.routes.length > 0, arrivalResult.error || 'No arrival taxi route was derived.');
+
+const integrations = [];
+const networkEngine = {
+  publicState: () => ({
+    flight: { currentAirport: 'EDDL', origin: 'EDDL', destination: 'EDDM' },
+    planning: { selectedAirport: null },
+    aircraft: { lat: 51.28, lon: 6.76 },
+  }),
+  setIntegration: (name, value) => integrations.push({ name, value }),
+};
+const networkClient = new OnlineNetworkClient(networkEngine, {
+  pollMs: 60_000,
+  cacheMs: 0,
+  fetchImpl: async () => ({
+    ok: true,
+    json: async () => ({
+      general: { update_timestamp: new Date().toISOString(), connected_clients: 1 },
+      controllers: [], atis: [],
+      pilots: [{
+        callsign: 'DLH1AB', latitude: 51.281, longitude: 6.761,
+        altitude: 150, groundspeed: 18, heading: 230,
+        flight_plan: { departure: 'EDDL', arrival: 'EDDM', aircraft_short: 'A20N', route: 'COL DCT' },
+      }],
+    }),
+  }),
+});
+const vatsim = await networkClient.refresh('vatsim');
+assert.equal(vatsim.pilots[0].callsign, 'DLH1AB');
+assert.equal(vatsim.pilots[0].groundSpeedKnots, 18);
+assert.ok(integrations.some((entry) => entry.name === 'onlineNetworks' && entry.value.status === 'ready'));
+networkClient.stop();
+
+console.log('FLYXORA 1.24.8 release regression passed.');
