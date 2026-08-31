@@ -25,6 +25,18 @@ if (source.includes('        openTrafficPopupId = currentKey;')) {
   changed = true;
 }
 
+// The legacy 1.22 runtime can be reshaped by earlier materializers before 1.24.7 runs.
+// Add a second profile-performance pass with semantic/regex anchors and assertions so
+// the live profile cache and point budget cannot silently disappear.
+const profileCompatMarker = '// 1.24.7 robust profile performance compatibility';
+if (!source.includes(profileCompatMarker)) {
+  const cssAnchor = '\nconst css = `';
+  if (!source.includes(cssAnchor)) throw new Error('1.24.7 profile compatibility CSS anchor missing.');
+  const profileCompat = `\n${profileCompatMarker}\nawait update('public/release-1.22.0.js', (source) => {\n  let next = source;\n  if (!next.includes(\"profileRenderKey: ''\")) {\n    next = next.replace(/(\\s+altitudeColors:[^\\r\\n]+,\\r?\\n)/, \"$1    profileRenderKey: '',\\n\");\n  }\n  if (!next.includes(\"profileRenderKey: ''\")) throw new Error('1.24.7 profile state cache anchor missing.');\n\n  if (!next.includes('const profileRenderKey = [')) {\n    next = next.replace(\n      /(\\s+const track = trackPoints\\(record\\)\\.filter\\(\\(p\\) => finite\\(p\\.altitudeFeet\\) !== null\\);\\r?\\n)/,\n      \"$1    const lastProfilePoint = track.at(-1);\\n    const profileRenderKey = [state.recordId, track.length, lastProfilePoint?.time || '', state.profileAxis, state.altitudeUnit, record?.stats?.landingRateFpm ?? ''].join('|');\\n    if (state.profileRenderKey === profileRenderKey) return;\\n    state.profileRenderKey = profileRenderKey;\\n\",\n    );\n  }\n  if (!next.includes('const profileRenderKey = [')) throw new Error('1.24.7 profile render-key insertion failed.');\n\n  if (!next.includes(\"record?.status === 'recording' ? 500 : 1_200\")) {\n    next = next.replace(\n      /\\s+const stride = Math\\.max\\(1, Math\\.ceil\\(track\\.length \\/ (?:1400|1_400)\\)\\);/,\n      \"\\n    const profilePointBudget = record?.status === 'recording' ? 500 : 1_200;\\n    const stride = Math.max(1, Math.ceil(track.length / profilePointBudget));\",\n    );\n  }\n  if (!next.includes(\"record?.status === 'recording' ? 500 : 1_200\")) throw new Error('1.24.7 profile point-budget insertion failed.');\n  return next;\n});\n`;
+  source = source.replace(cssAnchor, `${profileCompat}${cssAnchor}`);
+  changed = true;
+}
+
 if (changed) {
   await fs.writeFile(filename, source, 'utf8');
   console.log('FLYXORA 1.24.7 materializer compatibility scoping applied.');
