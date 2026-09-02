@@ -33,11 +33,31 @@ await fs.writeFile('package.json', `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
 await update('src/electron-bootstrap.mjs', (source) => {
   let next = source.replace("import { app } from 'electron';", "import { app, dialog } from 'electron';");
   if (!next.includes("dialog.showErrorBox('FLYXORA Startfehler'")) {
-    next = next.replace(
-      /  } catch \(error\) \{\n    console\.error\('\[FLYXORA\] Electron bootstrap failed:', error\);\n    app\.quit\(\);\n    process\.exitCode = 1;\n  }/,
-      `  } catch (error) {\n    console.error('[FLYXORA] Electron bootstrap failed:', error);\n    const detail = error?.stack || error?.message || String(error);\n    try {\n      dialog.showErrorBox('FLYXORA Startfehler', \`FLYXORA konnte die Desktop-Oberfläche nicht initialisieren.\\n\\n\${detail}\`);\n    } catch {}\n    app.quit();\n    process.exitCode = 1;\n  }`,
-    );
+    const flyxoraCatch = [
+      "    console.error('[FLYXORA] Electron bootstrap failed:', error);",
+      '    app.quit();',
+      '    process.exitCode = 1;',
+    ].join('\n');
+    const legacyCatch = [
+      "    console.error('[Flight Deck EFB] Electron bootstrap failed:', error);",
+      '    app.quit();',
+      '    process.exitCode = 1;',
+    ].join('\n');
+    const anchor = next.includes(flyxoraCatch) ? flyxoraCatch : next.includes(legacyCatch) ? legacyCatch : null;
+    if (!anchor) throw new Error('1.24.12 bootstrap failure handler anchor is missing.');
+    const replacement = [
+      "    console.error('[FLYXORA] Electron bootstrap failed:', error);",
+      '    const detail = error?.stack || error?.message || String(error);',
+      '    try {',
+      "      dialog.showErrorBox('FLYXORA Startfehler', `FLYXORA konnte die Desktop-Oberfläche nicht initialisieren.\\n\\n${detail}`);",
+      '    } catch {}',
+      '    app.quit();',
+      '    process.exitCode = 1;',
+    ].join('\n');
+    next = next.replace(anchor, replacement);
   }
+  if (!next.includes("import { app, dialog } from 'electron';")) throw new Error('1.24.12 bootstrap dialog import was not materialized.');
+  if (!next.includes("dialog.showErrorBox('FLYXORA Startfehler'")) throw new Error('1.24.12 bootstrap failure dialog was not materialized.');
   return next;
 });
 
@@ -50,7 +70,8 @@ await update('src/electron-main.mjs', (source) => {
       `async function createWindow() {\n  const demo = process.env.SI_TAXI_DEMO === '1' || process.argv.includes('--demo');\n  updateService ||= createUpdateService();\n  // Load the local service stack only after Electron is ready and the visible\n  // startup window exists. A machine-specific server/native-module failure is\n  // therefore rendered in FLYXORA instead of occurring before any window exists.\n  const { createTaxiServer } = await import('./server.mjs');`,
     );
   }
-
+  if (next.includes("import { createTaxiServer } from './server.mjs';")) throw new Error('1.24.12 static server import remains.');
+  if (!next.includes("const { createTaxiServer } = await import('./server.mjs');")) throw new Error('1.24.12 deferred server import was not materialized.');
   return next;
 });
 
@@ -80,6 +101,8 @@ await update('build/installer.nsh', (source) => {
   ].join('\n');
 
   next = next.replace(/!macro customInstall[\s\S]*?!macroend/, replacement);
+  if (!next.includes('CreateShortCut "$DESKTOP\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe"')) throw new Error('1.24.12 desktop shortcut repair was not materialized.');
+  if (!next.includes('CreateShortCut "$SMPROGRAMS\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe"')) throw new Error('1.24.12 Start Menu shortcut repair was not materialized.');
   return next;
 });
 
