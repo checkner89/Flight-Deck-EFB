@@ -60,7 +60,24 @@ await update('build/installer.nsh', (source) => {
     next = next.replace('!macro customInit\n', '!macro customInit\n  SetShellVarContext current\n');
   }
 
-  const replacement = `!macro customInstall\n  SetShellVarContext current\n\n  ; Remove branding-era or stale shortcuts first.\n  Delete "$DESKTOP\\Flight Deck EFB.lnk"\n  Delete "$SMPROGRAMS\\Flight Deck EFB.lnk"\n  Delete "$DESKTOP\\FLYXORA.lnk"\n  Delete "$SMPROGRAMS\\FLYXORA.lnk"\n\n  ; Do not depend solely on electron-builder's shortcut phase. Recreate the\n  ; current-user shortcuts explicitly against the stable installed executable.\n  ${If} $DesktopShortcutSelection == ${BST_CHECKED}\n    CreateShortCut "$DESKTOP\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe" "" "$INSTDIR\\FLYXORA.exe" 0 SW_SHOWNORMAL "" "FLYXORA"\n  ${EndIf}\n  CreateShortCut "$SMPROGRAMS\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe" "" "$INSTDIR\\FLYXORA.exe" 0 SW_SHOWNORMAL "" "FLYXORA"\n!macroend`;
+  const replacement = [
+    '!macro customInstall',
+    '  SetShellVarContext current',
+    '',
+    '  ; Remove branding-era or stale shortcuts first.',
+    '  Delete "$DESKTOP\\Flight Deck EFB.lnk"',
+    '  Delete "$SMPROGRAMS\\Flight Deck EFB.lnk"',
+    '  Delete "$DESKTOP\\FLYXORA.lnk"',
+    '  Delete "$SMPROGRAMS\\FLYXORA.lnk"',
+    '',
+    "  ; Do not depend solely on electron-builder's shortcut phase. Recreate the",
+    '  ; current-user shortcuts explicitly against the stable installed executable.',
+    '  ${If} $DesktopShortcutSelection == ${BST_CHECKED}',
+    '    CreateShortCut "$DESKTOP\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe" "" "$INSTDIR\\FLYXORA.exe" 0 SW_SHOWNORMAL "" "FLYXORA"',
+    '  ${EndIf}',
+    '  CreateShortCut "$SMPROGRAMS\\FLYXORA.lnk" "$INSTDIR\\FLYXORA.exe" "" "$INSTDIR\\FLYXORA.exe" 0 SW_SHOWNORMAL "" "FLYXORA"',
+    '!macroend',
+  ].join('\n');
 
   next = next.replace(/!macro customInstall[\s\S]*?!macroend/, replacement);
   return next;
