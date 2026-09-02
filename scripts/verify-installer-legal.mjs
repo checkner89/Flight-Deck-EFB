@@ -13,8 +13,9 @@ assert.equal(pkg.license, 'MIT', 'Application code must remain MIT licensed.');
 assert.equal(nsis.oneClick, false, 'Installer must remain assisted so legal/tasks pages are visible.');
 assert.equal(nsis.license, 'build/license.txt', 'Installer agreement must be wired into NSIS.');
 assert.equal(nsis.include, 'build/installer.nsh', 'Custom NSIS pages must be wired into the installer.');
-assert.equal(nsis.createDesktopShortcut, true, 'Default desktop shortcut remains enabled; custom tasks page supports explicit opt-out.');
+assert.equal(nsis.createDesktopShortcut, true, 'Default desktop shortcut must remain enabled.');
 assert.equal(nsis.createStartMenuShortcut, true, 'Start Menu shortcut must remain enabled.');
+assert.equal(nsis.runAfterFinish, true, 'Assisted setup must offer/start FLYXORA after installation.');
 assert.equal(nsis.deleteAppDataOnUninstall, false, 'Uninstall must not silently delete user data.');
 
 assert.match(agreement, /MIT License/i);
@@ -29,7 +30,8 @@ assert.match(installer, /AdditionalTasksPageCreate/);
 assert.match(installer, /Create a Desktop Shortcut/);
 assert.match(installer, /DesktopShortcutSelection/);
 assert.match(installer, /customInstall/);
-assert.match(installer, /Delete "\$DESKTOP\\\$\{PRODUCT_NAME\}\.lnk"/);
+assert.match(installer, /CreateShortCut "\$DESKTOP\\FLYXORA\.lnk" "\$INSTDIR\\FLYXORA\.exe"/);
+assert.match(installer, /CreateShortCut "\$SMPROGRAMS\\FLYXORA\.lnk" "\$INSTDIR\\FLYXORA\.exe"/);
 assert.doesNotMatch(installer, /\$\{isUpdated\}|MUI_HEADER_TEXT|WS_BORDER/);
 
 for (const required of ['OpenStreetMap', 'OurAirports', 'Electron', 'Leaflet', 'node-simconnect', 'Microsoft Flight Simulator', 'SayIntentions.AI', 'PMDG', 'GSX']) {
@@ -39,6 +41,6 @@ assert.doesNotMatch(notices, /TaxiNow|Sky Ning|X-Plane Scenery Gateway|micromamb
 assert.match(thirdParty, /FLYXORA/i);
 assert.match(privacy, /FLYXORA/i);
 assert.doesNotMatch(thirdParty, /Flight Deck EFB/i, 'Current third-party notices still expose the retired product name.');
-assert.doesNotMatch(privacy, /Flight Deck EFB/i, 'Current privacy notice still exposes the retired product name.');
+assert.doesNotMatch(privacy, /Flight Deck EFB/i, 'Current privacy notice still expose the retired product name.');
 
 console.log('Installer legal/tasks regression checks passed.');
