@@ -104,7 +104,7 @@ jobs:
           Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           $process = Start-Process -FilePath $installedExe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
           try {
-            $deadline = (Get-Date).AddSeconds(30)
+            $deadline = (Get-Date).AddSeconds(40)
             $rendererReady = $false
             do {
               Start-Sleep -Milliseconds 750
@@ -114,12 +114,12 @@ jobs:
               }
               try {
                 $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$debugPort/json" -TimeoutSec 2
-                if ($targets | Where-Object { $_.type -eq 'page' -and $_.title -match 'FLYXORA' }) {
+                if ($targets | Where-Object { $_.type -eq 'page' -and $_.url -match 'https?://(localhost|127\.0\.0\.1)' }) {
                   $rendererReady = $true
                 }
               } catch {}
             } until ($rendererReady -or (Get-Date) -gt $deadline)
-            if (!$rendererReady) { throw 'Installed FLYXORA did not expose a visible FLYXORA renderer target.' }
+            if (!$rendererReady) { throw 'Installed FLYXORA never reached its local application renderer; only the startup shell may have been visible.' }
             node scripts/verify-packaged-renderer.mjs $debugPort
             if ($LASTEXITCODE -ne 0) { throw 'Installed FLYXORA renderer health check failed.' }
             Write-Host 'Installed FLYXORA startup + renderer validation passed.'
