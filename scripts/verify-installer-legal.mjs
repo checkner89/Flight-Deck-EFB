@@ -29,7 +29,15 @@ assert.match(installer, /AdditionalTasksPageCreate/);
 assert.match(installer, /Create a Desktop Shortcut/);
 assert.match(installer, /DesktopShortcutSelection/);
 assert.match(installer, /customInstall/);
-assert.match(installer, /Delete "\$DESKTOP\\\$\{PRODUCT_NAME\}\.lnk"/);
+if (pkg.version === '1.24.12') {
+  assert.match(installer, /SetShellVarContext current/);
+  assert.match(installer, /Delete "\$DESKTOP\\FLYXORA\.lnk"/);
+  assert.match(installer, /Delete "\$SMPROGRAMS\\FLYXORA\.lnk"/);
+  assert.match(installer, /CreateShortCut "\$DESKTOP\\FLYXORA\.lnk" "\$INSTDIR\\FLYXORA\.exe"/);
+  assert.match(installer, /CreateShortCut "\$SMPROGRAMS\\FLYXORA\.lnk" "\$INSTDIR\\FLYXORA\.exe"/);
+} else {
+  assert.match(installer, /Delete "\$DESKTOP\\\$\{PRODUCT_NAME\}\.lnk"/);
+}
 assert.doesNotMatch(installer, /\$\{isUpdated\}|MUI_HEADER_TEXT|WS_BORDER/);
 
 for (const required of ['OpenStreetMap', 'OurAirports', 'Electron', 'Leaflet', 'node-simconnect', 'Microsoft Flight Simulator', 'SayIntentions.AI', 'PMDG', 'GSX']) {
@@ -39,6 +47,6 @@ assert.doesNotMatch(notices, /TaxiNow|Sky Ning|X-Plane Scenery Gateway|micromamb
 assert.match(thirdParty, /FLYXORA/i);
 assert.match(privacy, /FLYXORA/i);
 assert.doesNotMatch(thirdParty, /Flight Deck EFB/i, 'Current third-party notices still expose the retired product name.');
-assert.doesNotMatch(privacy, /Flight Deck EFB/i, 'Current privacy notice still exposes the retired product name.');
+assert.doesNotMatch(privacy, /Flight Deck EFB/i, 'Current privacy notice still expose the retired product name.');
 
 console.log('Installer legal/tasks regression checks passed.');

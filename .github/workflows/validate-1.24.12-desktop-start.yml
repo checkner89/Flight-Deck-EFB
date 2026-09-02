@@ -1,0 +1,128 @@
+name: Validate 1.24.12 Desktop Startup Repair
+
+on:
+  push:
+    branches:
+      - 'fix/1.24.12-desktop-start-repair'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-windows-repair:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install and materialize 1.24.12
+        run: npm install
+
+      - name: Verify repair contracts
+        shell: pwsh
+        run: |
+          node --check src/electron-bootstrap.mjs
+          node --check src/electron-main.mjs
+          node --check scripts/apply-release-1.24.12.mjs
+          node --check scripts/prepare-release-1.24.12.mjs
+          node scripts/test-single-instance-bootstrap.mjs
+          node scripts/test-update-state-persistence.mjs
+          node scripts/test-feature-1.24-flight-tracking.mjs
+          node scripts/verify-installer-legal.mjs
+          node scripts/test-release-1.24.12.mjs
+
+      - name: Build complete Windows distribution
+        run: npm run dist
+
+      - name: Verify installer artifacts
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $required = @(
+            "dist/FLYXORA-Setup-$version.exe",
+            "dist/FLYXORA-Setup-$version.exe.blockmap",
+            'dist/latest.yml',
+            'dist/win-unpacked/FLYXORA.exe'
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing repair artifact: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch "version:\s*$([regex]::Escape($version))") {
+            throw "latest.yml does not advertise $version."
+          }
+
+      - name: Install repair build and verify Windows shortcuts
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installer = (Resolve-Path "dist/FLYXORA-Setup-$version.exe").Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'flyxora-installed'
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          $programs = [Environment]::GetFolderPath('Programs')
+          $desktopLink = Join-Path $desktop 'FLYXORA.lnk'
+          $startLink = Join-Path $programs 'FLYXORA.lnk'
+
+          Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Remove-Item $desktopLink -Force -ErrorAction SilentlyContinue
+          Remove-Item $startLink -Force -ErrorAction SilentlyContinue
+          Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+
+          $setup = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installDir") -PassThru -Wait
+          if ($setup.ExitCode -ne 0) { throw "Silent repair install failed with exit code $($setup.ExitCode)." }
+
+          $installedExe = Join-Path $installDir 'FLYXORA.exe'
+          if (!(Test-Path $installedExe)) { throw "Installed executable is missing: $installedExe" }
+          if (!(Test-Path $desktopLink)) { throw "Desktop shortcut was not created: $desktopLink" }
+          if (!(Test-Path $startLink)) { throw "Start Menu shortcut was not created: $startLink" }
+
+          $shell = New-Object -ComObject WScript.Shell
+          $desktopTarget = $shell.CreateShortcut($desktopLink).TargetPath
+          $startTarget = $shell.CreateShortcut($startLink).TargetPath
+          if ([IO.Path]::GetFullPath($desktopTarget) -ne [IO.Path]::GetFullPath($installedExe)) {
+            throw "Desktop shortcut targets '$desktopTarget' instead of '$installedExe'."
+          }
+          if ([IO.Path]::GetFullPath($startTarget) -ne [IO.Path]::GetFullPath($installedExe)) {
+            throw "Start Menu shortcut targets '$startTarget' instead of '$installedExe'."
+          }
+          Write-Host 'Fresh/repair installer created valid Desktop and Start Menu shortcuts.'
+
+      - name: Launch installed FLYXORA and verify visible renderer
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:RUNNER_TEMP 'flyxora-installed'
+          $installedExe = Join-Path $installDir 'FLYXORA.exe'
+          $debugPort = 9444
+          Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $process = Start-Process -FilePath $installedExe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(40)
+            $rendererReady = $false
+            do {
+              Start-Sleep -Milliseconds 750
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Installed FLYXORA exited during startup with code $($process.ExitCode)."
+              }
+              try {
+                $targets = Invoke-RestMethod -Uri "http://127.0.0.1:$debugPort/json" -TimeoutSec 2
+                if ($targets | Where-Object { $_.type -eq 'page' -and $_.url -match 'https?://(localhost|127\.0\.0\.1)' }) {
+                  $rendererReady = $true
+                }
+              } catch {}
+            } until ($rendererReady -or (Get-Date) -gt $deadline)
+            if (!$rendererReady) { throw 'Installed FLYXORA never reached its local application renderer; only the startup shell may have been visible.' }
+            node scripts/verify-packaged-renderer.mjs $debugPort
+            if ($LASTEXITCODE -ne 0) { throw 'Installed FLYXORA renderer health check failed.' }
+            Write-Host 'Installed FLYXORA startup + renderer validation passed.'
+          } finally {
+            Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          }
