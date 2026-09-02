@@ -96,10 +96,19 @@ jobs:
           } finally {
             Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           }
+          $deadline = (Get-Date).AddSeconds(10)
+          do {
+            $remaining = @(Get-Process FLYXORA -ErrorAction SilentlyContinue)
+            if ($remaining.Count -gt 0) { Start-Sleep -Milliseconds 300 }
+          } while ($remaining.Count -gt 0 -and (Get-Date) -lt $deadline)
+          if ($remaining.Count -gt 0) { throw 'FLYXORA processes did not fully stop after the installed smoke test.' }
+          Start-Sleep -Seconds 2
 
       - name: Verify UI survives unavailable SimConnect runtime
         shell: pwsh
         run: |
+          Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
           $exe = Get-Content (Join-Path $env:RUNNER_TEMP 'flyxora-installed-exe.txt') -Raw
           $root = Split-Path $exe -Parent
           $runtime = Join-Path $root 'resources\app.asar.unpacked\node_modules\node-simconnect'
@@ -115,7 +124,10 @@ jobs:
               $process.Refresh()
               if ($process.HasExited) { throw "FLYXORA exited when SimConnect runtime was unavailable: $($process.ExitCode)." }
               node scripts/verify-packaged-renderer.mjs $debugPort
-              if ($LASTEXITCODE -ne 0) { throw 'FLYXORA UI did not survive unavailable SimConnect runtime.' }
+              if ($LASTEXITCODE -ne 0) {
+                Get-ChildItem $env:APPDATA -Filter 'startup-error.log' -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "--- $($_.FullName) ---"; Get-Content $_.FullName }
+                throw 'FLYXORA UI did not survive unavailable SimConnect runtime.'
+              }
               Write-Host 'FLYXORA UI remains usable when optional SimConnect runtime cannot load.'
             } finally {
               Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
