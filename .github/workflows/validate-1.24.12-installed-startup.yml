@@ -1,0 +1,140 @@
+name: Validate 1.24.12 Installed Startup
+
+on:
+  push:
+    branches:
+      - 'fix/1.24.12-installed-startup-shortcuts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-installed-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install and materialize 1.24.12
+        run: npm install
+
+      - name: Verify release source and regressions
+        shell: pwsh
+        run: |
+          node --check scripts/prepare-release-1.24.12.mjs
+          node --check scripts/apply-release-1.24.12.mjs
+          node --check src/electron-bootstrap.mjs
+          node --check src/electron-main.mjs
+          node --check src/simconnect-client.mjs
+          node scripts/verify-installer-legal.mjs
+          node scripts/test-single-instance-bootstrap.mjs
+          node scripts/test-update-state-persistence.mjs
+          node scripts/test-feature-1.24-flight-tracking.mjs
+          node scripts/test-release-1.24.12.mjs
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Install built setup silently
+        shell: pwsh
+        run: |
+          $setup = Resolve-Path 'dist/FLYXORA-Setup-1.24.12.exe'
+          Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          $install = Start-Process -FilePath $setup -ArgumentList '/S' -PassThru -Wait
+          if ($install.ExitCode -ne 0) { throw "FLYXORA setup failed with exit code $($install.ExitCode)." }
+          Start-Sleep -Seconds 3
+
+          $expected = Join-Path $env:LOCALAPPDATA 'Programs\FLYXORA\FLYXORA.exe'
+          if (!(Test-Path $expected)) {
+            $candidate = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Filter 'FLYXORA.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (!$candidate) { throw 'Installed FLYXORA.exe was not found below LocalAppData\Programs.' }
+            $expected = $candidate.FullName
+          }
+          Set-Content -Path (Join-Path $env:RUNNER_TEMP 'flyxora-installed-exe.txt') -Value $expected -NoNewline
+          Write-Host "Installed executable: $expected"
+
+      - name: Verify installed shortcuts
+        shell: pwsh
+        run: |
+          $desktop = [Environment]::GetFolderPath('Desktop')
+          $programs = [Environment]::GetFolderPath('Programs')
+          $desktopLink = Join-Path $desktop 'FLYXORA.lnk'
+          $startLink = Join-Path $programs 'FLYXORA.lnk'
+          if (!(Test-Path $desktopLink)) { throw "Desktop shortcut missing: $desktopLink" }
+          if (!(Test-Path $startLink)) { throw "Start Menu shortcut missing: $startLink" }
+
+          $shell = New-Object -ComObject WScript.Shell
+          $desktopTarget = $shell.CreateShortcut($desktopLink).TargetPath
+          $startTarget = $shell.CreateShortcut($startLink).TargetPath
+          if (!(Test-Path $desktopTarget)) { throw "Desktop shortcut target missing: $desktopTarget" }
+          if (!(Test-Path $startTarget)) { throw "Start Menu shortcut target missing: $startTarget" }
+          if ((Split-Path $desktopTarget -Leaf) -ne 'FLYXORA.exe') { throw "Desktop shortcut target is not FLYXORA.exe: $desktopTarget" }
+          if ((Split-Path $startTarget -Leaf) -ne 'FLYXORA.exe') { throw "Start Menu shortcut target is not FLYXORA.exe: $startTarget" }
+          Write-Host 'Installed desktop and Start Menu shortcuts are valid.'
+
+      - name: Smoke test installed FLYXORA
+        shell: pwsh
+        run: |
+          $exe = Get-Content (Join-Path $env:RUNNER_TEMP 'flyxora-installed-exe.txt') -Raw
+          $debugPort = 9444
+          $process = Start-Process -FilePath $exe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
+          try {
+            Start-Sleep -Seconds 5
+            $process.Refresh()
+            if ($process.HasExited) { throw "Installed FLYXORA exited during startup with code $($process.ExitCode)." }
+            node scripts/verify-packaged-renderer.mjs $debugPort
+            if ($LASTEXITCODE -ne 0) { throw 'Installed FLYXORA renderer health check failed.' }
+            Write-Host 'Installed FLYXORA process + renderer smoke test passed.'
+          } finally {
+            Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify UI survives unavailable SimConnect runtime
+        shell: pwsh
+        run: |
+          $exe = Get-Content (Join-Path $env:RUNNER_TEMP 'flyxora-installed-exe.txt') -Raw
+          $root = Split-Path $exe -Parent
+          $runtime = Join-Path $root 'resources\app.asar.unpacked\node_modules\node-simconnect'
+          $disabled = "$runtime.disabled"
+          if (!(Test-Path $runtime)) { throw "Unpacked node-simconnect runtime was not found: $runtime" }
+          if (Test-Path $disabled) { Remove-Item $disabled -Recurse -Force }
+          Move-Item $runtime $disabled
+          $debugPort = 9445
+          try {
+            $process = Start-Process -FilePath $exe -ArgumentList @('--demo', "--remote-debugging-port=$debugPort") -PassThru
+            try {
+              Start-Sleep -Seconds 6
+              $process.Refresh()
+              if ($process.HasExited) { throw "FLYXORA exited when SimConnect runtime was unavailable: $($process.ExitCode)." }
+              node scripts/verify-packaged-renderer.mjs $debugPort
+              if ($LASTEXITCODE -ne 0) { throw 'FLYXORA UI did not survive unavailable SimConnect runtime.' }
+              Write-Host 'FLYXORA UI remains usable when optional SimConnect runtime cannot load.'
+            } finally {
+              Get-Process FLYXORA -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+          } finally {
+            if (Test-Path $disabled) { Move-Item $disabled $runtime }
+          }
+
+      - name: Verify updater artifacts
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/FLYXORA-Setup-1.24.12.exe',
+            'dist/FLYXORA-Setup-1.24.12.exe.blockmap',
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Missing release asset: $file" }
+          }
+          $latest = Get-Content 'dist/latest.yml' -Raw
+          if ($latest -notmatch 'version:\s*1\.24\.12') { throw 'latest.yml does not advertise 1.24.12.' }
+          Write-Host '1.24.12 installer and updater assets verified.'
