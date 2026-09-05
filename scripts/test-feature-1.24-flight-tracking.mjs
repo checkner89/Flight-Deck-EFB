@@ -10,7 +10,14 @@ const [pkgRaw, app, runtime, css] = await Promise.all([
 const pkg = JSON.parse(pkgRaw);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 const reject = (source, value, message) => { if (source.includes(value)) throw new Error(message); };
-const modernTraffic = ['1.24.2', '1.24.3', '1.24.4', '1.24.5', '1.24.6', '1.24.7', '1.24.8', '1.24.9', '1.24.10', '1.24.11', '1.24.12'].includes(pkg.version);
+const versionParts = String(pkg.version || '0.0.0').split(/[.-]/).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+const versionAtLeast = (major, minor, patch) => {
+  const [currentMajor, currentMinor, currentPatch] = versionParts;
+  if (currentMajor !== major) return currentMajor > major;
+  if (currentMinor !== minor) return currentMinor > minor;
+  return currentPatch >= patch;
+};
+const modernTraffic = versionAtLeast(1, 24, 2);
 
 need(app, 'let openTrafficPopupId = null;', 'Sticky traffic popup state is missing.');
 if (modernTraffic) {
