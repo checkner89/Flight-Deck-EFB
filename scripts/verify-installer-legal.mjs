@@ -29,7 +29,7 @@ assert.match(installer, /AdditionalTasksPageCreate/);
 assert.match(installer, /Create a Desktop Shortcut/);
 assert.match(installer, /DesktopShortcutSelection/);
 assert.match(installer, /customInstall/);
-if (pkg.version === '1.24.12') {
+if (['1.24.12', '1.24.13'].includes(pkg.version)) {
   assert.match(installer, /SetShellVarContext current/);
   assert.match(installer, /Delete "\$DESKTOP\\FLYXORA\.lnk"/);
   assert.match(installer, /Delete "\$SMPROGRAMS\\FLYXORA\.lnk"/);
