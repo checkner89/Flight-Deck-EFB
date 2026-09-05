@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 
-const [pkgSource, electronMain, materializer, releaseOrchestrator, finalReleaseWrapper, recoveryReleaseWrapper, foregroundRecoveryWrapper, desktopRepairWrapper] = await Promise.all([
+const [pkgSource, electronMain, materializer, releaseOrchestrator, finalReleaseWrapper, recoveryReleaseWrapper, foregroundRecoveryWrapper, desktopRepairWrapper, newsRemovalReleaseWrapper] = await Promise.all([
   fs.readFile('package.json', 'utf8'),
   fs.readFile('src/electron-main.mjs', 'utf8'),
   fs.readFile('scripts/apply-feature-1.23.2-update-persistence.mjs', 'utf8'),
@@ -9,12 +9,20 @@ const [pkgSource, electronMain, materializer, releaseOrchestrator, finalReleaseW
   fs.readFile('scripts/prepare-release-1.24.10.mjs', 'utf8').catch(() => ''),
   fs.readFile('scripts/prepare-release-1.24.11.mjs', 'utf8').catch(() => ''),
   fs.readFile('scripts/prepare-release-1.24.12.mjs', 'utf8').catch(() => ''),
+  fs.readFile('scripts/prepare-release-1.24.13.mjs', 'utf8').catch(() => ''),
 ]);
 const pkg = JSON.parse(pkgSource);
 const need = (source, value, message) => { if (!source.includes(value)) throw new Error(message); };
 
 const prepareRelease = pkg.scripts['prepare:release'] || '';
-if (prepareRelease.includes('prepare-release-1.24.12.mjs')) {
+if (prepareRelease.includes('prepare-release-1.24.13.mjs')) {
+  need(newsRemovalReleaseWrapper, "'scripts/prepare-release-1.24.12.mjs'", '1.24.13 News-removal release wrapper does not invoke the 1.24.12 desktop/startup repair wrapper.');
+  need(desktopRepairWrapper, "'scripts/prepare-release-1.24.11.mjs'", '1.24.12 desktop/startup repair wrapper does not invoke the 1.24.11 foreground recovery wrapper.');
+  need(foregroundRecoveryWrapper, "'scripts/prepare-release-1.24.10.mjs'", '1.24.11 foreground recovery wrapper does not invoke the 1.24.10 recovery wrapper.');
+  need(recoveryReleaseWrapper, "'scripts/prepare-release-1.24.9.mjs'", '1.24.10 recovery wrapper does not invoke the 1.24.9 release wrapper.');
+  need(finalReleaseWrapper, "'scripts/prepare-release.mjs'", '1.24.9 final release wrapper does not invoke the release orchestrator.');
+  need(releaseOrchestrator, 'scripts/apply-feature-1.23.2-update-persistence.mjs', 'Update persistence materializer is not wired into the release orchestrator.');
+} else if (prepareRelease.includes('prepare-release-1.24.12.mjs')) {
   need(desktopRepairWrapper, "'scripts/prepare-release-1.24.11.mjs'", '1.24.12 desktop/startup repair wrapper does not invoke the 1.24.11 foreground recovery wrapper.');
   need(foregroundRecoveryWrapper, "'scripts/prepare-release-1.24.10.mjs'", '1.24.11 foreground recovery wrapper does not invoke the 1.24.10 recovery wrapper.');
   need(recoveryReleaseWrapper, "'scripts/prepare-release-1.24.9.mjs'", '1.24.10 recovery wrapper does not invoke the 1.24.9 release wrapper.');
