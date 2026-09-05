@@ -78,7 +78,7 @@ try {
       setupTile = grid?.querySelector('[data-pilot-tool="sim-session"]') || null;
       newsTile = grid?.querySelector('[data-news-app-tile]') || null;
       const pilotShell = document.querySelector('#pilot-tools-shell');
-      if (document.readyState === 'complete' && app && grid && pilotScript && nativeScript && scratchTile && setupTile && newsTile && pilotShell) break;
+      if (document.readyState === 'complete' && app && grid && pilotScript && nativeScript && scratchTile && setupTile && pilotShell) break;
       await sleep(100);
     }
 
@@ -170,11 +170,12 @@ try {
         pilotScript: pilotScript?.src || null,
         nativeScript: nativeScript?.src || null,
         resourceNames,
+        newsPresent: Boolean(newsTile),
         pilotFetch,
         desktopSessionRecovery,
         mutations,
         scratch,
-        tiles: { established: tileMetrics(establishedTile), scratchpad: tileMetrics(scratchTile), setup: tileMetrics(setupTile), news: tileMetrics(newsTile) },
+        tiles: { established: tileMetrics(establishedTile), scratchpad: tileMetrics(scratchTile), setup: tileMetrics(setupTile) },
       });
     }, 900);
   })`;
@@ -196,6 +197,8 @@ try {
   if (value.pairOverlayVisible) throw new Error(`Desktop pairing/recovery overlay is visible in packaged Electron (display=${value.pairOverlayDisplay}).`);
   if (value.textLength < 200) throw new Error(`Renderer looks blank: only ${value.textLength} visible text characters.`);
   if (value.tileCount < 8) throw new Error(`Home app launcher is incomplete: ${value.tileCount} tiles.`);
+  if (value.newsPresent) throw new Error('Retired News app tile is still present in the packaged renderer.');
+  if ((value.resourceNames || []).some((name) => /news-app/i.test(name))) throw new Error(`Retired News assets are still loaded by the packaged renderer: ${JSON.stringify(value.resourceNames)}`);
   if (!value.pilotScript) throw new Error('Pilot Tools script tag is missing from the packaged HTML.');
   if (value.pilotFetch?.status !== 200) throw new Error(`Pilot Tools asset is not served correctly: ${JSON.stringify(value.pilotFetch)}`);
   if (!value.pilotShell) throw new Error('Pilot Tools shell was not initialized.');
@@ -208,18 +211,18 @@ try {
   if (!value.scratch?.canvasBackground || /rgba?\(0,\s*0,\s*0(?:,\s*(?:0|1))?\)/.test(value.scratch.canvasBackground)) throw new Error(`Scratchpad canvas is still dark: ${value.scratch?.canvasBackground}`);
   if (value.scratch.colorControls < 5 || value.scratch.customColors < 1) throw new Error('Scratchpad pen/marker color controls are missing.');
   if (!value.scratch.imageInsert) throw new Error('Scratchpad image insert action is missing.');
-  for (const name of ['scratchpad', 'setup', 'news']) {
+  for (const name of ['scratchpad', 'setup']) {
     const metrics = value.tiles?.[name];
     if (!metrics?.copySmall || !metrics?.copyTitle || !metrics?.copyDescription) throw new Error(`New app tile ${name} does not use the established tile content hierarchy.`);
   }
   const reference = value.tiles?.established;
   if (reference) {
-    for (const name of ['scratchpad', 'setup', 'news']) {
+    for (const name of ['scratchpad', 'setup']) {
       const metrics = value.tiles?.[name];
       if (Math.abs((metrics?.iconWidth || 0) - reference.iconWidth) > 3) throw new Error(`New app tile ${name} uses a different icon geometry.`);
     }
   }
-  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, desktop overlay suppressed, session recovery verified, bright Scratchpad, unified new tiles, ${value.mutations} launcher mutations/900ms.`);
+  console.log(`Packaged renderer healthy: ${value.tileCount} tiles, News absent, desktop overlay suppressed, session recovery verified, bright Scratchpad, unified remaining new tiles, ${value.mutations} launcher mutations/900ms.`);
 } finally {
   socket.close();
 }
