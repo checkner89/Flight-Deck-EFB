@@ -64,6 +64,8 @@ if (await isMaterialized()) {
   run('scripts/apply-release-1.24.13.mjs');
 }
 
+run('scripts/apply-feature-remove-disabled-navigraph.mjs');
+
 const finalPackage = await readPackage();
 if (finalPackage.version !== FINAL_VERSION) {
   throw new Error(`FLYXORA ${FINAL_VERSION} preparation did not restore package version ${FINAL_VERSION}.`);
