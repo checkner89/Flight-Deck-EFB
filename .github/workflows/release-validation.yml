@@ -39,45 +39,80 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Syntax check failed: $($file.FullName)" }
           }
 
-      - name: Run current core regressions
+      - name: Single-instance bootstrap regression
+        run: node scripts/test-single-instance-bootstrap.mjs
+
+      - name: Flight Journey engine regression
+        if: always()
+        run: node scripts/test-flight-journey-engine.mjs
+
+      - name: Flight Journey service regression
+        if: always()
+        run: node scripts/test-flight-journey-service.mjs
+
+      - name: Briefing readiness regression
+        if: always()
+        run: node scripts/test-briefing-readiness-engine.mjs
+
+      - name: Updater persistence regression
+        if: always()
+        run: node scripts/test-update-state-persistence.mjs
+
+      - name: Pilot tools regression
+        if: always()
+        run: node scripts/test-pilot-tools.mjs
+
+      - name: Flight Tracking regression
+        if: always()
+        run: node scripts/test-feature-1.24-flight-tracking.mjs
+
+      - name: Current release regression
+        if: always()
+        run: node scripts/test-release-1.24.13.mjs
+
+      - name: UI polish regression
+        if: always()
+        run: node scripts/test-ui-polish.mjs
+
+      - name: COM UI regression
+        if: always()
+        run: node scripts/test-com-ui.mjs
+
+      - name: ATC UI regression
+        if: always()
+        run: node scripts/test-atc-ui.mjs
+
+      - name: Ground and Taxi UI regression
+        if: always()
+        run: node scripts/test-ground-ui.mjs
+
+      - name: Live Traffic regression
+        if: always()
+        run: node scripts/test-live-traffic.mjs
+
+      - name: Traffic merge regression
+        if: always()
         shell: pwsh
         run: |
-          npm run test:ops
-          if ($LASTEXITCODE -ne 0) { throw 'Operational regression suite failed.' }
-
-          npm run test:ui
-          if ($LASTEXITCODE -ne 0) { throw 'UI regression suite failed.' }
-
-          npm run test:ground
-          if ($LASTEXITCODE -ne 0) { throw 'Ground/Taxi regression suite failed.' }
-
-          npm run test:com
-          if ($LASTEXITCODE -ne 0) { throw 'COM regression suite failed.' }
-
-          npm run test:atc
-          if ($LASTEXITCODE -ne 0) { throw 'ATC regression suite failed.' }
-
-          npm run test:profiles
-          if ($LASTEXITCODE -ne 0) { throw 'Aircraft/GSX profile regression suite failed.' }
-
-      - name: Run Traffic and integration regressions
-        shell: pwsh
-        run: |
-          node scripts/test-live-traffic.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Live Traffic regression failed.' }
-
           if (Test-Path 'scripts/test-traffic-merge.mjs') {
             node scripts/test-traffic-merge.mjs
-            if ($LASTEXITCODE -ne 0) { throw 'Traffic merge regression failed.' }
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
-          node scripts/verify-msfs-efb-builder.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'MSFS EFB builder verification failed.' }
+      - name: GSX profile regression
+        if: always()
+        run: node scripts/test-gsx-profile-manager.mjs
 
-          node scripts/verify-installer-legal.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Installer/legal verification failed.' }
+      - name: MSFS EFB builder verification
+        if: always()
+        run: node scripts/verify-msfs-efb-builder.mjs
+
+      - name: Installer and legal verification
+        if: always()
+        run: node scripts/verify-installer-legal.mjs
 
       - name: Verify current release wiring
+        if: always()
         shell: pwsh
         run: |
           $version = node -p "require('./package.json').version"
@@ -87,32 +122,16 @@ jobs:
           $serviceWorker = Get-Content 'public/service-worker.js' -Raw
           $electronMain = Get-Content 'src/electron-main.mjs' -Raw
 
-          if ($html -notmatch "data-app-version=\"$escapedVersion\"") {
-            throw "Renderer version does not match $version."
-          }
-          if ($server -notmatch "const APP_VERSION = '$escapedVersion';") {
-            throw "Server version does not match $version."
-          }
-          if ($serviceWorker -notmatch [regex]::Escape($version)) {
-            throw "Service worker cache does not match $version."
-          }
-          if ($html -notmatch "pilot-tools\.js\?v=$escapedVersion" -or $html -notmatch "sim-session-native\.js\?v=$escapedVersion") {
-            throw "$version current pilot/runtime assets are not wired."
-          }
-          if ($html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") {
-            throw "$version current document/file workspaces are not wired."
-          }
+          if ($html -notmatch "data-app-version=\"$escapedVersion\"") { throw "Renderer version does not match $version." }
+          if ($server -notmatch "const APP_VERSION = '$escapedVersion';") { throw "Server version does not match $version." }
+          if ($serviceWorker -notmatch [regex]::Escape($version)) { throw "Service worker cache does not match $version." }
+          if ($html -notmatch "pilot-tools\.js\?v=$escapedVersion" -or $html -notmatch "sim-session-native\.js\?v=$escapedVersion") { throw "$version current pilot/runtime assets are not wired." }
+          if ($html -notmatch "documents-workspace\.js\?v=$escapedVersion(?:-docs[0-9]+)?" -or $html -notmatch "file-browser\.js\?v=$escapedVersion") { throw "$version current document/file workspaces are not wired." }
 
           if ($version -eq '1.24.13') {
-            if ($html -match 'news-app\.(?:js|css)' -or $serviceWorker -match 'news-app\.(?:js|css)' -or $server -match '/api/news/') {
-              throw '1.24.13 News-removal regression detected.'
-            }
-            if ($electronMain -match "mainWindow\.on\('close'[\s\S]{0,240}event\.preventDefault\(\)") {
-              throw '1.24.13 close-to-tray regression detected.'
-            }
-            if ($electronMain -notmatch "app\.on\('window-all-closed', \(\) => \{\s*app\.quit\(\);\s*\}\);") {
-              throw '1.24.13 quit-on-window-close behavior is missing.'
-            }
+            if ($html -match 'news-app\.(?:js|css)' -or $serviceWorker -match 'news-app\.(?:js|css)' -or $server -match '/api/news/') { throw '1.24.13 News-removal regression detected.' }
+            if ($electronMain -match "mainWindow\.on\('close'[\s\S]{0,240}event\.preventDefault\(\)") { throw '1.24.13 close-to-tray regression detected.' }
+            if ($electronMain -notmatch "app\.on\('window-all-closed', \(\) => \{\s*app\.quit\(\);\s*\}\);") { throw '1.24.13 quit-on-window-close behavior is missing.' }
           }
 
           Write-Host "Release $version validation passed."
