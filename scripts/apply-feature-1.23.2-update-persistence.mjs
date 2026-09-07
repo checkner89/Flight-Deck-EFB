@@ -9,6 +9,20 @@ async function update(filename, transform) {
 await update('src/electron-main.mjs', (source) => {
   let next = source;
 
+  if (!next.includes('let updateInstallPending = false;')) {
+    const anchor = 'let updateService;';
+    if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: update service state');
+    next = next.replace(anchor, `${anchor}\nlet updateInstallPending = false;`);
+  }
+
+  // A failed update check does not leave a valid UpdateInfoAndProvider behind. Calling
+  // downloadUpdate() from the generic error state only turns the original failure into a
+  // second, misleading updater error. Require a positively detected release instead.
+  next = next.replace(
+    "      if (!['available', 'error'].includes(value.state)) return { ...value };",
+    "      if (value.state !== 'available') return { ...value };",
+  );
+
   if (!next.includes("const BROWSER_STATE_BACKUP_FILE = 'browser-state-backup.json';")) {
     const anchor = 'function createUpdateService() {';
     if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: update service');
@@ -97,7 +111,11 @@ ${anchor}`);
   if (!next.includes("persistBrowserStateSnapshot({ reason: 'update', restoreAll: true })")) {
     const anchor = "      set({ state: 'downloaded', detail: 'Flight Deck EFB wird neu gestartet und aktualisiert.' });\n      setTimeout(() => autoUpdater.quitAndInstall(false, true), 650);";
     if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: updater install');
-    next = next.replace(anchor, "      set({ state: 'downloaded', detail: 'Flight Deck EFB wird neu gestartet und aktualisiert.' });\n      await persistBrowserStateSnapshot({ reason: 'update', restoreAll: true });\n      setTimeout(() => autoUpdater.quitAndInstall(false, true), 650);");
+    next = next.replace(anchor, "      set({ state: 'downloaded', detail: 'Flight Deck EFB wird neu gestartet und aktualisiert.' });\n      const updateSnapshotPersisted = await persistBrowserStateSnapshot({ reason: 'update', restoreAll: true });\n      updateInstallPending = updateSnapshotPersisted;\n      setTimeout(() => autoUpdater.quitAndInstall(false, true), 650);");
+  } else if (!next.includes('updateInstallPending = updateSnapshotPersisted;')) {
+    const anchor = "      await persistBrowserStateSnapshot({ reason: 'update', restoreAll: true });\n      setTimeout(() => autoUpdater.quitAndInstall(false, true), 650);";
+    if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: existing updater snapshot');
+    next = next.replace(anchor, "      const updateSnapshotPersisted = await persistBrowserStateSnapshot({ reason: 'update', restoreAll: true });\n      updateInstallPending = updateSnapshotPersisted;\n      setTimeout(() => autoUpdater.quitAndInstall(false, true), 650);");
   }
 
   if (!next.includes('const browserStateRestored = await restoreBrowserStateSnapshot(mainWindow);')) {
@@ -113,7 +131,22 @@ ${anchor}`);
   if (!next.includes("persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })")) {
     const anchor = "  shutdownStarted = true;\n  taxiServer.close().finally(() => {\n    taxiServer = null;\n    tray?.destroy();\n    tray = null;\n    app.quit();\n  });";
     if (!next.includes(anchor)) throw new Error('1.23.2 update persistence anchor missing: shutdown');
-    next = next.replace(anchor, "  shutdownStarted = true;\n  Promise.resolve()\n    .then(() => persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false }))\n    .catch(() => false)\n    .then(() => taxiServer.close())\n    .finally(() => {\n      taxiServer = null;\n      tray?.destroy();\n      tray = null;\n      app.quit();\n    });");
+    next = next.replace(anchor, "  shutdownStarted = true;\n  Promise.resolve()\n    .then(() => updateInstallPending ? true : persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false }))\n    .catch(() => false)\n    .then(() => taxiServer.close())\n    .finally(() => {\n      taxiServer = null;\n      tray?.destroy();\n      tray = null;\n      app.quit();\n    });");
+  } else {
+    next = next.replace(
+      ".then(() => persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false }))",
+      ".then(() => updateInstallPending ? true : persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false }))",
+    );
+  }
+
+  if (!next.includes("if (value.state !== 'available') return { ...value };")) {
+    throw new Error('Updater download guard still allows a non-available state.');
+  }
+  if (!next.includes('updateInstallPending = updateSnapshotPersisted;')) {
+    throw new Error('Update-install snapshot is not marked as pending.');
+  }
+  if (!next.includes("updateInstallPending ? true : persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })")) {
+    throw new Error('Normal shutdown can still overwrite the update restore snapshot.');
   }
 
   return next;
