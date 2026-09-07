@@ -6,9 +6,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const version = String(pkg.version || '1.20.1');
 
-async function update(relativePath, transform) {
+async function update(relativePath, transform, { optional = false } = {}) {
   const filename = path.join(root, relativePath);
-  const before = await fs.readFile(filename, 'utf8');
+  let before;
+  try {
+    before = await fs.readFile(filename, 'utf8');
+  } catch (error) {
+    if (optional && error?.code === 'ENOENT') return;
+    throw error;
+  }
   const after = transform(before);
   if (after !== before) await fs.writeFile(filename, after, 'utf8');
 }
@@ -19,7 +25,7 @@ await update('src/news-feed-service.mjs', (source) => {
   if (!source.includes(from)) throw new Error('1.20.1 news content anchor missing.');
   const to = "    const fullContent = stripHtml(tag(block, ['content:encoded', 'content', 'description', 'summary'])).slice(0, 12000);\n    const description = fullContent.slice(0, 320);";
   return source.replace(from, to).replace('      title, link, publishedAt, description, image, feedUrl,', '      title, link, publishedAt, description, content: fullContent, image, feedUrl,');
-});
+}, { optional: true });
 
 await update('public/index.html', (source) => {
   let html = source.replace(/\s*<link[^>]+release-1\.20\.1\.css\?v=[^>]+>\s*/g, '\n');
