@@ -52,8 +52,14 @@ need(electronMain, "persistBrowserStateSnapshot({ reason: 'update', restoreAll: 
 need(electronMain, 'restoreBrowserStateSnapshot(mainWindow)', 'Browser state is not restored on startup.');
 need(electronMain, 'if (browserStateRestored) await mainWindow.loadURL', 'Renderer is not reloaded after restoring state.');
 need(electronMain, "persistBrowserStateSnapshot({ reason: 'startup-migration', restoreAll: false })", 'Existing browser state is not seeded into the update-safe backup on upgraded startup.');
-need(electronMain, "persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })", 'Normal shutdown does not preserve a fallback browser snapshot.');
 need(electronMain, "TRANSIENT_BROWSER_STORAGE_KEYS = new Set(['si-taxi-token'])", 'Transient pairing token exclusion is missing.');
+need(electronMain, 'let updateInstallPending = false;', 'Updater lifecycle does not track a pending explicit installation.');
+need(electronMain, 'const updateSnapshotPersisted = await persistBrowserStateSnapshot', 'Updater does not record whether its restore snapshot was persisted.');
+need(electronMain, 'updateInstallPending = updateSnapshotPersisted;', 'Updater restore snapshot is not protected during shutdown.');
+need(electronMain, "updateInstallPending ? true : persistBrowserStateSnapshot({ reason: 'shutdown', restoreAll: false })", 'Normal shutdown can overwrite the update restore snapshot.');
+need(electronMain, "if (value.state !== 'available') return { ...value };", 'Updater download can still start without a positively detected release.');
 need(materializer, 'restoreAll: Boolean(restoreAll)', 'Update restore mode is not persisted in snapshot metadata.');
+need(materializer, 'updateInstallPending = updateSnapshotPersisted;', 'Update lifecycle protection is not materialized by the release chain.');
+need(materializer, "if (value.state !== 'available') return { ...value };", 'Strict updater download guard is not materialized by the release chain.');
 
 console.log('Update-safe local browser state persistence regression passed.');
