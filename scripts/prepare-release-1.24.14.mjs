@@ -29,21 +29,26 @@ function run(script) {
   if (result.status !== 0) throw new Error(`${script} failed with exit code ${result.status}.`);
 }
 
-async function isBaseMaterialized() {
+async function materializedState() {
   const [main, index, server, serviceWorker] = await Promise.all([
     readText('src/electron-main.mjs'),
     readText('public/index.html'),
     readText('src/server.mjs'),
     readText('public/service-worker.js'),
   ]);
-  return index.includes('data-app-version="1.24.13"')
-    && server.includes("const APP_VERSION = '1.24.13';")
-    && serviceWorker.includes('flyxora-v1.24.13-news-removed-quit-on-close')
-    && main.includes("app.on('window-all-closed', () => {\n  app.quit();\n});")
+  const runtimeOk = main.includes("app.on('window-all-closed', () => {\n  app.quit();\n});")
     && !/mainWindow\.on\('close'[\s\S]{0,240}event\.preventDefault\(\)/.test(main)
     && !/news-app\.(?:js|css)/i.test(index)
     && !/news-app\.(?:js|css)/i.test(serviceWorker)
     && !/\/api\/news\//i.test(server);
+  if (!runtimeOk) return 'none';
+  if (index.includes('data-app-version="1.24.14"')
+    && server.includes("const APP_VERSION = '1.24.14';")
+    && serviceWorker.includes('flyxora-v1.24.14-retired-news-source-cleanup')) return 'final';
+  if (index.includes('data-app-version="1.24.13"')
+    && server.includes("const APP_VERSION = '1.24.13';")
+    && serviceWorker.includes('flyxora-v1.24.13-news-removed-quit-on-close')) return 'base';
+  return 'none';
 }
 
 const pkg = await readPackage();
@@ -51,16 +56,21 @@ if (pkg.version !== FINAL_VERSION) {
   throw new Error(`FLYXORA ${FINAL_VERSION} release preparation expected package ${FINAL_VERSION}, got ${pkg.version}.`);
 }
 
-if (!(await isBaseMaterialized())) {
-  await writePackageVersion(BASE_VERSION);
-  try {
-    run('scripts/prepare-release-1.24.13.mjs');
-  } finally {
-    await writePackageVersion(FINAL_VERSION);
+const state = await materializedState();
+if (state === 'final') {
+  run('scripts/apply-release-1.24.14.mjs');
+  console.log(`FLYXORA ${FINAL_VERSION} sources already materialized; historical release chain skipped.`);
+} else {
+  if (state !== 'base') {
+    await writePackageVersion(BASE_VERSION);
+    try {
+      run('scripts/prepare-release-1.24.13.mjs');
+    } finally {
+      await writePackageVersion(FINAL_VERSION);
+    }
   }
+  run('scripts/apply-release-1.24.14.mjs');
 }
-
-run('scripts/apply-release-1.24.14.mjs');
 
 const finalPackage = await readPackage();
 if (finalPackage.version !== FINAL_VERSION) {
