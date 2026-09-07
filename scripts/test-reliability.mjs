@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+import { EventEmitter } from 'node:events';
+import { buildTaxiGraph, planTaxiRoutes, deriveTaxiRouteFromClearance } from '../src/taxi-route-planner.mjs';
+
+const point = (lon) => ({ lat: 51, lon });
+const line = (id, ref, a, b, kind = 'taxiway') => ({ id, ref, kind, geometry: 'line', coordinates: [point(a), point(b)] });
+const map = { features: [line('a','A',6,6.002), line('x','X',6.002,6.004), line('b','B',6.004,6.006)] };
+const request = { mode: 'custom', start: point(6), destination: point(6.006) };
+assert.ok(planTaxiRoutes(map, request).routes.length, 'connected manual network remains usable');
+assert.equal(planTaxiRoutes(map, {...request, start: point(6.02)}).routes.length, 0, 'no long off-network shortcut');
+const clearance = { aircraft: { ...point(6), onGround: true }, gate: point(6.006), taxi: { clearance: { text: 'Taxi to gate via A, B' } } };
+assert.equal(deriveTaxiRouteFromClearance(map, clearance).routes.length, 0, 'A-X-B must not be relabelled A-B');
+clearance.taxi.clearance.text = 'Taxi to gate via A, X, B';
+assert.ok(deriveTaxiRouteFromClearance(map, clearance).routes.length, 'exact clearance still works');
+const disconnected = {features: [line('p','G',5.999,5.9995,'parking_position'), line('a','A',6,6.002)]};
+assert.ok([...buildTaxiGraph(disconnected).nodes.values()].every(n=>n.edges.every(e=>e.kind!=='connector')), 'no fabricated apron connections');
+
+// Exercise the actual updater function without starting Electron.
+const main = await fs.readFile('src/electron-main.mjs','utf8');
+const updaterSource = main.slice(main.indexOf('function createUpdateService()'), main.indexOf('\nfunction showMainWindow()'));
+const updater = new EventEmitter();
+let checks=0, downloads=0, installs=0, releaseCheck;
+updater.checkForUpdates = () => { checks++; return new Promise(resolve=>{releaseCheck=resolve;}); };
+updater.downloadUpdate = async () => { downloads++; throw new Error('network unavailable'); };
+updater.quitAndInstall = (silent, restart) => { assert.equal(silent,false); assert.equal(restart,true); installs++; };
+const timers=[];
+const context = vm.createContext({ app:{getVersion:()=> '1.24.13',isPackaged:true},process:{platform:'win32'},autoUpdater:updater,normalizeReleaseNotes:()=>'',fetchGitHubReleaseNotes:async()=>'',persistBrowserStateSnapshot:async()=>true,setTimeout:fn=>timers.push(fn),Date });
+vm.runInContext(updaterSource+';globalThis.service=createUpdateService();',context);
+const service=context.service;
+const first=service.check();
+await service.check();
+assert.equal(checks,1,'parallel update checks must be coalesced');
+releaseCheck();await first;
+updater.emit('error',new Error('check failed'));
+await service.download();assert.equal(downloads,0,'check error must not permit download without metadata');
+updater.emit('update-available',{version:'1.24.14'});
+await service.download();assert.equal(service.status().failedOperation,'download');
+await service.download();assert.equal(downloads,2,'failed downloads may retry');
+updater.emit('update-downloaded',{version:'1.24.14'});
+await service.check();assert.equal(checks,1,'check must preserve downloaded installer');
+await service.install();await service.install();assert.equal(timers.length,1,'only one install launch');
+timers[0]();assert.equal(installs,1);
+assert.equal(updater.autoInstallOnAppQuit,false);
+
+// SimConnect delivery uses 1-based entry numbers. Exercise discovery and disconnect.
+let injectedSource=await fs.readFile('src/injected-traffic-client.mjs','utf8');
+injectedSource=injectedSource.replace(/import\s*\{[\s\S]*?\}\s*from 'node-simconnect';/,'').replace(/export /g,'');
+const handle=new EventEmitter();const requests=[];
+handle.addToDataDefinition=()=>{};handle.requestDataOnSimObjectType=()=>{};handle.requestDataOnSimObject=(...args)=>requests.push(args);handle.close=()=>{};
+const engine=new EventEmitter();let integration={aircraft:[]};
+engine.publicState=()=>({integrations:{simTraffic:integration}});
+engine.setIntegration=(_,patch)=>{integration={...integration,...patch};engine.emit('change');};
+const injectedContext=vm.createContext({open:async()=>({handle}),Protocol:{KittyHawk:1},SimConnectConstants:{OBJECT_ID_USER:0},SimConnectDataType:{},SimConnectPeriod:{ONCE:1},SimObjectType:{ALL:0},setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,clearInterval:()=>{},queueMicrotask,Date,engine});
+vm.runInContext(injectedSource+';globalThis.client=new InjectedTrafficClient(engine);',injectedContext);
+const client=injectedContext.client;client.start();await new Promise(resolve=>setImmediate(resolve));
+handle.emit('simObjectDataByType',{requestID:90,entryNumber:1,outOf:2,objectID:7,data:{readString32:()=> 'airplane'}});
+assert.equal(requests.length,0,'first of two objects must not finish discovery');
+handle.emit('simObjectDataByType',{requestID:90,entryNumber:2,outOf:2,objectID:8,data:{readString32:()=> 'airplane'}});
+assert.equal(requests.length,2,'both objects must reach detail requests');
+client.fallbackAircraft=[{objectId:7,lat:51,lon:6,source:'simconnect-all'}];client.fallbackUpdatedAt=Date.now();
+integration={aircraft:[...client.fallbackAircraft]};
+handle.emit('close');engine.emit('change');await new Promise(resolve=>setImmediate(resolve));
+assert.equal(integration.aircraft.length,0,'disconnected fallback must not resurrect traffic');
+client.stop();
+console.log('Reliability regressions passed: updater concurrency/retries, SimConnect batches/disconnect, strict taxi geometry.');
